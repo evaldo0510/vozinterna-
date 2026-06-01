@@ -1,0 +1,7 @@
+{
+  "name": " Voz Interior PCH",
+  "description": "Uma jornada multimodal de autoconhecimento guiada pela Poesia Cognitiva Hipnótica (PCH).",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
