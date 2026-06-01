@@ -9,6 +9,9 @@ import {
   Eye, Moon, Sun, Activity, Info, X, ChevronRight, CheckCircle2,
   Bookmark, ShieldAlert, Award, Volume2, HelpCircle
 } from 'lucide-react';
+import { MoodConstellation } from './MoodConstellation';
+import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { collection, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 
 interface SessionManagerProps {
   onDisconnect: () => void;
@@ -88,12 +91,13 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
   const [inputSensitivity, setInputSensitivity] = useState(0.01);
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [voice, setVoice] = useState<'male' | 'female'>('male');
+  const [voice, setVoice] = useState<'essencia' | 'esperanca' | 'serenidade' | 'infantil' | 'sabedoria'>('essencia');
   const [voicePitch, setVoicePitch] = useState(1.0);
   const [speechRate, setSpeechRate] = useState(1.0);
 
   // States for Adaptive Consciousness additions
   const [neuroMode, setNeuroMode] = useState<NeurodivergentMode>('natural');
+  const [customSystemPrompt, setCustomSystemPrompt] = useState<string>('');
   const [selectedFeeling, setSelectedFeeling] = useState<string | null>(null);
   const [selectedMetaphor, setSelectedMetaphor] = useState<string | null>(null);
   const [showReferral, setShowReferral] = useState(false);
@@ -101,6 +105,12 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
   const [gardenPlants, setGardenPlants] = useState<GardenPlant[]>([]);
   const [showWaterEffect, setShowWaterEffect] = useState<string | null>(null);
   const [voiceAlert, setVoiceAlert] = useState<string | null>(null);
+
+  // States for 5-camadas core PCH processing system
+  const [activeLayer, setActiveLayer] = useState<number>(0);
+  const [detectedEmotion, setDetectedEmotion] = useState<{ emotion: string; intensity: number } | null>(null);
+  const [visualAnchor, setVisualAnchor] = useState<'neutral' | 'heavy' | 'reflective' | 'light'>('neutral');
+  const [selectedRegionTab, setSelectedRegionTab] = useState<'campo' | 'floresta' | 'lago' | 'montanha' | 'constelacao'>('campo');
 
   // New States: Rest Mode, Ambient Sound, and Gamification
   const [ambientSound, setAmbientSound] = useState<'off' | 'rain' | 'forest' | 'waves'>(() => {
@@ -351,32 +361,103 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
   const text = TRANSLATIONS[lang];
   const accMode = currentUser?.accessibilityMode || false;
 
-  // Initialize Garden Plants
+  // Synchronize adaptive consciousness configurations and cloud-persisted system prompts
   useEffect(() => {
-    const cached = localStorage.getItem('pch_garden_plants');
-    if (cached) {
-      try {
-        setGardenPlants(JSON.parse(cached));
-      } catch (e) {
-        console.error("Failed to parse cached plants", e);
-      }
-    } else {
-      const defaultPlants: GardenPlant[] = [
-        { id: '1', type: 'flower', name: lang === 'pt' ? 'Sutileza Celeste' : 'Celestial Subtlety', stage: 2, color: 'text-teal-400', createdAt: new Date().toISOString(), lastWatered: new Date().toISOString() },
-        { id: '2', type: 'tree', name: lang === 'pt' ? 'Ipê de Foco' : 'Ipê of Focus', stage: 1, color: 'text-amber-400', createdAt: new Date().toISOString(), lastWatered: new Date().toISOString() },
-        { id: '3', type: 'succulent', name: lang === 'pt' ? 'Cacto de Força' : 'Resilience Cactus', stage: 3, color: 'text-emerald-400', createdAt: new Date().toISOString(), lastWatered: new Date().toISOString() }
-      ];
-      setGardenPlants(defaultPlants);
-      localStorage.setItem('pch_garden_plants', JSON.stringify(defaultPlants));
+    if (currentUser?.neuroMode) {
+      setNeuroMode(currentUser.neuroMode);
     }
+  }, [currentUser?.neuroMode]);
+
+  useEffect(() => {
+    const configDocRef = doc(db, 'system_config', 'voice_settings');
+    const unsubscribe = onSnapshot(configDocRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.systemPrompt) {
+          setCustomSystemPrompt(data.systemPrompt);
+        }
+      }
+    }, (err) => {
+      console.error("Failed to fetch cloud system prompt", err);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Initialize Garden Plants with real-time Firestore synchronization or Offline localStorage fallbacks
+  useEffect(() => {
+    let unsubscribe = () => {};
+    const currentUser = auth.currentUser;
+
+    const defaultPlants: GardenPlant[] = [
+      { id: '1', type: 'flower', name: lang === 'pt' ? 'Sutileza Celeste' : 'Celestial Subtlety', stage: 2, color: 'text-teal-400', createdAt: new Date().toISOString(), lastWatered: new Date().toISOString() },
+      { id: '2', type: 'tree', name: lang === 'pt' ? 'Ipê de Foco' : 'Ipê of Focus', stage: 1, color: 'text-amber-400', createdAt: new Date().toISOString(), lastWatered: new Date().toISOString() },
+      { id: '3', type: 'succulent', name: lang === 'pt' ? 'Cacto de Força' : 'Resilience Cactus', stage: 3, color: 'text-emerald-400', createdAt: new Date().toISOString(), lastWatered: new Date().toISOString() }
+    ];
+
+    if (currentUser) {
+      const colRef = collection(db, 'users', currentUser.uid, 'plants');
+      unsubscribe = onSnapshot(colRef, (snapshot) => {
+        if (snapshot.empty) {
+          // Automatic self-healing bootstrap of initial plants inside Firestore
+          defaultPlants.forEach(async (p) => {
+            try {
+              await setDoc(doc(db, 'users', currentUser.uid, 'plants', p.id), p);
+            } catch (err) {
+              handleFirestoreError(err, OperationType.CREATE, `users/${currentUser.uid}/plants/${p.id}`);
+            }
+          });
+        } else {
+          const synced: GardenPlant[] = [];
+          snapshot.forEach((snapDoc) => {
+            const data = snapDoc.data();
+            synced.push({
+              id: snapDoc.id,
+              type: data.type,
+              name: data.name,
+              stage: typeof data.stage === 'number' ? data.stage : 0,
+              color: data.color || 'text-teal-400',
+              createdAt: data.createdAt || new Date().toISOString(),
+              lastWatered: data.lastWatered || new Date().toISOString()
+            });
+          });
+          // Sort by creation or ID to maintain consistent UI layout order
+          synced.sort((a,b) => a.id.localeCompare(b.id));
+          setGardenPlants(synced);
+        }
+      }, (err) => {
+        handleFirestoreError(err, OperationType.LIST, `users/${currentUser.uid}/plants`);
+      });
+    } else {
+      // Offline Local Guest Mode fallback
+      const cached = localStorage.getItem('pch_garden_plants');
+      if (cached) {
+        try {
+          setGardenPlants(JSON.parse(cached));
+        } catch (e) {
+          console.error("Failed to parse cached plants", e);
+        }
+      } else {
+        setGardenPlants(defaultPlants);
+        localStorage.setItem('pch_garden_plants', JSON.stringify(defaultPlants));
+      }
+    }
+
+    return () => {
+      unsubscribe();
+    };
   }, [lang]);
 
-  // Breathing cycle interval
+  // Breathing cycle interval with haptic feedback vibrations
   useEffect(() => {
     let breathingInterval: NodeJS.Timeout;
     let step = 0; // 0: Inhale, 1: Hold, 2: Exhale, 3: Hold Out
 
     const runCycle = () => {
+      // Trigger a gentle, non-disruptive physical pulse on cycle step transitions
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(30);
+      }
+
       if (step === 0) {
         setBreathingStep('inhale');
         setBreathingText(lang === 'pt' ? 'Inale devagar...' : 'Inhale slowly...');
@@ -431,15 +512,26 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
 
       const currentTime = new Date().toLocaleTimeString(lang);
       
+      const voiceThematicInstructions: Record<string, string> = {
+        essencia: `\n\n**ESTILO DE ATUAÇÃO E VOZ (VOZ ESSÊNCIA):** Fale com seu tom de voz natural de equilíbrio e calmaria básica. Seja o porto seguro estável e sintonizado.`,
+        esperanca: `\n\n**ESTILO DE ATUAÇÃO E VOZ (VOZ ESPERANÇA):** Fale com um tom de voz caloroso, encorajador e visivelmente esperançoso. Use palavras inspiradoras e acolha com profundo carinho.`,
+        serenidade: `\n\n**ESTILO DE ATUAÇÃO E VOZ (VOZ SERENIDADE):** Fale calmamente e devagar. Desacelere a fala e faça pausas reflexivas comuns a um repouso meditativo profundo.`,
+        infantil: `\n\n**ESTILO DE ATUAÇÃO E VOZ (VOZ INFANTIL):** Fale de forma leve, protetora, imaginativa, simples e lúdica, adequada para acalmar mentes inocentes. Evite conceitos densos ou abstratos. Sintonize a suavidade de uma canção de ninar.`,
+        sabedoria: `\n\n**ESTILO DE ATUAÇÃO E VOZ (VOZ SABEDORIA):** Fale com postura madura e cheia de paciência, de profunda empatia sênior, com o recolhimento de quem sintoniza a clareza e o sossego sábio milenar.`
+      };
+      
+      const thematicPrompt = voiceThematicInstructions[voice] || "";
+
       // Inject speech speed/pitch options alongside actual active NeurodivergentMode System Prompt segment!
       const voiceInstruction = `\n\n**ESTILO DE VOZ ATUAL:**
       - Velocidade: ${speechRate}x (0.5x é muito lento, 1.5x é rápido).
       - Tom: ${voicePitch > 1 ? 'Mais agudo/feminino' : voicePitch < 1 ? 'Mais grave/masculino' : 'Normal'}.
-      Por favor, ajuste seu ritmo, velocidade e entonação para refletir essas configurações e respeitar o tom do perfil ativo.`;
+      Por favor, ajuste seu ritmo, velocidade e entonação para refletir essas configurações e respeitar o tom do perfil ativo.${thematicPrompt}`;
 
       // Get instruction combining base, accessibility, and the target neurodiversity instructions
       const lastContext = selectedFeeling ? `${lang === 'pt' ? 'Me sinto assim: ' : 'I feel like: '}${selectedFeeling}` : undefined;
-      const instruction = getSystemInstruction(lang, currentTime, accMode, neuroMode, lastContext) + voiceInstruction;
+      const baseInstruction = customSystemPrompt || getSystemInstruction(lang, currentTime, accMode, neuroMode, lastContext);
+      const instruction = baseInstruction + voiceInstruction;
 
       const sessionPromise = ai.live.connect({
         model: MODEL_NAME,
@@ -554,69 +646,151 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
     return () => { cleanupAudio(); clearInterval(t); };
   }, [connectToGemini, cleanupAudio]);
 
-  // Propagate plant watering to LocalStorage and growth stages
-  const handleWaterPlant = (id: string) => {
+  // Propagate plant watering to LocalStorage/Firestore and growth stages
+  const handleWaterPlant = async (id: string) => {
     setShowWaterEffect(id);
     setTimeout(() => setShowWaterEffect(null), 1000);
 
-    const updated = gardenPlants.map(p => {
-      if (p.id === id) {
-        const nextStage = p.stage < 3 ? p.stage + 1 : 0;
-        return {
-          ...p,
-          stage: nextStage,
-          lastWatered: new Date().toISOString()
-        };
-      }
-      return p;
-    });
-    setGardenPlants(updated);
-    localStorage.setItem('pch_garden_plants', JSON.stringify(updated));
+    // Register subtle haptic vibration (50ms) on plant water
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(50);
+    }
 
-    // Register a visual event to trigger sound synthesis
-    if ('vibrate' in navigator) {
-      navigator.vibrate(30);
+    const currentUser = auth.currentUser;
+    const targetPlant = gardenPlants.find(p => p.id === id);
+    if (!targetPlant) return;
+
+    const nextStage = targetPlant.stage < 4 ? targetPlant.stage + 1 : 0;
+    const updatedPlant: GardenPlant = {
+      ...targetPlant,
+      stage: nextStage,
+      lastWatered: new Date().toISOString()
+    };
+
+    if (currentUser) {
+      try {
+        const docRef = doc(db, 'users', currentUser.uid, 'plants', id);
+        await setDoc(docRef, updatedPlant);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}/plants/${id}`);
+      }
+    } else {
+      const updated = gardenPlants.map(p => p.id === id ? updatedPlant : p);
+      setGardenPlants(updated);
+      localStorage.setItem('pch_garden_plants', JSON.stringify(updated));
     }
   };
 
   // Plant a new seed
-  const handlePlantSeed = () => {
+  const handlePlantSeed = async () => {
     const types: ('flower' | 'tree' | 'shrub' | 'succulent' | 'fern' | 'flower2')[] = ['flower', 'tree', 'succulent', 'flower2', 'fern'];
     const chosenType = types[Math.floor(Math.random() * types.length)];
     const colors = ['text-teal-400', 'text-amber-400', 'text-emerald-400', 'text-indigo-400', 'text-rose-400'];
     const chosenColor = colors[Math.floor(Math.random() * colors.length)];
     
+    // Physical haptic confirm on planting
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(25);
+    }
+
+    const regionalNames: Record<string, string[]> = {
+      campo: ['Muda de Luz 🌱', 'Broto da Atenção 🌿', 'Dente-de-Leão da Clareza ✨'],
+      floresta: ['Germe da Bravura 🌲', 'Semente de Carvalho 🌳', 'Arbusto Resiliente 🌿'],
+      lago: ['Lótus da Serenidade 🌸', 'Vitória-Régia PCH 💮', 'Junco da Calmaria 🌾'],
+      montanha: ['Edelweiss das Neves 🏔️', 'Flor de Gelo Cósmica ❄️', 'Cacto de Altitude 🌵'],
+      constelacao: ['Fagulha Galáctica 🌟', 'Cristal Astral ✨', 'Poeira Cósmica de Insight ☄️']
+    };
+
+    const nameList = regionalNames[selectedRegionTab] || regionalNames.campo;
+    const randomName = nameList[Math.floor(Math.random() * nameList.length)];
+
+    const newId = Date.now().toString();
     const newPlant: GardenPlant = {
-      id: Date.now().toString(),
+      id: newId,
       type: chosenType,
-      name: lang === 'pt' ? `Muda de Luz ${gardenPlants.length + 1}` : `Light Bud ${gardenPlants.length + 1}`,
+      name: randomName,
       stage: 0,
       color: chosenColor,
       createdAt: new Date().toISOString(),
       lastWatered: new Date().toISOString()
     };
 
-    const updated = [...gardenPlants, newPlant];
-    setGardenPlants(updated);
-    localStorage.setItem('pch_garden_plants', JSON.stringify(updated));
+    // Store custom region property on the plant document representation
+    (newPlant as any).region = selectedRegionTab;
+
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        const docRef = doc(db, 'users', currentUser.uid, 'plants', newId);
+        await setDoc(docRef, newPlant);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}/plants/${newId}`);
+      }
+    } else {
+      const updated = [...gardenPlants, newPlant];
+      setGardenPlants(updated);
+      localStorage.setItem('pch_garden_plants', JSON.stringify(updated));
+    }
+  };
+
+  const runIntelligencePipeline = (inputEmotion: string) => {
+    setActiveLayer(1);
+    const mockIntensities: Record<string, number> = {
+      Tristeza: 8, Sadness: 8,
+      Ansiedade: 9, Anxiety: 9,
+      Raiva: 7, Anger: 7,
+      Medo: 8, Fear: 8,
+      Confusão: 6, Confusion: 6,
+      Esperança: 5, Hope: 5,
+      Alegria: 4, Joy: 4,
+      Solidão: 7, Solitude: 7
+    };
+    
+    // Fallback if not matching feeling keys
+    const rawVal = inputEmotion.split(" ")[0]; // e.g. "Oceano"
+    const intensity = mockIntensities[inputEmotion] || Math.floor(Math.random() * 4) + 5;
+    setDetectedEmotion({ emotion: rawVal, intensity });
+
+    setTimeout(() => {
+      setActiveLayer(2);
+      setTimeout(() => {
+        setActiveLayer(3);
+        setTimeout(() => {
+          setActiveLayer(4);
+          setTimeout(() => {
+            setActiveLayer(5);
+          }, 700);
+        }, 700);
+      }, 700);
+    }, 700);
   };
 
   // Helper trigger for feelings click
   const triggerFeeling = (feelingKey: string, textStr: string) => {
     setSelectedFeeling(textStr);
     triggerVoiceAlert(`${lang === 'pt' ? 'Sentindo' : 'Feeling'}: ${textStr}`);
+    runIntelligencePipeline(textStr);
 
     // Plant progress can boost slightly
     try {
-      const updated = gardenPlants.map(p => {
-        // Boost growth slightly on any emotional reflection
+      const currentUser = auth.currentUser;
+      const boostedPlants = gardenPlants.map(p => {
         if (Math.random() > 0.5 && p.stage < 3) {
-          return { ...p, stage: p.stage + 1 };
+          const updatedPlant = { ...p, stage: p.stage + 1 };
+          if (currentUser) {
+            const docRef = doc(db, 'users', currentUser.uid, 'plants', p.id);
+            setDoc(docRef, updatedPlant).catch(err => {
+              handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}/plants/${p.id}`);
+            });
+          }
+          return updatedPlant;
         }
         return p;
       });
-      setGardenPlants(updated);
-      localStorage.setItem('pch_garden_plants', JSON.stringify(updated));
+      if (!currentUser) {
+        setGardenPlants(boostedPlants);
+        localStorage.setItem('pch_garden_plants', JSON.stringify(boostedPlants));
+      }
     } catch(e) {}
 
     // Send direct text through existing active connection to guide model immediately
@@ -643,6 +817,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
   const triggerMetaphor = (metaphorKey: string, textStr: string) => {
     setSelectedMetaphor(textStr);
     triggerVoiceAlert(`${lang === 'pt' ? 'Símbolo Ativo' : 'Active Symbol'}: ${textStr}`);
+    runIntelligencePipeline(textStr);
 
     // Send direct text through existing connection
     if (activeSessionRef.current) {
@@ -679,6 +854,15 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
 
   // Define sensory theme styles
   let themeBg = 'bg-stone-950';
+  if (visualAnchor === 'heavy') {
+    themeBg = 'bg-gradient-to-b from-stone-900/60 via-purple-950/20 to-stone-950';
+  } else if (visualAnchor === 'reflective') {
+    themeBg = 'bg-gradient-to-b from-stone-900/65 via-teal-950/25 to-stone-950';
+  } else if (visualAnchor === 'light') {
+    themeBg = 'bg-gradient-to-b from-stone-900/60 via-amber-950/15 to-stone-900';
+  } else if (visualAnchor === 'neutral') {
+    themeBg = 'bg-stone-950';
+  }
   let themeCard = 'border-stone-800 bg-stone-900/40';
   let accentBorder = 'border-stone-700/50';
   let textSpacing = 'tracking-normal';
@@ -752,6 +936,11 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
       {/* Scrollable Adaptive Dashboard */}
       <div className="flex-1 w-full max-w-4xl overflow-y-auto custom-scrollbar flex flex-col items-center justify-start space-y-6 py-4 px-2 my-2 z-10">
         
+        {/* Dynamic Mood Constellation Chart (Emotional Resonance Scoring Graph) */}
+        <div className="w-full max-w-md">
+          <MoodConstellation history={currentUser?.resonanceHistory || []} lang={lang} />
+        </div>
+
         {/* Sabedoria do Dia Collapsible Section */}
         {showWisdom && (
           <div className={`w-full max-w-md p-4 rounded-2xl border text-center transition-all duration-[2000ms] relative bg-stone-900/20 backdrop-blur-md ${accentBorder} ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
@@ -829,6 +1018,105 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
              </p>
           </div>
         )}
+
+        {/* Painel do Núcleo da Inteligência Principal (5-layer processing view & anchor selects) */}
+        <div className="w-full max-w-xl bg-stone-900/40 border border-stone-850/60 rounded-3xl p-5 space-y-4 transition-all duration-500">
+           <div className="flex justify-between items-center border-b border-stone-850/60 pb-2.5">
+              <div className="flex items-center space-x-2">
+                 <Activity className="w-4 h-4 text-teal-400 animate-pulse" />
+                 <span className="text-[10px] font-bold uppercase tracking-widest text-stone-200">Núcleo de Inteligência Principal PCH</span>
+              </div>
+              <span className="text-[8px] font-mono font-bold text-stone-500 uppercase tracking-widest bg-stone-950 px-2 py-0.5 rounded border border-stone-900">
+                 Acolhimento Ativo
+              </span>
+           </div>
+
+           {/* Step-by-Step 5 Layers Grid flow status */}
+           <div className="grid grid-cols-1 sm:grid-cols-5 gap-1.5">
+              {[
+                {
+                  layer: 1,
+                  title: '1. Escuta',
+                  desc: 'Intake Ativo',
+                  accent: 'text-teal-400 bg-teal-950/20 border-teal-800/40'
+                },
+                {
+                  layer: 2,
+                  title: '2. Leitura',
+                  desc: detectedEmotion ? `${detectedEmotion.emotion} (${detectedEmotion.intensity}/10)` : '...',
+                  accent: 'text-indigo-400 bg-indigo-950/20 border-indigo-800/40'
+                },
+                {
+                  layer: 3,
+                  title: '3. Motor PCH',
+                  desc: 'Metáfora Ativa',
+                  accent: 'text-amber-400 bg-amber-950/20 border-amber-800/40'
+                },
+                {
+                  layer: 4,
+                  title: '4. Perfil',
+                  desc: `${neuroMode.toUpperCase()}`,
+                  accent: 'text-rose-400 bg-rose-950/20 border-rose-800/40'
+                },
+                {
+                  layer: 5,
+                  title: '5. Ação',
+                  desc: 'Sopro Pronto',
+                  accent: 'text-emerald-400 bg-emerald-950/20 border-emerald-800/40'
+                }
+              ].map((item) => {
+                const isActive = activeLayer >= item.layer;
+                return (
+                  <div 
+                    key={item.layer} 
+                    className={`p-2.5 rounded-xl border flex flex-col justify-between text-left transition-all duration-300 ${
+                      isActive 
+                      ? `${item.accent} scale-[1.02] shadow-sm` 
+                      : 'bg-stone-950/30 border-stone-900/50 text-stone-600'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-1">
+                       <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-current animate-ping' : 'bg-stone-800'}`} />
+                       <span className="text-[8.5px] font-mono uppercase font-bold tracking-tight">{item.title}</span>
+                    </div>
+                    <span className="text-[7.5px] font-mono leading-tight tracking-tight capitalize opacity-95 truncate mt-1">{item.desc}</span>
+                  </div>
+                );
+              })}
+           </div>
+
+           {/* Sensorial Custom Emotional Image selectors */}
+           <div className="pt-2 border-t border-stone-850/60 flex flex-col space-y-2">
+              <div className="flex items-center space-x-1 text-stone-400">
+                 <Sparkles className="w-3.5 h-3.5" />
+                 <span className="text-[10px] uppercase font-bold tracking-wider">Biblioteca de Imagens / Âncoras Sensoriais de Fundo</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                 {[
+                   { key: 'heavy', label: '🌧️ Profundo', desc: 'Mar, Chuva, Tempestade' },
+                   { key: 'reflective', label: '🌙 Reflexivo', desc: 'Rio, Lago, Calmaria' },
+                   { key: 'light', label: '🌅 Leve', desc: 'Sol, Campo, Céu' },
+                   { key: 'neutral', label: '🏔️ Neutro', desc: 'Montanha, Horizonte' }
+                 ].map((item) => {
+                   const isSel = visualAnchor === item.key;
+                   return (
+                     <button
+                       key={item.key}
+                       onClick={() => setVisualAnchor(item.key as any)}
+                       className={`p-2 rounded-xl border text-left flex flex-col space-y-0.5 transition-all text-xs cursor-pointer ${
+                         isSel 
+                         ? 'bg-teal-950/20 border-teal-500/40 text-teal-300' 
+                         : 'bg-stone-950/20 border-stone-900 hover:bg-stone-900/30 text-stone-500 hover:text-stone-300'
+                       }`}
+                     >
+                       <span className="text-[9px] font-bold uppercase tracking-wider">{item.label}</span>
+                       <span className="text-[7px] text-stone-500 leading-tight font-mono truncate">{item.desc}</span>
+                     </button>
+                   );
+                 })}
+              </div>
+           </div>
+        </div>
 
         {/* Painel de Sentimentos (Feelings Dashboard) - Lowers cognitive load */}
         <div className={`w-full max-w-xl flex flex-col space-y-3 transition-opacity duration-[2000ms] ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
@@ -909,10 +1197,33 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
                     </div>
                  </div>
                  <button onClick={() => setShowGarden(false)} className="text-stone-500 hover:text-stone-200 transition-colors p-2 hover:bg-stone-900 rounded-full">
-                    <X className="w-5 h-5" />
-                 </button>
-              </div>
+                  <X className="w-5 h-5" />
+                  </button>
+               </div>
 
+               {/* Garden Spatial Regional Slicers */}
+               <div className="grid grid-cols-5 gap-1 p-1 bg-stone-900/30 border border-stone-850/60 rounded-2xl shrink-0">
+                  {[
+                    { key: 'campo', label: 'Campo 🌱', desc: 'Lvl 1+' },
+                    { key: 'floresta', label: 'Floresta 🌿', desc: 'Lvl 2+' },
+                    { key: 'lago', label: 'Lago 🌳', desc: 'Lvl 5+' },
+                    { key: 'montanha', label: 'Montanha 🌺', desc: 'Lvl 10+' },
+                    { key: 'constelacao', label: 'Cosmos ✨', desc: 'Lvl 15+' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setSelectedRegionTab(tab.key as any)}
+                      className={`px-1 py-1 rounded-xl text-[8px] uppercase font-bold tracking-wider transition-all cursor-pointer flex flex-col items-center justify-center text-center ${
+                        selectedRegionTab === tab.key 
+                        ? 'bg-emerald-950/45 text-emerald-300 border border-emerald-800/40' 
+                        : 'text-stone-600 hover:text-stone-400 border border-transparent'
+                      }`}
+                    >
+                      <span>{tab.label}</span>
+                      <span className="text-[6px] text-stone-600 font-mono font-medium mt-0.5">{tab.desc}</span>
+                    </button>
+                  ))}
+               </div>
               {/* Dynamic Plants Grid board */}
               <div className="flex-1 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
                  {gardenPlants.length === 0 ? (
@@ -936,16 +1247,18 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
                                    <div className="text-3xl filter drop-shadow-md select-none transition-transform duration-500 hover:scale-125">
                                       {p.stage === 0 && '🌱'}
                                       {p.stage === 1 && '🌿'}
-                                      {p.stage === 2 && '☘️'}
-                                      {p.stage === 3 && (p.type === 'tree' ? '🌳' : p.type === 'flower' ? '🌸' : p.type === 'succulent' ? '🌵' : '🌻')}
+                                      {p.stage === 2 && '🌳'}
+                                      {p.stage === 3 && '🌺'}
+                                      {p.stage === 4 && '✨'}
                                    </div>
                                    <div className="flex flex-col">
                                       <span className="text-xs text-stone-100 font-bold font-serif leading-tight">{p.name}</span>
                                       <span className="text-[8px] uppercase tracking-widest text-stone-500 font-semibold mt-0.5">
                                          {p.stage === 0 && (lang === 'pt' ? 'Semente' : 'Seed')}
                                          {p.stage === 1 && (lang === 'pt' ? 'Broto' : 'Sprout')}
-                                         {p.stage === 2 && (lang === 'pt' ? 'Em Crescimento' : 'Growing')}
-                                         {p.stage === 3 && (lang === 'pt' ? 'Blossom / Árvore' : 'Mature / Blossom')}
+                                         {p.stage === 2 && (lang === 'pt' ? 'Árvore' : 'Tree')}
+                                         {p.stage === 3 && (lang === 'pt' ? 'Flor Rara' : 'Rare Flower')}
+                                         {p.stage === 4 && (lang === 'pt' ? 'Constelação' : 'Constellation')}
                                       </span>
                                    </div>
                                 </div>
@@ -1213,21 +1526,22 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
                     <span className="text-xs font-bold text-stone-200 uppercase tracking-widest">{lang === 'pt' ? 'Opções de Voz da IA' : 'AI Speech Options'}</span>
                     
                     {/* Voice Select */}
-                    <div className="flex justify-between items-center">
-                       <span className="text-[10px] text-stone-500 uppercase tracking-widest">{lang === 'pt' ? 'Sinalizador' : 'Gender'}</span>
-                       <div className="flex items-center space-x-1 p-0.5 bg-stone-950 border border-stone-900 rounded-lg">
-                          <button
-                             onClick={() => setVoice('male')}
-                             className={`px-2.5 py-1 text-[9px] font-mono uppercase tracking-widest rounded ${voice === 'male' ? 'bg-teal-900/20 text-teal-300' : 'text-stone-600'}`}
-                          >
-                             {lang === 'pt' ? 'Grave' : 'Male'}
-                          </button>
-                          <button
-                             onClick={() => setVoice('female')}
-                             className={`px-2.5 py-1 text-[9px] font-mono uppercase tracking-widest rounded ${voice === 'female' ? 'bg-teal-900/20 text-teal-300' : 'text-stone-600'}`}
-                          >
-                             {lang === 'pt' ? 'Agudo' : 'Female'}
-                          </button>
+                    <div className="flex flex-col space-y-2">
+                       <span className="text-[10px] text-stone-500 uppercase tracking-widest">{lang === 'pt' ? 'Voz do Guia' : 'Guide Voice'}</span>
+                       <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-950 border border-stone-900 rounded-xl">
+                          {(['essencia', 'esperanca', 'serenidade', 'infantil', 'sabedoria'] as const).map((vKey) => (
+                             <button
+                                key={vKey}
+                                onClick={() => setVoice(vKey)}
+                                className={`px-2 py-1.5 text-[8px] font-mono uppercase tracking-widest rounded-lg border transition-all ${
+                                   voice === vKey 
+                                   ? 'bg-teal-950/30 border-teal-500/40 text-teal-300 font-bold' 
+                                   : 'bg-transparent border-transparent text-stone-500 hover:text-stone-300'
+                                }`}
+                             >
+                                {text?.settings?.[`voice_${vKey}`] || vKey}
+                             </button>
+                          ))}
                        </div>
                     </div>
 

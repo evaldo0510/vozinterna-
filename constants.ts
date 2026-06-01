@@ -2,13 +2,17 @@
 import { Language } from './types';
 
 export const VOICE_IDS = {
-  male: 'Puck',
-  female: 'Kore'
+  essencia: 'Puck',
+  esperanca: 'Kore',
+  serenidade: 'Aoede',
+  infantil: 'Charon',
+  sabedoria: 'Fenrir'
 };
 
 export const ADMIN_EMAILS = [
   'evaldo0510@gmail.com', 
-  'ajariristartups@gmail.com'
+  'ajariristartups@gmail.com',
+  'mentefelizterapias@gmail.com'
 ];
 
 export const PLAN_LIMITS = {
@@ -139,8 +143,11 @@ export const TRANSLATIONS = {
       sensitivity: "Limiar de Voz",
       sensitive: "Sussurro",
       strict: "Voz Alta",
-      male: "Masculina (Puck)",
-      female: "Feminina (Kore)",
+      voice_essencia: "Voz Essência 🌿 (Padrão)",
+      voice_esperanca: "Voz Esperança ✨ (Acolhedora)",
+      voice_serenidade: "Voz Serenidade 🌊 (Lenta)",
+      voice_infantil: "Voz Infantil 🌸 (Lúdica)",
+      voice_sabedoria: "Voz Sabedoria 🌳 (Madura)",
       pitch: "Tom de Voz",
       pitchGrave: "Grave",
       pitchAgudo: "Agudo",
@@ -266,8 +273,11 @@ export const TRANSLATIONS = {
       sensitivity: "Voice Threshold",
       sensitive: "Soft Whisper",
       strict: "Loud Voice",
-      male: "Male (Puck)",
-      female: "Female (Kore)",
+      voice_essencia: "Essence Voice 🌿 (Calm)",
+      voice_esperanca: "Hope Voice ✨ (Warm)",
+      voice_serenidade: "Serenity Voice 🌊 (Slow)",
+      voice_infantil: "Child Voice 🌸 (Playful)",
+      voice_sabedoria: "Wisdom Voice 🌳 (Mature)",
       pitch: "Voice Pitch",
       pitchGrave: "Deep",
       pitchAgudo: "High",

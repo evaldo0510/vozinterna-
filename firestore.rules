@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net - Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Validators
+    function isValidUser(data) {
+      return data.id is string 
+        && data.id.size() <= 128 
+        && data.name is string 
+        && data.name.size() <= 200 
+        && data.email is string 
+        && data.email.size() <= 200
+        && data.isAdmin is bool
+        && data.plan is string
+        && data.registeredAt is string
+        && data.lastActive is string;
+    }
+
+    function isValidJournal(data) {
+      return data.id is string 
+        && data.id.size() <= 128 
+        && data.date is string 
+        && data.text is string 
+        && data.text.size() <= 100000
+        && data.userId is string 
+        && data.userId == request.auth.uid;
+    }
+
+    function isValidGardenPlant(data) {
+      return data.id is string 
+        && data.id.size() <= 128 
+        && data.type is string 
+        && data.type.size() <= 50
+        && data.name is string 
+        && data.name.size() <= 200 
+        && data.stage is int 
+        && data.color is string 
+        && data.createdAt is string 
+        && data.lastWatered is string 
+        && data.userId is string 
+        && data.userId == request.auth.uid;
+    }
+
+    // User Resource Rules
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(request.resource.data) 
+                    && request.resource.data.id == userId 
+                    && request.resource.data.isAdmin == false 
+                    && request.resource.data.plan == 'member'; // Bootstrapped tier
+      
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUser(request.resource.data)
+                    && request.resource.data.isAdmin == resource.data.isAdmin // Prevent self-elevation
+                    && request.resource.data.plan == resource.data.plan // Prevent unauthorized plan upgrade
+                    && request.resource.data.id == resource.data.id; // Immutable UID
+
+      // Nested Journal Collection
+      match /journals/{journalId} {
+        allow get, delete: if isOwner(userId) && isValidId(userId) && isValidId(journalId);
+        allow list: if isOwner(userId);
+        
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(journalId) 
+                      && isValidJournal(request.resource.data) 
+                      && request.resource.data.id == journalId;
+                      
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(journalId) 
+                      && isValidJournal(request.resource.data) 
+                      && request.resource.data.id == resource.data.id;
+      }
+
+      // Nested Plants / Jardim Interior Progress
+      match /plants/{plantId} {
+        allow get, delete: if isOwner(userId) && isValidId(userId) && isValidId(plantId);
+        allow list: if isOwner(userId);
+        
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(plantId) 
+                      && isValidGardenPlant(request.resource.data) 
+                      && request.resource.data.id == plantId;
+                      
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(plantId) 
+                      && isValidGardenPlant(request.resource.data) 
+                      && request.resource.data.id == resource.data.id;
+      }
+    }
+  }
+}

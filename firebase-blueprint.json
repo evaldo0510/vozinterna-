@@ -1,0 +1,155 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Secure record of user profile, plan, settings, and daily interaction counts.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "User UID from Firebase Authentication."
+        },
+        "name": {
+          "type": "string",
+          "description": "User's display or chosen name."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's verified email address."
+        },
+        "isAdmin": {
+          "type": "boolean",
+          "description": "Indicates if the user has supervisor/admin status."
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["visitor", "member", "guardian"],
+          "description": "The tier of consciousness plan unlocked."
+        },
+        "registeredAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp of user profile registration."
+        },
+        "lastActive": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp of last activity."
+        },
+        "resonanceScore": {
+          "type": "number",
+          "description": "Aggregated daily emotional alignment and bio-resonance score."
+        },
+        "accessibilityMode": {
+          "type": "boolean",
+          "description": "Enables enhanced visual contrast and auditory descriptions."
+        },
+        "dailyConversations": {
+          "type": "integer",
+          "description": "Number of successfully completed conversations today."
+        },
+        "lastPlayedDate": {
+          "type": "string",
+          "description": "Y-M-D string tracking the logic of daily reset counters."
+        },
+        "ambientSound": {
+          "type": "string",
+          "description": "Preferred background white-sound/meditative sound."
+        },
+        "ambientVolume": {
+          "type": "number",
+          "description": "Preferred volume level for atmospheric patterns (0.0 to 1.0)."
+        },
+        "isRestMode": {
+          "type": "boolean",
+          "description": "Dimmed background visual patterns."
+        }
+      },
+      "required": ["id", "name", "email", "isAdmin", "plan", "registeredAt", "lastActive"]
+    },
+    "Journal": {
+      "title": "Journal Entry",
+      "description": "Saved personal self-reflective text notes.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the journal entry."
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp in ISO format."
+        },
+        "text": {
+          "type": "string",
+          "description": "The self-reflective thoughts or notes typed by the user."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Optional inspired prompt question."
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of the owning authenticated user."
+        }
+      },
+      "required": ["id", "date", "text", "userId"]
+    },
+    "GardenPlant": {
+      "title": "Garden Plant",
+      "description": "A single botanical element representing the user's progress in Jardim Interior.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ID of the plant."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["flower", "tree", "shrub", "succulent", "fern", "flower2"],
+          "description": "Botanical genus category."
+        },
+        "name": {
+          "type": "string",
+          "description": "Custom user-given name to the plant."
+        },
+        "stage": {
+          "type": "integer",
+          "description": "Maturation stage from 0 (seed) to 3 (mature)."
+        },
+        "color": {
+          "type": "string",
+          "description": "Hex or Tailwind CSS color token."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation ISO date string."
+        },
+        "lastWatered": {
+          "type": "string",
+          "description": "Last watered ISO date string."
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of the owning authenticated user."
+        }
+      },
+      "required": ["id", "type", "name", "stage", "color", "createdAt", "lastWatered", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Primary user profile, settings, and stats database."
+    },
+    "/users/{userId}/journals/{journalId}": {
+      "schema": "Journal",
+      "description": "Nested collection holding all private self-reflections."
+    },
+    "/users/{userId}/plants/{plantId}": {
+      "schema": "GardenPlant",
+      "description": "Nested collection of Jardim Interior botanical elements grown by the user."
+    }
+  }
+}

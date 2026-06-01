@@ -1,141 +1,310 @@
-
 import React, { useState, useEffect } from 'react';
 import SessionManager from './components/SessionManager';
-import { TRANSLATIONS, WISDOM_QUOTES } from './constants';
+import { TRANSLATIONS } from './constants';
 import { Language, UserPlan, User } from './types';
-// Fix: Corrected Logo import from named to default
 import Logo from './components/Logo';
 import { JournalModal } from './components/JournalModal';
 import { LandingModal } from './components/LandingModal';
-import { LoginModal } from './components/LoginModal';
 
-// Icons
-const BookIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-  </svg>
-);
+// MVP Foundation screens
+import { SplashView } from './components/SplashView';
+import { LoginView } from './components/LoginView';
+import { RegisterView } from './components/RegisterView';
+import { ProfileChoiceView } from './components/ProfileChoiceView';
+import { ManifestoView } from './components/ManifestoView';
+import { UserProfileView } from './components/UserProfileView';
+import { SettingsView } from './components/SettingsView';
+import { AdminDashboardView } from './components/AdminDashboardView';
 
-const PenIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-  </svg>
-);
+import { auth, db, OperationType, handleFirestoreError } from './lib/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 
-const StarIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
-  </svg>
-);
+// Icons using lucide-react
+import { BookOpen, MessageSquare, User as UserIcon, Sliders, Shield, LogOut, HelpCircle } from 'lucide-react';
 
-const SparklesIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09-3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
-  </svg>
-);
-
-const UserIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-  </svg>
-);
+type NavigationScreen = 
+  | 'splash'
+  | 'login'
+  | 'register'
+  | 'profile_choice'
+  | 'manifesto'
+  | 'chat'
+  | 'profile'
+  | 'settings'
+  | 'admin';
 
 function App() {
-  const [hasStarted, setHasStarted] = useState(false);
   const [lang, setLang] = useState<Language>('pt');
   const [userPlan, setUserPlan] = useState<UserPlan>('visitor');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-
+  const [activeScreen, setActiveScreen] = useState<NavigationScreen>('splash');
+  
   const [showJournal, setShowJournal] = useState(false);
-  const [showLanding, setShowLanding] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
-  const [showPremium, setShowPremium] = useState(false);
+  const [showConcept, setShowConcept] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
-  const text = TRANSLATIONS[lang];
+  // Sync auth state and load user profile doc live from Firestore database
+  useEffect(() => {
+    let unsubscribeUser = () => {};
 
+    const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
+      setLoadingProfile(true);
+      if (authUser) {
+        const userDocRef = doc(db, 'users', authUser.uid);
+
+        unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            const syncedUser: User = {
+              id: authUser.uid,
+              name: data.name || 'Praticante',
+              email: data.email || authUser.email || '',
+              isAdmin: !!data.isAdmin,
+              plan: (data.plan as UserPlan) || 'member',
+              registeredAt: data.registeredAt || new Date().toISOString(),
+              lastActive: data.lastActive || new Date().toISOString(),
+              resonanceScore: typeof data.resonanceScore === 'number' ? data.resonanceScore : 0,
+              accessibilityMode: !!data.accessibilityMode,
+              resonanceHistory: data.resonanceHistory || [],
+              
+              // New Gamification & Orientation onboarding flags
+              profileCompleted: !!data.profileCompleted,
+              manifestoCompleted: !!data.manifestoCompleted,
+              communicationPreference: data.communicationPreference,
+              neuroMode: data.neuroMode,
+              points: data.points || 0,
+              level: data.level || 1,
+              badges: data.badges || []
+            };
+
+            setCurrentUser(syncedUser);
+            setUserPlan(syncedUser.plan);
+
+            // Onboarding router logic based on complete profiles
+            if (!syncedUser.profileCompleted) {
+              setActiveScreen('profile_choice');
+            } else if (!syncedUser.manifestoCompleted) {
+              setActiveScreen('manifesto');
+            } else {
+              // If fully onboarded, only change screen to 'chat' if currently on landing/login flows
+              setActiveScreen((prev) => 
+                ['splash', 'login', 'register', 'profile_choice', 'manifesto'].includes(prev) ? 'chat' : prev
+              );
+            }
+          } else {
+            // First time profile bootstrapping
+            setActiveScreen('profile_choice');
+          }
+          setLoadingProfile(false);
+        }, (err) => {
+          handleFirestoreError(err, OperationType.GET, `users/${authUser.uid}`);
+          setLoadingProfile(false);
+        });
+      } else {
+        unsubscribeUser();
+        setCurrentUser(null);
+        setUserPlan('visitor');
+        setActiveScreen('splash');
+        setLoadingProfile(false);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeUser();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setActiveScreen('splash');
+    } catch (err) {
+      console.error("Failed to log out", err);
+    }
+  };
+
+  // Pre-authenticating loading screen
+  if (loadingProfile && auth.currentUser) {
+    return (
+      <div className="h-screen w-full bg-stone-950 flex flex-col justify-center items-center font-mono space-y-4">
+        <Logo className="w-16 h-16 text-teal-400 animate-spin" />
+        <p className="text-[10px] uppercase tracking-[0.4em] text-stone-600">
+          {lang === 'pt' ? 'Sintonizando Alma...' : 'Tuning Sanctuary...'}
+        </p>
+      </div>
+    );
+  }
+
+  // Visual layout selection
   return (
-    <div className="h-[100dvh] w-full bg-stone-950 text-stone-200 overflow-hidden flex flex-col font-sans">
+    <div className="h-screen w-full bg-stone-950 text-stone-200 flex flex-col relative font-sans overflow-hidden select-none">
       
-      {/* Organized Navigation Header */}
-      {!hasStarted && (
-        <header className="absolute top-0 left-0 w-full p-6 flex flex-col md:flex-row justify-between items-center z-50">
-          <div className="flex items-center space-x-3 mb-6 md:mb-0">
-             <Logo className="w-10 h-10 text-teal-500" />
-             <div className="flex flex-col">
-               <span className="font-serif text-lg tracking-widest text-stone-100 uppercase">{text.title}</span>
-               <span className="text-[9px] uppercase tracking-[0.3em] text-stone-500">The Sanctuary</span>
-             </div>
-          </div>
-          
-          <nav className="flex items-center gap-3">
-              {/* Cluster 1: Knowledge */}
-              <div className="flex items-center bg-stone-900/40 backdrop-blur-md border border-stone-800 rounded-full p-1">
-                <button onClick={() => setShowLanding(true)} className="p-2 text-stone-400 hover:text-teal-400" title="Conceito"><SparklesIcon className="w-5 h-5" /></button>
-                <button onClick={() => setShowLanding(true)} className="p-2 text-stone-400 hover:text-stone-100" title="Guia"><BookIcon className="w-5 h-5" /></button>
-              </div>
-
-              {/* Cluster 2: Journey */}
-              <div className="flex items-center bg-stone-900/40 backdrop-blur-md border border-stone-800 rounded-full p-1">
-                <button onClick={() => setShowJournal(true)} className="p-2 text-stone-400 hover:text-teal-400" title="Diário"><PenIcon className="w-5 h-5" /></button>
-              </div>
-
-              {/* Cluster 3: User/Premium */}
-              <div className="flex items-center bg-stone-900/40 backdrop-blur-md border border-stone-800 rounded-full p-1">
-                <button onClick={() => setShowPremium(true)} className={`p-2 ${userPlan !== 'visitor' ? 'text-amber-400' : 'text-stone-400 hover:text-amber-300'}`} title="Membership"><StarIcon className="w-5 h-5" /></button>
-                <button onClick={() => setShowLogin(true)} className={`p-2 ${currentUser ? 'text-teal-500' : 'text-stone-400 hover:text-teal-400'}`} title="Conta"><UserIcon className="w-5 h-5" /></button>
-              </div>
-          </nav>
-        </header>
+      {/* 1. OFF-SESSION / UNLOGGED CHANNELS */}
+      {activeScreen === 'splash' && (
+        <SplashView lang={lang} onSetLang={setLang} onNavigate={setActiveScreen} />
       )}
 
-      {/* Modals */}
+      {activeScreen === 'login' && (
+        <LoginView lang={lang} onSetLang={setLang} onNavigate={setActiveScreen} onSuccess={() => {}} />
+      )}
+
+      {activeScreen === 'register' && (
+        <RegisterView lang={lang} onSetLang={setLang} onNavigate={setActiveScreen} onSuccess={() => {}} />
+      )}
+
+      {/* 2. ONBOARDING STAGES */}
+      {activeScreen === 'profile_choice' && (
+        <ProfileChoiceView lang={lang} currentUser={currentUser} onSuccess={() => {}} onLogout={handleLogout} />
+      )}
+
+      {activeScreen === 'manifesto' && (
+        <ManifestoView lang={lang} currentUser={currentUser} onSuccess={() => {}} />
+      )}
+
+      {/* 3. LOGGED IN / FULL COMPLETED SYSTEM */}
+      {!['splash', 'login', 'register', 'profile_choice', 'manifesto'].includes(activeScreen) && currentUser && (
+        <div className="h-full w-full flex flex-col justify-between">
+          
+          {/* Main App Header with live Level indicator and Tab Switchers */}
+          <header className="w-full bg-stone-950 border-b border-stone-900 p-4 flex flex-row justify-between items-center z-50">
+            <div className="flex items-center space-x-3">
+              <Logo className="w-8 h-8 text-teal-400 rotate-6" />
+              <div className="flex flex-col">
+                <span className="font-serif text-[11px] font-bold tracking-[0.2em] text-stone-100 uppercase">
+                  {lang === 'pt' ? 'VOZ INTERIOR' : 'INNER VOICE'}
+                </span>
+                <span className="text-[8px] text-stone-500 font-mono tracking-widest uppercase">
+                  LVL {currentUser.level || 1} • {currentUser.points || 0} XP
+                </span>
+              </div>
+            </div>
+
+            {/* Aesthetic interactive navigation rails */}
+            <nav className="flex items-center gap-2">
+              {/* Journal launcher */}
+              <button 
+                onClick={() => setShowJournal(true)}
+                className="p-2.5 text-stone-400 hover:text-teal-400 rounded-xl bg-stone-900/40 border border-stone-850 hover:border-teal-500/20 transition-all cursor-pointer flex items-center justify-center"
+                title={lang === 'pt' ? 'Meu Diário' : 'My Journal'}
+              >
+                <BookOpen className="w-4 h-4" />
+              </button>
+
+              <div className="w-[1px] h-6 bg-stone-900 mx-1" />
+
+              {/* Chat view */}
+              <button 
+                onClick={() => setActiveScreen('chat')}
+                className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
+                  activeScreen === 'chat' 
+                    ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' 
+                    : 'bg-stone-900/20 border-stone-850/50 text-stone-500 hover:text-stone-300'
+                }`}
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span className="text-[9px] uppercase font-bold tracking-wider hidden sm:inline">Chat</span>
+              </button>
+
+              {/* Profile view */}
+              <button 
+                onClick={() => setActiveScreen('profile')}
+                className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
+                  activeScreen === 'profile' 
+                    ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' 
+                    : 'bg-stone-900/20 border-stone-850/50 text-stone-500 hover:text-stone-300'
+                }`}
+              >
+                <UserIcon className="w-4 h-4" />
+                <span className="text-[9px] uppercase font-bold tracking-wider hidden sm:inline">
+                  {lang === 'pt' ? 'Perfil' : 'Profile'}
+                </span>
+              </button>
+
+              {/* Settings view */}
+              <button 
+                onClick={() => setActiveScreen('settings')}
+                className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
+                  activeScreen === 'settings' 
+                    ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' 
+                    : 'bg-stone-900/20 border-stone-850/50 text-stone-500 hover:text-stone-300'
+                }`}
+              >
+                <Sliders className="w-4 h-4" />
+                <span className="text-[9px] uppercase font-bold tracking-wider hidden sm:inline">
+                  {lang === 'pt' ? 'Ajustes' : 'Ajusts'}
+                </span>
+              </button>
+
+              {/* Admin Dashboard view */}
+              {currentUser.isAdmin && (
+                <button 
+                  onClick={() => setActiveScreen('admin')}
+                  className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
+                    activeScreen === 'admin' 
+                      ? 'bg-red-500/10 border-red-500/30 text-red-400 font-extrabold' 
+                      : 'bg-stone-900/20 border-stone-850/50 text-stone-600 hover:text-red-400'
+                  }`}
+                  title="Painel de Controle"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Admin</span>
+                </button>
+              )}
+            </nav>
+          </header>
+
+          {/* Main App active page container */}
+          <main className="flex-1 overflow-y-auto w-full relative">
+            {activeScreen === 'chat' && (
+              <SessionManager 
+                onDisconnect={() => setActiveScreen('profile')} 
+                lang={lang} 
+                userPlan={userPlan} 
+                onUpgrade={() => {}} 
+                currentUser={currentUser} 
+              />
+            )}
+
+            {activeScreen === 'profile' && (
+              <div className="flex justify-center items-center min-h-full py-8">
+                <UserProfileView 
+                  user={currentUser} 
+                  lang={lang} 
+                  onNavigateToSettings={() => setActiveScreen('settings')} 
+                />
+              </div>
+            )}
+
+            {activeScreen === 'settings' && (
+              <div className="flex justify-center items-center min-h-full py-8">
+                <SettingsView 
+                  user={currentUser} 
+                  lang={lang} 
+                  onSetLang={setLang} 
+                  onLogout={handleLogout} 
+                />
+              </div>
+            )}
+
+            {activeScreen === 'admin' && (
+              <div className="flex justify-center items-start min-h-full py-8">
+                <AdminDashboardView 
+                  currentUser={currentUser} 
+                  lang={lang} 
+                />
+              </div>
+            )}
+          </main>
+        </div>
+      )}
+
+      {/* Concept Guide information panel overlay */}
+      <LandingModal isOpen={showConcept} onClose={() => setShowConcept(false)} lang={lang} />
+
+      {/* Global Modals */}
       <JournalModal isOpen={showJournal} onClose={() => setShowJournal(false)} lang={lang} />
-      <LandingModal isOpen={showLanding} onClose={() => setShowLanding(false)} lang={lang} />
-      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} lang={lang} onLogin={(u) => { setCurrentUser(u); setUserPlan(u.plan); }} />
-
-      {/* Main UI */}
-      <main className="flex-1 flex flex-col items-center justify-center relative">
-        {!hasStarted ? (
-          <div className="text-center space-y-12">
-             <div className="flex flex-col items-center">
-                <Logo className="w-24 h-24 text-stone-100 mb-6 drop-shadow-[0_0_20px_rgba(20,184,166,0.3)]" />
-                <h1 className="text-5xl md:text-7xl font-serif text-stone-100 tracking-wider">{text.title}</h1>
-                <p className="text-xs tracking-[0.4em] text-stone-400 uppercase mt-4">{text.subtitle}</p>
-             </div>
-             
-             {currentUser && currentUser.accessibilityMode && (
-                <div className="p-3 border border-teal-900/30 bg-teal-900/10 rounded-xl text-[10px] text-teal-400 uppercase tracking-widest inline-block">
-                    Modo Acessível Ativo para {currentUser.name}
-                </div>
-             )}
-
-             {/* Sabedoria do Dia */}
-             <div className="max-w-md mx-auto p-5 bg-stone-900/30 border border-stone-800/60 rounded-2xl text-center space-y-2 backdrop-blur-sm">
-                <div className="flex justify-center items-center gap-1.5 text-[9px] uppercase tracking-widest text-teal-400 font-bold">
-                   <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse" />
-                   <span>{lang === 'pt' ? 'Sabedoria do Dia' : 'Wisdom of the Day'}</span>
-                </div>
-                <p className="text-xs font-serif italic text-stone-300 leading-relaxed max-w-xs mx-auto">
-                   "{WISDOM_QUOTES[lang][new Date().getDate() % WISDOM_QUOTES[lang].length]}"
-                </p>
-             </div>
-
-             <button 
-                onClick={() => setHasStarted(true)}
-                className="group relative px-12 py-4 border border-stone-600 rounded-full hover:border-teal-500 transition-all duration-500"
-             >
-                <span className="relative text-stone-200 font-serif text-sm tracking-widest uppercase">{text.beginBtn}</span>
-             </button>
-
-             <div className="pt-8 flex justify-center space-x-4 opacity-40">
-                <button onClick={() => setLang('pt')} className={`text-[10px] uppercase tracking-widest ${lang === 'pt' ? 'text-teal-400' : 'text-stone-500'}`}>PT</button>
-                <button onClick={() => setLang('en')} className={`text-[10px] uppercase tracking-widest ${lang === 'en' ? 'text-teal-400' : 'text-stone-500'}`}>EN</button>
-             </div>
-          </div>
-        ) : (
-          <SessionManager onDisconnect={() => setHasStarted(false)} lang={lang} userPlan={userPlan} onUpgrade={() => setShowPremium(true)} currentUser={currentUser} />
-        )}
-      </main>
     </div>
   );
 }

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Language } from '../types';
 import { TRANSLATIONS } from '../constants';
+import { jsPDF } from 'jspdf';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { collection, doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
 
 interface JournalModalProps {
   isOpen: boolean;
@@ -41,7 +44,7 @@ const PlusIcon = ({ className }: { className?: string }) => (
 
 const ListIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 17.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 17.25h.007v.008H3.75v-.008Zm.375 0a.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
   </svg>
 );
 
@@ -59,126 +62,260 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
   
   const text = TRANSLATIONS[lang].journal;
 
-  // Load entries on mount/open
+  // Real-time Firestore Sync Observer
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) return;
+
+    let unsubscribe = () => {};
+    const currentUser = auth.currentUser;
+
+    if (currentUser) {
+      // Connect in real-time to the user subcollection
+      const colRef = collection(db, 'users', currentUser.uid, 'journals');
+      unsubscribe = onSnapshot(colRef, (snapshot) => {
+        const fetchedEntries: JournalEntry[] = [];
+        snapshot.forEach((snapshotDoc) => {
+          const data = snapshotDoc.data();
+          fetchedEntries.push({
+            id: snapshotDoc.id,
+            date: data.date,
+            text: data.text,
+            prompt: data.prompt
+          });
+        });
+        // Sort chronologically descending
+        fetchedEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setEntries(fetchedEntries);
+      }, (err) => {
+        handleFirestoreError(err, OperationType.LIST, `users/${currentUser.uid}/journals`);
+      });
+    } else {
+      // Fallback guest offline localState loading
       try {
         const stored = localStorage.getItem('pch_journal_entries');
         if (stored) {
           setEntries(JSON.parse(stored));
         }
-        
-        // Initial random prompt if empty
-        if (!currentPrompt && text?.prompts && text.prompts.length > 0) {
-            const random = text.prompts[Math.floor(Math.random() * text.prompts.length)];
-            setCurrentPrompt(random);
-        }
       } catch (e) {
-        console.error("Failed to load journal", e);
+        console.error("Failed to load local journal background", e);
       }
     }
-  }, [isOpen]); 
 
-  const saveEntry = () => {
+    // Initialize prompt template
+    if (!currentPrompt && text?.prompts && text.prompts.length > 0) {
+      const random = text.prompts[Math.floor(Math.random() * text.prompts.length)];
+      setCurrentPrompt(random);
+    }
+
+    return () => {
+      unsubscribe();
+    };
+  }, [isOpen, text?.prompts]);
+
+  const saveEntry = async () => {
     if (!currentText.trim()) return;
 
+    const entryId = Date.now().toString();
     const newEntry: JournalEntry = {
-      id: Date.now().toString(),
+      id: entryId,
       date: new Date().toISOString(),
       text: currentText,
-      prompt: currentPrompt
+      prompt: currentPrompt || undefined
     };
 
-    const updated = [newEntry, ...entries];
-    setEntries(updated);
-    localStorage.setItem('pch_journal_entries', JSON.stringify(updated));
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      // Secure Write to Firestore
+      try {
+        const docRef = doc(db, 'users', currentUser.uid, 'journals', entryId);
+        await setDoc(docRef, {
+          ...newEntry,
+          userId: currentUser.uid
+        });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}/journals/${entryId}`);
+      }
+    } else {
+      // Fallback local storage
+      const updated = [newEntry, ...entries];
+      setEntries(updated);
+      localStorage.setItem('pch_journal_entries', JSON.stringify(updated));
+    }
     
     setCurrentText('');
     cyclePrompt();
   };
 
   const cyclePrompt = () => {
-      if (text?.prompts && text.prompts.length > 0) {
-          let newPrompt = currentPrompt;
-          let attempts = 0;
-          while (newPrompt === currentPrompt && attempts < 10 && text.prompts.length > 1) {
-             newPrompt = text.prompts[Math.floor(Math.random() * text.prompts.length)];
-             attempts++;
-          }
-          if (text.prompts.length === 1) newPrompt = text.prompts[0];
-          setCurrentPrompt(newPrompt);
-      }
+    if (text?.prompts && text.prompts.length > 0) {
+        let newPrompt = currentPrompt;
+        let attempts = 0;
+        while (newPrompt === currentPrompt && attempts < 10 && text.prompts.length > 1) {
+           newPrompt = text.prompts[Math.floor(Math.random() * text.prompts.length)];
+           attempts++;
+        }
+        if (text.prompts.length === 1) newPrompt = text.prompts[0];
+        setCurrentPrompt(newPrompt);
+    }
   };
 
-  const deleteEntry = (id: string) => {
-    const updated = entries.filter(e => e.id !== id);
-    setEntries(updated);
-    localStorage.setItem('pch_journal_entries', JSON.stringify(updated));
+  const deleteEntry = async (id: string) => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      // Firestore remove action
+      try {
+        const docRef = doc(db, 'users', currentUser.uid, 'journals', id);
+        await deleteDoc(docRef);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `users/${currentUser.uid}/journals/${id}`);
+      }
+    } else {
+      // Local state fallback remove
+      const updated = entries.filter(e => e.id !== id);
+      setEntries(updated);
+      localStorage.setItem('pch_journal_entries', JSON.stringify(updated));
+    }
   };
 
   const formatDate = (iso: string) => {
     return new Date(iso).toLocaleDateString(lang, { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
   };
 
-  const downloadTextSummary = () => {
+  // Add highly-polished jsPDF Exporter
+  const handlePdfExport = () => {
     if (entries.length === 0) return;
-    
-    let content = "";
-    if (lang === 'pt') {
-      content += "==================================================\n";
-      content += "     REGISTROS & REFLEXÕES - SUA VOZ INTERIOR     \n";
-      content += "==================================================\n";
-      content += `Gerado em: ${new Date().toLocaleString('pt-BR')}\n`;
-      content += `Total de reflexões salvas: ${entries.length}\n`;
-      content += "==================================================\n\n";
-      
-      // Sort entries chronologically for export
-      const sorted = [...entries].reverse();
-      sorted.forEach((entry, idx) => {
-        const dateStr = new Date(entry.date).toLocaleString('pt-BR');
-        content += `REGISTRO NO. ${idx + 1} (${dateStr})\n`;
-        if (entry.prompt) {
-          content += `Tema de Inspiração: "${entry.prompt}"\n`;
-        }
-        content += "--------------------------------------------------\n";
-        content += `${entry.text}\n`;
-        content += "==================================================\n\n";
+
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
       });
+
+      const primaryTeal = [20, 184, 166]; // Teal #14b8a6
+      const neutralBody = [41, 37, 36]; // Charcoal #292524
+      const mutedGrey = [120, 113, 108]; // Warm Gray #78716c
+
+      // Page dimensions
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const contentWidth = pageWidth - (margin * 2);
+
+      // Render cover header block
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.setTextColor(primaryTeal[0], primaryTeal[1], primaryTeal[2]);
+      const titleStr = lang === 'pt' ? 'DIÁRIO DE REFLEXÕES' : 'JOURNAL OF REFLECTIONS';
+      doc.text(titleStr, margin, 25);
       
-      content += "Agradecemos por caminhar em direção ao seu progresso interno.\n";
-    } else {
-      content += "==================================================\n";
-      content += "       YOUR INNER VOICE - REFLECTIONS ARCHIVE     \n";
-      content += "==================================================\n";
-      content += `Generated on: ${new Date().toLocaleString('en-US')}\n`;
-      content += `Total saved reflections: ${entries.length}\n`;
-      content += "==================================================\n\n";
-      
-      // Sort entries chronologically for export
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(primaryTeal[0], primaryTeal[1], primaryTeal[2]);
+      const subtitleStr = lang === 'pt' ? 'A Sua Voz Interior — Diário Pessoal' : 'Your Inner Voice — Personal Archive';
+      doc.text(subtitleStr, margin, 32);
+
+      // Soft Divider
+      doc.setDrawColor(231, 229, 228); 
+      doc.setLineWidth(0.5);
+      doc.line(margin, 36, pageWidth - margin, 36);
+
+      // Metadata section
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(mutedGrey[0], mutedGrey[1], mutedGrey[2]);
+      const printedAtStr = new Date().toLocaleString(lang === 'pt' ? 'pt-BR' : 'en-US');
+      doc.text(`${lang === 'pt' ? 'Exportado em:' : 'Exported on:'} ${printedAtStr}`, margin, 42);
+      doc.text(`${lang === 'pt' ? 'Total de reflexões:' : 'Total entries:'} ${entries.length}`, pageWidth - margin - 45, 42);
+
+      let yPos = 52;
+
+      // Sort entries chronologically for neat layout
       const sorted = [...entries].reverse();
+
       sorted.forEach((entry, idx) => {
-        const dateStr = new Date(entry.date).toLocaleString('en-US');
-        content += `ENTRY NO. ${idx + 1} (${dateStr})\n`;
-        if (entry.prompt) {
-          content += `Inspirational Question: "${entry.prompt}"\n`;
+        const itemDateStr = new Date(entry.date).toLocaleString(lang === 'pt' ? 'pt-BR' : 'en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        const entryHeaderStr = `${lang === 'pt' ? 'REGISTRO' : 'ENTRY'} #${idx + 1} — ${itemDateStr}`;
+
+        // Header check space
+        if (yPos > pageHeight - 35) {
+          doc.addPage();
+          yPos = 25;
         }
-        content += "--------------------------------------------------\n";
-        content += `${entry.text}\n`;
-        content += "==================================================\n\n";
+
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(primaryTeal[0], primaryTeal[1], primaryTeal[2]);
+        doc.text(entryHeaderStr, margin, yPos);
+        yPos += 5;
+
+        // Prompt Highlight Box
+        if (entry.prompt) {
+          const promptLines = doc.splitTextToSize(`"${entry.prompt}"`, contentWidth - 6);
+          const pBoxHeight = (promptLines.length * 5) + 6;
+
+          if (yPos + pBoxHeight > pageHeight - 20) {
+            doc.addPage();
+            yPos = 25;
+          }
+
+          // Shaded background box
+          doc.setFillColor(245, 245, 244); 
+          doc.rect(margin, yPos, contentWidth, pBoxHeight, 'F');
+          
+          doc.setFont('Helvetica', 'oblique');
+          doc.setFontSize(9);
+          doc.setTextColor(neutralBody[0], neutralBody[1], neutralBody[2]);
+          
+          let py = yPos + 5;
+          promptLines.forEach(pline => {
+            doc.text(pline, margin + 3, py);
+            py += 5;
+          });
+
+          yPos += pBoxHeight + 4;
+        }
+
+        // Draw body copy
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(neutralBody[0], neutralBody[1], neutralBody[2]);
+        
+        const splitText = doc.splitTextToSize(entry.text, contentWidth);
+        const textHeight = splitText.length * 5.5;
+
+        if (yPos + textHeight > pageHeight - 20) {
+          doc.addPage();
+          yPos = 25;
+        }
+
+        splitText.forEach(line => {
+          if (yPos > pageHeight - 15) {
+            doc.addPage();
+            yPos = 25;
+          }
+          doc.text(line, margin, yPos);
+          yPos += 5.5;
+        });
+
+        // Add spaced thin divider
+        yPos += 8;
+        doc.setDrawColor(245, 245, 244);
+        doc.setLineWidth(0.3);
+        doc.line(margin, yPos - 4, pageWidth - margin, yPos - 4);
       });
-      
-      content += "Thank you for walking toward your inner clarity.\n";
+
+      doc.save(lang === 'pt' ? 'diario_reflexoes_voz_interior.pdf' : 'inner_voice_reflections_journal.pdf');
+    } catch (err) {
+      console.error("Failed to compile formatted PDF document:", err);
     }
-    
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = lang === 'pt' ? 'diario_reflexoes_voz_interior.txt' : 'inner_voice_reflections_journal.txt';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   if (!isOpen) return null;
@@ -198,14 +335,14 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
                           <>
                             <span className="text-stone-800 text-[10px] select-none leading-none">|</span>
                             <button 
-                                onClick={downloadTextSummary}
-                                className="text-[10px] uppercase font-mono tracking-wider font-extrabold text-teal-400 hover:text-teal-300 transition-colors flex items-center space-x-1 leading-none"
-                                title={lang === 'pt' ? 'Baixar todas as reflexões salvas como arquivo .txt' : 'Download all saved reflections as a .txt file'}
+                                onClick={handlePdfExport}
+                                className="text-[10px] uppercase font-mono tracking-wider font-extrabold text-teal-400 hover:text-teal-300 transition-colors flex items-center space-x-1.5 leading-none cursor-pointer"
+                                title={lang === 'pt' ? 'Baixar todas as reflexões salvas como arquivo .pdf' : 'Download all saved reflections as a .pdf file'}
                             >
                                 <svg className="w-3.5 h-3.5 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                                <span>{lang === 'pt' ? 'Exportar Diário' : 'Export Journal'}</span>
+                                <span>{lang === 'pt' ? 'Exportar Diário (PDF)' : 'Export Journal (PDF)'}</span>
                             </button>
                           </>
                         )}
@@ -285,7 +422,7 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
                   <button 
                     onClick={saveEntry}
                     disabled={!currentText.trim()}
-                    className="px-8 py-3 bg-stone-200 hover:bg-white text-stone-900 text-xs font-bold uppercase tracking-[0.2em] transition-all shadow-[0_0_15px_rgba(231,229,228,0.05)] disabled:opacity-30 disabled:cursor-not-allowed rounded disabled:shadow-none"
+                    className="px-8 py-3 bg-stone-200 hover:bg-white text-stone-900 text-xs font-bold uppercase tracking-[0.2em] transition-all shadow-[0_0_15px_rgba(231,229,228,0.05)] disabled:opacity-30 disabled:cursor-not-allowed rounded disabled:shadow-none cursor-pointer"
                   >
                      {text?.save}
                   </button>
@@ -298,9 +435,9 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
                     <span className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold">Timeline</span>
                     {entries.length > 0 && (
                       <button 
-                          onClick={downloadTextSummary}
-                          className="text-[9px] uppercase font-mono tracking-widest text-teal-400 hover:text-teal-300 transition-colors flex items-center space-x-1"
-                          title={lang === 'pt' ? 'Baixar todas as reflexões em um arquivo TXT' : 'Download all reflections in a TXT file'}
+                          onClick={handlePdfExport}
+                          className="text-[9px] uppercase font-mono tracking-widest text-teal-400 hover:text-teal-300 transition-colors flex items-center space-x-1 cursor-pointer"
+                          title={lang === 'pt' ? 'Baixar todas as reflexões em PDF' : 'Download all reflections in PDF'}
                       >
                           <svg className="w-3 h-3 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -324,7 +461,7 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
                                         <span className="text-[10px] text-teal-600/70 font-mono">{formatDate(entry.date)}</span>
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); deleteEntry(entry.id); }} 
-                                            className="text-stone-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                            className="text-stone-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 cursor-pointer"
                                             title="Delete"
                                         >
                                             <TrashIcon className="w-3 h-3" />
@@ -339,7 +476,7 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
                                         </div>
                                     )}
                                     
-                                    <p className="text-stone-300 text-xs line-clamp-4 leading-relaxed font-light">
+                                    <p className="text-stone-300 text-xs line-clamp-4 leading-relaxed font-light whitespace-pre-wrap">
                                         {entry.text}
                                     </p>
                                 </div>

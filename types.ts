@@ -32,6 +32,16 @@ export interface User {
   lastActive: string;
   resonanceScore: number;
   accessibilityMode: boolean; // Novo: Modo para Autismo/Down
+  resonanceHistory?: { date: string; score: number }[];
+  points?: number;
+  level?: number;
+  avatar?: string;
+  communicationPreference?: 'voice' | 'text' | 'image' | 'hybrid';
+  neuroMode?: NeurodivergentMode;
+  manifestoStep?: number;
+  manifestoCompleted?: boolean;
+  profileCompleted?: boolean;
+  badges?: string[];
 }
 
 export interface SessionHistoryItem {
