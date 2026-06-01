@@ -120,6 +120,67 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
     return new Date(iso).toLocaleDateString(lang, { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
   };
 
+  const downloadTextSummary = () => {
+    if (entries.length === 0) return;
+    
+    let content = "";
+    if (lang === 'pt') {
+      content += "==================================================\n";
+      content += "     REGISTROS & REFLEXÕES - SUA VOZ INTERIOR     \n";
+      content += "==================================================\n";
+      content += `Gerado em: ${new Date().toLocaleString('pt-BR')}\n`;
+      content += `Total de reflexões salvas: ${entries.length}\n`;
+      content += "==================================================\n\n";
+      
+      // Sort entries chronologically for export
+      const sorted = [...entries].reverse();
+      sorted.forEach((entry, idx) => {
+        const dateStr = new Date(entry.date).toLocaleString('pt-BR');
+        content += `REGISTRO NO. ${idx + 1} (${dateStr})\n`;
+        if (entry.prompt) {
+          content += `Tema de Inspiração: "${entry.prompt}"\n`;
+        }
+        content += "--------------------------------------------------\n";
+        content += `${entry.text}\n`;
+        content += "==================================================\n\n";
+      });
+      
+      content += "Agradecemos por caminhar em direção ao seu progresso interno.\n";
+    } else {
+      content += "==================================================\n";
+      content += "       YOUR INNER VOICE - REFLECTIONS ARCHIVE     \n";
+      content += "==================================================\n";
+      content += `Generated on: ${new Date().toLocaleString('en-US')}\n`;
+      content += `Total saved reflections: ${entries.length}\n`;
+      content += "==================================================\n\n";
+      
+      // Sort entries chronologically for export
+      const sorted = [...entries].reverse();
+      sorted.forEach((entry, idx) => {
+        const dateStr = new Date(entry.date).toLocaleString('en-US');
+        content += `ENTRY NO. ${idx + 1} (${dateStr})\n`;
+        if (entry.prompt) {
+          content += `Inspirational Question: "${entry.prompt}"\n`;
+        }
+        content += "--------------------------------------------------\n";
+        content += `${entry.text}\n`;
+        content += "==================================================\n\n";
+      });
+      
+      content += "Thank you for walking toward your inner clarity.\n";
+    }
+    
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = lang === 'pt' ? 'diario_reflexoes_voz_interior.txt' : 'inner_voice_reflections_journal.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -131,7 +192,24 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
             <div className="flex items-center space-x-4">
                 <div className="flex flex-col">
                     <h3 className="font-serif text-xl md:text-2xl text-stone-200 tracking-widest uppercase drop-shadow-sm">{text?.title}</h3>
-                    <span className="text-[10px] text-stone-500 uppercase tracking-widest">{entries.length} Entries</span>
+                    <div className="flex items-center space-x-2 mt-0.5">
+                        <span className="text-[10px] text-stone-500 uppercase tracking-widest leading-none">{entries.length} Entries</span>
+                        {entries.length > 0 && (
+                          <>
+                            <span className="text-stone-800 text-[10px] select-none leading-none">|</span>
+                            <button 
+                                onClick={downloadTextSummary}
+                                className="text-[10px] uppercase font-mono tracking-wider font-extrabold text-teal-400 hover:text-teal-300 transition-colors flex items-center space-x-1 leading-none"
+                                title={lang === 'pt' ? 'Baixar todas as reflexões salvas como arquivo .txt' : 'Download all saved reflections as a .txt file'}
+                            >
+                                <svg className="w-3.5 h-3.5 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>{lang === 'pt' ? 'Exportar Diário' : 'Export Journal'}</span>
+                            </button>
+                          </>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -216,8 +294,20 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
 
             {/* HISTORY Sidebar */}
             <div className={`w-full md:w-80 border-t md:border-t-0 md:border-l border-stone-800 bg-stone-950 flex flex-col h-full ${view === 'history' ? 'flex' : 'hidden md:flex'}`}>
-                <div className="p-4 border-b border-stone-800 bg-stone-950/80">
+                <div className="p-4 border-b border-stone-800 bg-stone-950/80 flex justify-between items-center">
                     <span className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold">Timeline</span>
+                    {entries.length > 0 && (
+                      <button 
+                          onClick={downloadTextSummary}
+                          className="text-[9px] uppercase font-mono tracking-widest text-teal-400 hover:text-teal-300 transition-colors flex items-center space-x-1"
+                          title={lang === 'pt' ? 'Baixar todas as reflexões em um arquivo TXT' : 'Download all reflections in a TXT file'}
+                      >
+                          <svg className="w-3 h-3 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          <span>{lang === 'pt' ? 'Exportar' : 'Export'}</span>
+                      </button>
+                    )}
                 </div>
                 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-2">

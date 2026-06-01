@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import SessionManager from './components/SessionManager';
-import { TRANSLATIONS } from './constants';
+import { TRANSLATIONS, WISDOM_QUOTES } from './constants';
 import { Language, UserPlan, User } from './types';
 // Fix: Corrected Logo import from named to default
 import Logo from './components/Logo';
@@ -108,6 +108,17 @@ function App() {
                     Modo Acessível Ativo para {currentUser.name}
                 </div>
              )}
+
+             {/* Sabedoria do Dia */}
+             <div className="max-w-md mx-auto p-5 bg-stone-900/30 border border-stone-800/60 rounded-2xl text-center space-y-2 backdrop-blur-sm">
+                <div className="flex justify-center items-center gap-1.5 text-[9px] uppercase tracking-widest text-teal-400 font-bold">
+                   <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse" />
+                   <span>{lang === 'pt' ? 'Sabedoria do Dia' : 'Wisdom of the Day'}</span>
+                </div>
+                <p className="text-xs font-serif italic text-stone-300 leading-relaxed max-w-xs mx-auto">
+                   "{WISDOM_QUOTES[lang][new Date().getDate() % WISDOM_QUOTES[lang].length]}"
+                </p>
+             </div>
 
              <button 
                 onClick={() => setHasStarted(true)}

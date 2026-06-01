@@ -10,6 +10,18 @@ export enum SessionStatus {
 export type Language = 'en' | 'pt' | 'es' | 'fr' | 'de' | 'it' | 'ja' | 'ru' | 'hi';
 export type UserPlan = 'visitor' | 'member' | 'guardian';
 
+export type NeurodivergentMode = 'natural' | 'adhd' | 'autism' | 'dyslexia' | 'anxiety' | 'inclusive';
+
+export interface GardenPlant {
+  id: string;
+  type: 'flower' | 'tree' | 'shrub' | 'succulent' | 'fern' | 'flower2';
+  name: string;
+  stage: number; // 0: Seed/Semente (🌱), 1: Sprout/Broto (🌿), 2: Plant/Planta (☘️), 3: Mature/Arvore ou Flor Completa (🌻/🌳)
+  color: string;
+  createdAt: string;
+  lastWatered: string;
+}
+
 export interface User {
   id: string;
   name: string;
