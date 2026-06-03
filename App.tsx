@@ -45,6 +45,7 @@ function App() {
   const [showJournal, setShowJournal] = useState(false);
   const [showConcept, setShowConcept] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [isMinimalMode, setIsMinimalMode] = useState(false);
 
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -132,6 +133,10 @@ function App() {
   };
 
   // Sync auth state and load user profile doc live from Firestore database
+  useEffect(() => {
+    setIsMinimalMode(false);
+  }, [activeScreen]);
+
   useEffect(() => {
     let unsubscribeUser = () => {};
 
@@ -256,96 +261,98 @@ function App() {
         <div className="h-full w-full flex flex-col justify-between">
           
           {/* Main App Header with live Level indicator and Tab Switchers */}
-          <header className="w-full bg-stone-950 border-b border-stone-900 p-4 flex flex-row justify-between items-center z-50">
-            <div className="flex items-center space-x-3" id="onboarding-level">
-              <Logo className="w-8 h-8 text-teal-400 rotate-6" />
-              <div className="flex flex-col">
-                <span className="font-serif text-[11px] font-bold tracking-[0.2em] text-stone-100 uppercase">
-                  {lang === 'pt' ? 'VOZ INTERIOR' : 'INNER VOICE'}
-                </span>
-                <span className="text-[8px] text-stone-500 font-mono tracking-widest uppercase">
-                  LVL {currentUser.level || 1} • {currentUser.points || 0} XP
-                </span>
+          {!isMinimalMode && (
+            <header className="w-full bg-stone-950 border-b border-stone-900 p-4 flex flex-row justify-between items-center z-50">
+              <div className="flex items-center space-x-3" id="onboarding-level">
+                <Logo className="w-8 h-8 text-teal-400 rotate-6" />
+                <div className="flex flex-col">
+                  <span className="font-serif text-[11px] font-bold tracking-[0.2em] text-stone-100 uppercase">
+                    {lang === 'pt' ? 'VOZ INTERIOR' : 'INNER VOICE'}
+                  </span>
+                  <span className="text-[8px] text-stone-500 font-mono tracking-widest uppercase">
+                    LVL {currentUser.level || 1} • {currentUser.points || 0} XP
+                  </span>
+                </div>
               </div>
-            </div>
 
-            {/* Aesthetic interactive navigation rails */}
-            <nav className="flex items-center gap-2">
-              {/* Journal launcher */}
-              <button 
-                id="onboarding-journal"
-                onClick={() => setShowJournal(true)}
-                className="p-2.5 text-stone-400 hover:text-teal-400 rounded-xl bg-stone-900/40 border border-stone-850 hover:border-teal-500/20 transition-all cursor-pointer flex items-center justify-center"
-                title={lang === 'pt' ? 'Meu Diário' : 'My Journal'}
-              >
-                <BookOpen className="w-4 h-4" />
-              </button>
-
-              <div className="w-[1px] h-6 bg-stone-900 mx-1" />
-
-              {/* Chat view */}
-              <button 
-                id="onboarding-chat"
-                onClick={() => setActiveScreen('chat')}
-                className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
-                  activeScreen === 'chat' 
-                    ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' 
-                    : 'bg-stone-900/20 border-stone-850/50 text-stone-500 hover:text-stone-300'
-                }`}
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span className="text-[9px] uppercase font-bold tracking-wider hidden sm:inline">Chat</span>
-              </button>
-
-              {/* Profile view */}
-              <button 
-                id="onboarding-profile"
-                onClick={() => setActiveScreen('profile')}
-                className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
-                  activeScreen === 'profile' 
-                    ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' 
-                    : 'bg-stone-900/20 border-stone-850/50 text-stone-500 hover:text-stone-300'
-                }`}
-              >
-                <UserIcon className="w-4 h-4" />
-                <span className="text-[9px] uppercase font-bold tracking-wider hidden sm:inline">
-                  {lang === 'pt' ? 'Perfil' : 'Profile'}
-                </span>
-              </button>
-
-              {/* Settings view */}
-              <button 
-                id="onboarding-settings"
-                onClick={() => setActiveScreen('settings')}
-                className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
-                  activeScreen === 'settings' 
-                    ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' 
-                    : 'bg-stone-900/20 border-stone-850/50 text-stone-500 hover:text-stone-300'
-                }`}
-              >
-                <Sliders className="w-4 h-4" />
-                <span className="text-[9px] uppercase font-bold tracking-wider hidden sm:inline">
-                  {lang === 'pt' ? 'Ajustes' : 'Ajusts'}
-                </span>
-              </button>
-
-              {/* Admin Dashboard view */}
-              {currentUser.isAdmin && (
+              {/* Aesthetic interactive navigation rails */}
+              <nav className="flex items-center gap-2">
+                {/* Journal launcher */}
                 <button 
-                  onClick={() => setActiveScreen('admin')}
-                  className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
-                    activeScreen === 'admin' 
-                      ? 'bg-red-500/10 border-red-500/30 text-red-400 font-extrabold' 
-                      : 'bg-stone-900/20 border-stone-850/50 text-stone-600 hover:text-red-400'
-                  }`}
-                  title="Painel de Controle"
+                  id="onboarding-journal"
+                  onClick={() => setShowJournal(true)}
+                  className="p-2.5 text-stone-400 hover:text-teal-400 rounded-xl bg-stone-900/40 border border-stone-850 hover:border-teal-500/20 transition-all cursor-pointer flex items-center justify-center"
+                  title={lang === 'pt' ? 'Meu Diário' : 'My Journal'}
                 >
-                  <Shield className="w-4 h-4" />
-                  <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Admin</span>
+                  <BookOpen className="w-4 h-4" />
                 </button>
-              )}
-            </nav>
-          </header>
+
+                <div className="w-[1px] h-6 bg-stone-900 mx-1" />
+
+                {/* Chat view */}
+                <button 
+                  id="onboarding-chat"
+                  onClick={() => setActiveScreen('chat')}
+                  className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
+                    activeScreen === 'chat' 
+                      ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' 
+                      : 'bg-stone-900/20 border-stone-850/50 text-stone-500 hover:text-stone-300'
+                  }`}
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span className="text-[9px] uppercase font-bold tracking-wider hidden sm:inline">Chat</span>
+                </button>
+
+                {/* Profile view */}
+                <button 
+                  id="onboarding-profile"
+                  onClick={() => setActiveScreen('profile')}
+                  className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
+                    activeScreen === 'profile' 
+                      ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' 
+                      : 'bg-stone-900/20 border-stone-850/50 text-stone-500 hover:text-stone-300'
+                  }`}
+                >
+                  <UserIcon className="w-4 h-4" />
+                  <span className="text-[9px] uppercase font-bold tracking-wider hidden sm:inline">
+                    {lang === 'pt' ? 'Perfil' : 'Profile'}
+                  </span>
+                </button>
+
+                {/* Settings view */}
+                <button 
+                  id="onboarding-settings"
+                  onClick={() => setActiveScreen('settings')}
+                  className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
+                    activeScreen === 'settings' 
+                      ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' 
+                      : 'bg-stone-900/20 border-stone-850/50 text-stone-500 hover:text-stone-300'
+                  }`}
+                >
+                  <Sliders className="w-4 h-4" />
+                  <span className="text-[9px] uppercase font-bold tracking-wider hidden sm:inline">
+                    {lang === 'pt' ? 'Ajustes' : 'Ajusts'}
+                  </span>
+                </button>
+
+                {/* Admin Dashboard view */}
+                {currentUser.isAdmin && (
+                  <button 
+                    onClick={() => setActiveScreen('admin')}
+                    className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
+                      activeScreen === 'admin' 
+                        ? 'bg-red-500/10 border-red-500/30 text-red-400 font-extrabold' 
+                        : 'bg-stone-900/20 border-stone-850/50 text-stone-600 hover:text-red-400'
+                    }`}
+                    title="Painel de Controle"
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Admin</span>
+                  </button>
+                )}
+              </nav>
+            </header>
+          )}
 
           {/* Main App active page container */}
           <main className="flex-1 overflow-y-auto w-full relative">
@@ -356,6 +363,8 @@ function App() {
                 userPlan={userPlan} 
                 onUpgrade={() => {}} 
                 currentUser={currentUser} 
+                isMinimalMode={isMinimalMode}
+                onToggleMinimalMode={() => setIsMinimalMode(!isMinimalMode)}
               />
             )}
 

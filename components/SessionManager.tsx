@@ -6,7 +6,7 @@ import AudioVisualizer from './AudioVisualizer';
 import Logo from './Logo';
 import { 
   Sprout, Heart, Droplet, Flower, AlertCircle, Compass, Sparkles, 
-  Eye, Moon, Sun, Activity, Info, X, ChevronRight, CheckCircle2,
+  Eye, EyeOff, Moon, Sun, Activity, Info, X, ChevronRight, CheckCircle2,
   Bookmark, ShieldAlert, Award, Volume2, HelpCircle
 } from 'lucide-react';
 import { MoodConstellation } from './MoodConstellation';
@@ -19,6 +19,8 @@ interface SessionManagerProps {
   userPlan: UserPlan;
   onUpgrade: () => void;
   currentUser?: User | null;
+  isMinimalMode?: boolean;
+  onToggleMinimalMode?: () => void;
 }
 
 // Inline Icons
@@ -81,7 +83,15 @@ async function decodeAudioData(
   return buffer;
 }
 
-const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, userPlan, onUpgrade, currentUser }) => {
+const SessionManager: React.FC<SessionManagerProps> = ({ 
+  onDisconnect, 
+  lang, 
+  userPlan, 
+  onUpgrade, 
+  currentUser,
+  isMinimalMode = false,
+  onToggleMinimalMode
+}) => {
   const [status, setStatus] = useState<SessionStatus>(SessionStatus.CONNECTING);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [volume, setVolume] = useState(0);
@@ -907,41 +917,43 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
     <div className={`relative flex flex-col items-center justify-between w-full h-full p-4 overflow-hidden transition-all duration-1000 ${themeBg} ${fontOverride}`}>
       
       {/* Upper Navigation & Neurodivergent Mode Capsule Selector */}
-      <div className={`w-full flex flex-col md:flex-row justify-between items-center gap-3 z-30 pb-2 border-b border-stone-900/80 transition-opacity duration-[2000ms] ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
-         <div className="flex items-center space-x-3 w-full md:w-auto">
-            <Logo className="w-5 h-5 text-teal-400" />
-            <div className="flex flex-col">
-              <span className="font-serif text-sm text-stone-200 tracking-wider uppercase">{text?.title}</span>
-              <span className="text-[8px] text-teal-400/70 uppercase tracking-widest font-mono">
-                {neuroMode === 'natural' && (lang === 'pt' ? 'Experiência Padrão' : 'Default Experience')}
-                {neuroMode === 'adhd' && (lang === 'pt' ? 'Modo TDAH Ativo' : 'ADHD Mode Active')}
-                {neuroMode === 'autism' && (lang === 'pt' ? 'Modo Autismo Ativo' : 'Autism Mode Active')}
-                {neuroMode === 'dyslexia' && (lang === 'pt' ? 'Modo Dislexia Ativo' : 'Dyslexia Mode Active')}
-                {neuroMode === 'anxiety' && (lang === 'pt' ? 'Modo Ansiedade Ativo' : 'Anxiety Mode Active')}
-                {neuroMode === 'inclusive' && (lang === 'pt' ? 'Modo Inclusivo Ativo' : 'Inclusive Mode Active')}
-              </span>
+      {!isMinimalMode && (
+         <div className={`w-full flex flex-col md:flex-row justify-between items-center gap-3 z-30 pb-2 border-b border-stone-900/80 transition-opacity duration-[2000ms] ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
+            <div className="flex items-center space-x-3 w-full md:w-auto">
+               <Logo className="w-5 h-5 text-teal-400" />
+               <div className="flex flex-col">
+                 <span className="font-serif text-sm text-stone-200 tracking-wider uppercase">{text?.title}</span>
+                 <span className="text-[8px] text-teal-400/70 uppercase tracking-widest font-mono">
+                   {neuroMode === 'natural' && (lang === 'pt' ? 'Experiência Padrão' : 'Default Experience')}
+                   {neuroMode === 'adhd' && (lang === 'pt' ? 'Modo TDAH Ativo' : 'ADHD Mode Active')}
+                   {neuroMode === 'autism' && (lang === 'pt' ? 'Modo Autismo Ativo' : 'Autism Mode Active')}
+                   {neuroMode === 'dyslexia' && (lang === 'pt' ? 'Modo Dislexia Ativo' : 'Dyslexia Mode Active')}
+                   {neuroMode === 'anxiety' && (lang === 'pt' ? 'Modo Ansiedade Ativo' : 'Anxiety Mode Active')}
+                   {neuroMode === 'inclusive' && (lang === 'pt' ? 'Modo Inclusivo Ativo' : 'Inclusive Mode Active')}
+                 </span>
+               </div>
             </div>
-         </div>
 
-         {/* Mode Slicers */}
-         <div className="flex items-center space-x-1.5 p-1 bg-stone-900/40 border border-stone-800/60 rounded-full max-w-full overflow-x-auto no-scrollbar scroll-smooth">
-           {(['natural', 'adhd', 'autism', 'dyslexia', 'anxiety', 'inclusive'] as NeurodivergentMode[]).map(mode => (
-             <button
-               key={mode}
-               onClick={() => setNeuroMode(mode)}
-               className={`px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest transition-all font-mono whitespace-nowrap ${
-                 neuroMode === mode 
-                 ? 'bg-teal-900/30 text-teal-300 border border-teal-800/40 shadow-sm' 
-                 : 'text-stone-500 hover:text-stone-300 border border-transparent'
-               }`}
-             >
-               {text?.modes?.[mode] || mode}
-             </button>
-           ))}
-         </div>
+            {/* Mode Slicers */}
+            <div className="flex items-center space-x-1.5 p-1 bg-stone-900/40 border border-stone-800/60 rounded-full max-w-full overflow-x-auto no-scrollbar scroll-smooth">
+              {(['natural', 'adhd', 'autism', 'dyslexia', 'anxiety', 'inclusive'] as NeurodivergentMode[]).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setNeuroMode(mode)}
+                  className={`px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest transition-all font-mono whitespace-nowrap ${
+                    neuroMode === mode 
+                    ? 'bg-teal-900/30 text-teal-300 border border-teal-800/40 shadow-sm' 
+                    : 'text-stone-500 hover:text-stone-300 border border-transparent'
+                  }`}
+                >
+                  {text?.modes?.[mode] || mode}
+                </button>
+              ))}
+            </div>
 
-         <div className="hidden md:block font-mono text-[10px] text-stone-500">{Math.floor(elapsedSeconds/60)}:{(elapsedSeconds%60).toString().padStart(2,'0')}</div>
-      </div>
+            <div className="hidden md:block font-mono text-[10px] text-stone-500">{Math.floor(elapsedSeconds/60)}:{(elapsedSeconds%60).toString().padStart(2,'0')}</div>
+         </div>
+      )}
 
       {/* Floating Active Voice Actions Info Alerts */}
       {voiceAlert && (
@@ -955,12 +967,14 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
       <div className="flex-1 w-full max-w-4xl overflow-y-auto custom-scrollbar flex flex-col items-center justify-start space-y-6 py-4 px-2 my-2 z-10">
         
         {/* Dynamic Mood Constellation Chart (Emotional Resonance Scoring Graph) */}
-        <div className="w-full max-w-md">
-          <MoodConstellation history={currentUser?.resonanceHistory || []} lang={lang} />
-        </div>
+        {!isMinimalMode && (
+          <div className="w-full max-w-md">
+            <MoodConstellation history={currentUser?.resonanceHistory || []} lang={lang} />
+          </div>
+        )}
 
         {/* Sabedoria do Dia Collapsible Section */}
-        {showWisdom && (
+        {!isMinimalMode && showWisdom && (
           <div className={`w-full max-w-md p-4 rounded-2xl border text-center transition-all duration-[2000ms] relative bg-stone-900/20 backdrop-blur-md ${accentBorder} ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
              <button 
                 onClick={() => setShowWisdom(false)} 
@@ -1038,164 +1052,170 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
         )}
 
         {/* Painel do Núcleo da Inteligência Principal (5-layer processing view & anchor selects) */}
-        <div id="onboarding-intel" className="w-full max-w-xl bg-stone-900/40 border border-stone-850/60 rounded-3xl p-5 space-y-4 transition-all duration-500">
-           <div className="flex justify-between items-center border-b border-stone-850/60 pb-2.5">
-              <div className="flex items-center space-x-2">
-                 <Activity className="w-4 h-4 text-teal-400 animate-pulse" />
-                 <span className="text-[10px] font-bold uppercase tracking-widest text-stone-200">Núcleo de Inteligência Principal PCH</span>
-              </div>
-              <span className="text-[8px] font-mono font-bold text-stone-500 uppercase tracking-widest bg-stone-950 px-2 py-0.5 rounded border border-stone-900">
-                 Acolhimento Ativo
-              </span>
-           </div>
+        {!isMinimalMode && (
+          <div id="onboarding-intel" className="w-full max-w-xl bg-stone-900/40 border border-stone-850/60 rounded-3xl p-5 space-y-4 transition-all duration-500">
+             <div className="flex justify-between items-center border-b border-stone-850/60 pb-2.5">
+                <div className="flex items-center space-x-2">
+                   <Activity className="w-4 h-4 text-teal-400 animate-pulse" />
+                   <span className="text-[10px] font-bold uppercase tracking-widest text-stone-200">Núcleo de Inteligência Principal PCH</span>
+                </div>
+                <span className="text-[8px] font-mono font-bold text-stone-500 uppercase tracking-widest bg-stone-950 px-2 py-0.5 rounded border border-stone-900">
+                   Acolhimento Ativo
+                </span>
+             </div>
 
-           {/* Step-by-Step 5 Layers Grid flow status */}
-           <div className="grid grid-cols-1 sm:grid-cols-5 gap-1.5">
-              {[
-                {
-                  layer: 1,
-                  title: '1. Escuta',
-                  desc: 'Intake Ativo',
-                  accent: 'text-teal-400 bg-teal-950/20 border-teal-800/40'
-                },
-                {
-                  layer: 2,
-                  title: '2. Leitura',
-                  desc: detectedEmotion ? `${detectedEmotion.emotion} (${detectedEmotion.intensity}/10)` : '...',
-                  accent: 'text-indigo-400 bg-indigo-950/20 border-indigo-800/40'
-                },
-                {
-                  layer: 3,
-                  title: '3. Motor PCH',
-                  desc: 'Metáfora Ativa',
-                  accent: 'text-amber-400 bg-amber-950/20 border-amber-800/40'
-                },
-                {
-                  layer: 4,
-                  title: '4. Perfil',
-                  desc: `${neuroMode.toUpperCase()}`,
-                  accent: 'text-rose-400 bg-rose-950/20 border-rose-800/40'
-                },
-                {
-                  layer: 5,
-                  title: '5. Ação',
-                  desc: 'Sopro Pronto',
-                  accent: 'text-emerald-400 bg-emerald-950/20 border-emerald-800/40'
-                }
-              ].map((item) => {
-                const isActive = activeLayer >= item.layer;
-                return (
-                  <div 
-                    key={item.layer} 
-                    className={`p-2.5 rounded-xl border flex flex-col justify-between text-left transition-all duration-300 ${
-                      isActive 
-                      ? `${item.accent} scale-[1.02] shadow-sm` 
-                      : 'bg-stone-950/30 border-stone-900/50 text-stone-600'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-1">
-                       <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-current animate-ping' : 'bg-stone-800'}`} />
-                       <span className="text-[8.5px] font-mono uppercase font-bold tracking-tight">{item.title}</span>
+             {/* Step-by-Step 5 Layers Grid flow status */}
+             <div className="grid grid-cols-1 sm:grid-cols-5 gap-1.5">
+                {[
+                  {
+                    layer: 1,
+                    title: '1. Escuta',
+                    desc: 'Intake Ativo',
+                    accent: 'text-teal-400 bg-teal-950/20 border-teal-800/40'
+                  },
+                  {
+                    layer: 2,
+                    title: '2. Leitura',
+                    desc: detectedEmotion ? `${detectedEmotion.emotion} (${detectedEmotion.intensity}/10)` : '...',
+                    accent: 'text-indigo-400 bg-indigo-950/20 border-indigo-800/40'
+                  },
+                  {
+                    layer: 3,
+                    title: '3. Motor PCH',
+                    desc: 'Metáfora Ativa',
+                    accent: 'text-amber-400 bg-amber-950/20 border-amber-800/40'
+                  },
+                  {
+                    layer: 4,
+                    title: '4. Perfil',
+                    desc: `${neuroMode.toUpperCase()}`,
+                    accent: 'text-rose-400 bg-rose-950/20 border-rose-800/40'
+                  },
+                  {
+                    layer: 5,
+                    title: '5. Ação',
+                    desc: 'Sopro Pronto',
+                    accent: 'text-emerald-400 bg-emerald-950/20 border-emerald-800/40'
+                  }
+                ].map((item) => {
+                  const isActive = activeLayer >= item.layer;
+                  return (
+                    <div 
+                      key={item.layer} 
+                      className={`p-2.5 rounded-xl border flex flex-col justify-between text-left transition-all duration-300 ${
+                        isActive 
+                        ? `${item.accent} scale-[1.02] shadow-sm` 
+                        : 'bg-stone-950/30 border-stone-900/50 text-stone-600'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-1">
+                         <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-current animate-ping' : 'bg-stone-800'}`} />
+                         <span className="text-[8.5px] font-mono uppercase font-bold tracking-tight">{item.title}</span>
+                      </div>
+                      <span className="text-[7.5px] font-mono leading-tight tracking-tight capitalize opacity-95 truncate mt-1">{item.desc}</span>
                     </div>
-                    <span className="text-[7.5px] font-mono leading-tight tracking-tight capitalize opacity-95 truncate mt-1">{item.desc}</span>
-                  </div>
-                );
-              })}
-           </div>
+                  );
+                })}
+             </div>
 
-           {/* Sensorial Custom Emotional Image selectors */}
-           <div className="pt-2 border-t border-stone-850/60 flex flex-col space-y-2">
-              <div className="flex items-center space-x-1 text-stone-400">
-                 <Sparkles className="w-3.5 h-3.5" />
-                 <span className="text-[10px] uppercase font-bold tracking-wider">Biblioteca de Imagens / Âncoras Sensoriais de Fundo</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                 {[
-                   { key: 'heavy', label: '🌧️ Profundo', desc: 'Mar, Chuva, Tempestade' },
-                   { key: 'reflective', label: '🌙 Reflexivo', desc: 'Rio, Lago, Calmaria' },
-                   { key: 'light', label: '🌅 Leve', desc: 'Sol, Campo, Céu' },
-                   { key: 'neutral', label: '🏔️ Neutro', desc: 'Montanha, Horizonte' }
-                 ].map((item) => {
-                   const isSel = visualAnchor === item.key;
-                   return (
-                     <button
-                       key={item.key}
-                       onClick={() => setVisualAnchor(item.key as any)}
-                       className={`p-2 rounded-xl border text-left flex flex-col space-y-0.5 transition-all text-xs cursor-pointer ${
-                         isSel 
-                         ? 'bg-teal-950/20 border-teal-500/40 text-teal-300' 
-                         : 'bg-stone-950/20 border-stone-900 hover:bg-stone-900/30 text-stone-500 hover:text-stone-300'
-                       }`}
-                     >
-                       <span className="text-[9px] font-bold uppercase tracking-wider">{item.label}</span>
-                       <span className="text-[7px] text-stone-500 leading-tight font-mono truncate">{item.desc}</span>
-                     </button>
-                   );
-                 })}
-              </div>
-           </div>
-        </div>
+             {/* Sensorial Custom Emotional Image selectors */}
+             <div className="pt-2 border-t border-stone-850/60 flex flex-col space-y-2">
+                <div className="flex items-center space-x-1 text-stone-400">
+                   <Sparkles className="w-3.5 h-3.5" />
+                   <span className="text-[10px] uppercase font-bold tracking-wider">Biblioteca de Imagens / Âncoras Sensoriais de Fundo</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                   {[
+                     { key: 'heavy', label: '🌧️ Profundo', desc: 'Mar, Chuva, Tempestade' },
+                     { key: 'reflective', label: '🌙 Reflexivo', desc: 'Rio, Lago, Calmaria' },
+                     { key: 'light', label: '🌅 Leve', desc: 'Sol, Campo, Céu' },
+                     { key: 'neutral', label: '🏔️ Neutro', desc: 'Montanha, Horizonte' }
+                   ].map((item) => {
+                     const isSel = visualAnchor === item.key;
+                     return (
+                       <button
+                         key={item.key}
+                         onClick={() => setVisualAnchor(item.key as any)}
+                         className={`p-2 rounded-xl border text-left flex flex-col space-y-0.5 transition-all text-xs cursor-pointer ${
+                           isSel 
+                           ? 'bg-teal-950/20 border-teal-500/40 text-teal-300' 
+                           : 'bg-stone-950/20 border-stone-900 hover:bg-stone-900/30 text-stone-500 hover:text-stone-300'
+                         }`}
+                       >
+                         <span className="text-[9px] font-bold uppercase tracking-wider">{item.label}</span>
+                         <span className="text-[7px] text-stone-500 leading-tight font-mono truncate">{item.desc}</span>
+                       </button>
+                     );
+                   })}
+                </div>
+             </div>
+          </div>
+        )}
 
         {/* Painel de Sentimentos (Feelings Dashboard) - Lowers cognitive load */}
-        <div className={`w-full max-w-xl flex flex-col space-y-3 transition-opacity duration-[2000ms] ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
-           <div className="text-center md:text-left">
-              <h4 className={`text-xs uppercase tracking-widest text-stone-400 font-bold ${textSpacing}`}>{text?.feelings?.title}</h4>
-              <p className="text-[10px] text-stone-500 tracking-wider mt-1">{text?.feelings?.subtitle}</p>
-           </div>
-           
-           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {(Object.keys(text?.feelings || {}) as string[])
-                .filter(k => k !== 'title' && k !== 'subtitle')
-                .map(feelingKey => {
-                  const label = text.feelings[feelingKey];
-                  const isActive = selectedFeeling === label;
-                  return (
-                    <button
-                      key={feelingKey}
-                      onClick={() => triggerFeeling(feelingKey, label)}
-                      className={`p-3 rounded-xl border text-[10px] uppercase font-mono transition-all duration-300 text-left flex justify-between items-center ${
-                        isActive 
-                        ? 'bg-teal-900/30 text-teal-300 border-teal-500/60 shadow-lg shadow-teal-500/5' 
-                        : 'bg-stone-900/30 hover:bg-stone-900/70 border-stone-800 text-stone-400 hover:text-stone-200'
-                      }`}
-                    >
-                      <span>{label}</span>
-                      {isActive && <CheckCircle2 className="w-3 h-3 text-teal-400" />}
-                    </button>
-                  );
-              })}
-           </div>
-        </div>
+        {!isMinimalMode && (
+          <div className={`w-full max-w-xl flex flex-col space-y-3 transition-opacity duration-[2000ms] ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
+             <div className="text-center md:text-left">
+                <h4 className={`text-xs uppercase tracking-widest text-stone-400 font-bold ${textSpacing}`}>{text?.feelings?.title}</h4>
+                <p className="text-[10px] text-stone-500 tracking-wider mt-1">{text?.feelings?.subtitle}</p>
+             </div>
+             
+             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {(Object.keys(text?.feelings || {}) as string[])
+                  .filter(k => k !== 'title' && k !== 'subtitle')
+                  .map(feelingKey => {
+                    const label = text.feelings[feelingKey];
+                    const isActive = selectedFeeling === label;
+                    return (
+                      <button
+                        key={feelingKey}
+                        onClick={() => triggerFeeling(feelingKey, label)}
+                        className={`p-3 rounded-xl border text-[10px] uppercase font-mono transition-all duration-300 text-left flex justify-between items-center ${
+                          isActive 
+                          ? 'bg-teal-900/30 text-teal-300 border-teal-500/60 shadow-lg shadow-teal-500/5' 
+                          : 'bg-stone-900/30 hover:bg-stone-900/70 border-stone-800 text-stone-400 hover:text-stone-200'
+                        }`}
+                      >
+                        <span>{label}</span>
+                        {isActive && <CheckCircle2 className="w-3 h-3 text-teal-400" />}
+                      </button>
+                    );
+                })}
+             </div>
+          </div>
+        )}
 
         {/* Metaphors Panel - When words fail completely */}
-        <div className={`w-full max-w-xl flex flex-col space-y-3 pt-2 transition-opacity duration-[2000ms] ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
-           <div className="text-center md:text-left flex items-center space-x-1.5 justify-center md:justify-start">
-              <Compass className="w-4 h-4 text-stone-500" />
-              <h4 className={`text-xs uppercase tracking-widest text-stone-400 font-bold ${textSpacing}`}>{text?.metaphors?.title}</h4>
-           </div>
-           
-           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {(Object.keys(text?.metaphors || {}) as string[])
-                .filter(k => k !== 'title')
-                .map(metaphorKey => {
-                  const label = text.metaphors[metaphorKey];
-                  const isActive = selectedMetaphor === label;
-                  return (
-                    <button
-                      key={metaphorKey}
-                      onClick={() => triggerMetaphor(metaphorKey, label)}
-                      className={`p-3.5 rounded-xl border text-xs transition-all duration-300 hover:scale-105 flex flex-col items-center justify-center space-y-1.5 text-center ${
-                        isActive 
-                        ? 'bg-amber-950/20 text-amber-300 border-amber-600/50 shadow-lg' 
-                        : 'bg-stone-900/30 hover:bg-stone-900/70 border-stone-800/80 text-stone-400 hover:text-stone-200'
-                      }`}
-                    >
-                      <span className="font-serif italic tracking-wide">{label}</span>
-                    </button>
-                  );
-              })}
-           </div>
-        </div>
+        {!isMinimalMode && (
+          <div className={`w-full max-w-xl flex flex-col space-y-3 pt-2 transition-opacity duration-[2000ms] ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
+             <div className="text-center md:text-left flex items-center space-x-1.5 justify-center md:justify-start">
+                <Compass className="w-4 h-4 text-stone-500" />
+                <h4 className={`text-xs uppercase tracking-widest text-stone-400 font-bold ${textSpacing}`}>{text?.metaphors?.title}</h4>
+             </div>
+             
+             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {(Object.keys(text?.metaphors || {}) as string[])
+                  .filter(k => k !== 'title')
+                  .map(metaphorKey => {
+                    const label = text.metaphors[metaphorKey];
+                    const isActive = selectedMetaphor === label;
+                    return (
+                      <button
+                        key={metaphorKey}
+                        onClick={() => triggerMetaphor(metaphorKey, label)}
+                        className={`p-3.5 rounded-xl border text-xs transition-all duration-300 hover:scale-105 flex flex-col items-center justify-center space-y-1.5 text-center ${
+                          isActive 
+                          ? 'bg-amber-950/20 text-amber-300 border-amber-600/50 shadow-lg' 
+                          : 'bg-stone-900/30 hover:bg-stone-900/70 border-stone-800/80 text-stone-400 hover:text-stone-200'
+                        }`}
+                      >
+                        <span className="font-serif italic tracking-wide">{label}</span>
+                      </button>
+                    );
+                })}
+             </div>
+          </div>
+        )}
 
       </div>
 
@@ -1389,6 +1409,14 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
                  title="Ajustes"
                >
                   <SettingsIcon className="w-5 h-5" />
+               </button>
+
+               <button 
+                 onClick={onToggleMinimalMode} 
+                 className={`p-3 transition-colors ${isMinimalMode ? 'text-teal-400 hover:text-teal-300' : 'text-stone-400 hover:text-stone-202'}`} 
+                 title={isMinimalMode ? (lang === 'pt' ? 'Sair do Modo de Foco' : 'Exit Focus Mode') : (lang === 'pt' ? 'Modo de Foco Minimalista' : 'Minimalist Focus Mode')}
+               >
+                  {isMinimalMode ? <EyeOff className="w-5 h-5 animate-pulse" /> : <Eye className="w-5 h-5" />}
                </button>
             </div>
             
