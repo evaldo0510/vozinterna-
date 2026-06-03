@@ -16,6 +16,8 @@ interface JournalEntry {
   date: string;
   text: string;
   prompt?: string;
+  moodTags?: string[];
+  quickNote?: string;
 }
 
 const XMarkIcon = ({ className }: { className?: string }) => (
@@ -54,11 +56,25 @@ const PencilSquareIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+export const MOOD_TAGS = [
+  { id: 'embraced', labelPt: '🫂 Acolhido', labelEn: '🫂 Embraced', color: 'border-amber-500/30 text-amber-300 bg-amber-950/10' },
+  { id: 'serene', labelPt: '🌿 Sereno', labelEn: '🌿 Serene', color: 'border-emerald-500/30 text-emerald-300 bg-emerald-950/10' },
+  { id: 'inspired', labelPt: '🌬️ Inspirado', labelEn: '🌬️ Inspired', color: 'border-sky-500/30 text-sky-300 bg-sky-950/10' },
+  { id: 'anxious', labelPt: '🌀 Ansioso', labelEn: '🌀 Anxious', color: 'border-purple-500/30 text-purple-300 bg-purple-950/10' },
+  { id: 'connected', labelPt: '✨ Conectado', labelEn: '✨ Connected', color: 'border-fuchsia-500/30 text-fuchsia-300 bg-fuchsia-950/10' },
+  { id: 'flowing', labelPt: '🌊 Fluido', labelEn: '🌊 Flowing', color: 'border-teal-500/30 text-teal-300 bg-teal-950/10' },
+  { id: 'grounded', labelPt: '⛰️ Firme', labelEn: '⛰️ Grounded', color: 'border-stone-500/30 text-stone-300 bg-stone-900/40' }
+];
+
 export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lang }) => {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [currentText, setCurrentText] = useState('');
   const [currentPrompt, setCurrentPrompt] = useState('');
   const [view, setView] = useState<'write' | 'history'>('write');
+  
+  // New States: Mood tags and Quick Notes
+  const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
+  const [quickNoteText, setQuickNoteText] = useState('');
   
   const text = TRANSLATIONS[lang].journal;
 
@@ -80,7 +96,9 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
             id: snapshotDoc.id,
             date: data.date,
             text: data.text,
-            prompt: data.prompt
+            prompt: data.prompt,
+            moodTags: data.moodTags || [],
+            quickNote: data.quickNote || ''
           });
         });
         // Sort chronologically descending
@@ -113,14 +131,16 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
   }, [isOpen, text?.prompts]);
 
   const saveEntry = async () => {
-    if (!currentText.trim()) return;
+    if (!currentText.trim() && !quickNoteText.trim()) return;
 
     const entryId = Date.now().toString();
     const newEntry: JournalEntry = {
       id: entryId,
       date: new Date().toISOString(),
       text: currentText,
-      prompt: currentPrompt || undefined
+      prompt: currentPrompt || undefined,
+      moodTags: selectedMoods,
+      quickNote: quickNoteText.trim() || undefined
     };
 
     const currentUser = auth.currentUser;
@@ -143,6 +163,8 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
     }
     
     setCurrentText('');
+    setQuickNoteText('');
+    setSelectedMoods([]);
     cyclePrompt();
   };
 
@@ -405,10 +427,57 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
                         </div>
                     </div>
                     
+                    {/* Tags de Humor */}
+                    <div className="space-y-2">
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold block">
+                            {lang === 'pt' ? 'Como você se sente hoje? (Selecione)' : 'How do you feel today? (Select)'}
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {MOOD_TAGS.map((tag) => {
+                                const isSelected = selectedMoods.includes(tag.id);
+                                return (
+                                    <button
+                                        key={tag.id}
+                                        type="button"
+                                        onClick={() => {
+                                            if (isSelected) {
+                                                setSelectedMoods(selectedMoods.filter(id => id !== tag.id));
+                                            } else {
+                                                setSelectedMoods([...selectedMoods, tag.id]);
+                                            }
+                                        }}
+                                        className={`px-3 py-1.5 rounded-full text-xs border transition-all cursor-pointer ${
+                                            isSelected
+                                                ? `${tag.color} border-current font-medium shadow-md shadow-black/40`
+                                                : 'border-stone-850 text-stone-400 hover:text-stone-200 hover:border-stone-700 bg-stone-900/25'
+                                        }`}
+                                    >
+                                        {lang === 'pt' ? tag.labelPt : tag.labelEn}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Nota Rápida */}
+                    <div className="space-y-2">
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold block">
+                            {lang === 'pt' ? 'Nota Rápida (Resumo / Frase do dia)' : 'Quick Note (Summary / Day phrase)'}
+                        </label>
+                        <input
+                            type="text"
+                            maxLength={100}
+                            value={quickNoteText}
+                            onChange={(e) => setQuickNoteText(e.target.value)}
+                            placeholder={lang === 'pt' ? 'Escreva uma reflexão em poucas palavras...' : 'Write a short reflection in a few words...'}
+                            className="w-full bg-stone-900/10 border border-stone-850/60 focus:border-teal-500/50 rounded-xl px-4 py-2.5 text-stone-300 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500/20 placeholder-stone-700 transition-all font-light"
+                        />
+                    </div>
+                    
                     {/* Input Area */}
-                    <div className="flex-1 min-h-[30vh]">
+                    <div className="flex-1 min-h-[25vh]">
                         <textarea 
-                            className="w-full h-full bg-transparent resize-none focus:outline-none text-stone-300 font-light text-lg leading-relaxed placeholder-stone-700 p-2 selection:bg-teal-900/30 selection:text-teal-100"
+                            className="w-full h-full bg-transparent resize-none focus:outline-none text-stone-300 font-light text-base leading-relaxed placeholder-stone-700 p-2 selection:bg-teal-900/30 selection:text-teal-100"
                             placeholder={text?.placeholder}
                             value={currentText}
                             onChange={(e) => setCurrentText(e.target.value)}
@@ -421,7 +490,7 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
                <div className="p-6 border-t border-stone-800 bg-stone-900/30 flex justify-end">
                   <button 
                     onClick={saveEntry}
-                    disabled={!currentText.trim()}
+                    disabled={!currentText.trim() && !quickNoteText.trim()}
                     className="px-8 py-3 bg-stone-200 hover:bg-white text-stone-900 text-xs font-bold uppercase tracking-[0.2em] transition-all shadow-[0_0_15px_rgba(231,229,228,0.05)] disabled:opacity-30 disabled:cursor-not-allowed rounded disabled:shadow-none cursor-pointer"
                   >
                      {text?.save}
@@ -475,10 +544,32 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
                                             </p>
                                         </div>
                                     )}
+
+                                    {entry.moodTags && entry.moodTags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mb-2 mt-1">
+                                            {entry.moodTags.map(tId => {
+                                                const found = MOOD_TAGS.find(m => m.id === tId);
+                                                return found ? (
+                                                    <span key={tId} className={`px-1.5 py-0.5 rounded text-[8px] border font-medium ${found.color}`}>
+                                                        {lang === 'pt' ? found.labelPt : found.labelEn}
+                                                    </span>
+                                                ) : null;
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {entry.quickNote && (
+                                        <div className="mb-2 bg-stone-950/60 p-2 rounded border border-stone-900/50">
+                                            <p className="text-[7.5px] font-mono text-amber-500/80 uppercase tracking-widest font-bold">{lang === 'pt' ? 'Nota Rápida' : 'Quick Note'}</p>
+                                            <p className="text-[10px] text-stone-400 mt-0.5 italic leading-tight font-light">"{entry.quickNote}"</p>
+                                        </div>
+                                    )}
                                     
-                                    <p className="text-stone-300 text-xs line-clamp-4 leading-relaxed font-light whitespace-pre-wrap">
-                                        {entry.text}
-                                    </p>
+                                    {entry.text && (
+                                        <p className="text-stone-300 text-xs line-clamp-4 leading-relaxed font-light whitespace-pre-wrap">
+                                            {entry.text}
+                                        </p>
+                                    )}
                                 </div>
                             ))}
                         </div>

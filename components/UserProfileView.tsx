@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Language } from '../types';
-import { Award, ShieldCheck, Mail, Calendar, Sparkles, Sliders, MessageSquare } from 'lucide-react';
+import { Award, ShieldCheck, Mail, Calendar, Sparkles, Sliders, MessageSquare, Heart, Smile } from 'lucide-react';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
+import { ResonanceInsights } from './ResonanceInsights';
+import { MOOD_TAGS } from './JournalModal';
 
 interface UserProfileViewProps {
   user: User | null;
@@ -10,6 +14,46 @@ interface UserProfileViewProps {
 
 export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, onNavigateToSettings }) => {
   if (!user) return null;
+
+  const [journalEntries, setJournalEntries] = useState<any[]>([]);
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const colRef = collection(db, 'users', user.id, 'journals');
+      unsubscribe = onSnapshot(colRef, (snapshot) => {
+        const fetched: any[] = [];
+        snapshot.forEach((snapDoc) => {
+          const d = snapDoc.data();
+          fetched.push({
+            id: snapDoc.id,
+            date: d.date,
+            text: d.text,
+            moodTags: d.moodTags || [],
+            quickNote: d.quickNote || ''
+          });
+        });
+        // Sort chronologically descending
+        fetched.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setJournalEntries(fetched);
+      }, (err) => {
+        console.error("Failed to sync sentiment timeline:", err);
+      });
+    } else {
+      // Offline/Local storage fallback
+      try {
+        const stored = localStorage.getItem('pch_journal_entries');
+        if (stored) {
+          setJournalEntries(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error("Failed to load local journal entries", e);
+      }
+    }
+    
+    return () => unsubscribe();
+  }, [user.id]);
 
   const points = user.points || 0;
   // Let's calculate a simple dynamic level based on points (e.g. Level 1 is < 100 points, Level 2 is < 200, etc.)
@@ -99,6 +143,88 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
             ? `Faltam ${pointsRemaining} pontos para desbloquear o próximo nível do seu Jardim.` 
             : `${pointsRemaining} points needed until your next Garden level-up.`}
         </p>
+      </div>
+
+      {/* Resonance Insights (Harmonic Progress Line Chart) */}
+      <ResonanceInsights user={user} lang={lang} />
+
+      {/* Linha do Tempo de Sentimentos */}
+      <div className="bg-stone-900/30 border border-stone-850/50 rounded-3xl p-5 space-y-4 backdrop-blur-md">
+        <div className="flex items-center space-x-2 border-b border-stone-950 pb-2.5">
+          <Heart className="w-4 h-4 text-pink-400" />
+          <h4 className="text-[9px] uppercase text-stone-300 tracking-[0.2em] font-bold">
+            {lang === 'pt' ? 'Linha do Tempo de Sentimentos' : 'Sentiment Harmony'}
+          </h4>
+        </div>
+
+        {journalEntries.length === 0 ? (
+          <div className="py-6 text-center">
+            <Smile className="w-5 h-5 text-stone-600 mx-auto mb-2 animate-pulse" />
+            <p className="text-[10px] text-stone-500 italic max-w-[240px] mx-auto leading-normal">
+              {lang === 'pt'
+                ? 'Como está seu fluxo emocional? Vá ao Diário e registre seus sentimentos.'
+                : 'How is your emotional flow? Go to the Journal and log your feelings.'}
+            </p>
+          </div>
+        ) : (
+          <div className="relative pl-4 space-y-4 border-l border-stone-850/65 mt-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+            {journalEntries.slice(0, 5).map((entry, index) => {
+              // Find first mood tag's info
+              const primaryTagId = entry.moodTags?.[0];
+              const tagInfo = primaryTagId ? MOOD_TAGS.find(m => m.id === primaryTagId) : null;
+              
+              const formatEntryDate = (dString: string) => {
+                const date = new Date(dString);
+                return date.toLocaleDateString(lang === 'pt' ? 'pt-BR' : 'en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+              };
+              
+              return (
+                <div key={entry.id || index} className="relative">
+                  {/* Timeline bullet indicator */}
+                  <span className="absolute -left-[20.5px] top-1.5 w-1.5 h-1.5 rounded-full border border-stone-950 bg-stone-500 ring-4 ring-stone-950 flex items-center justify-center">
+                    {tagInfo && <span className="w-1 h-1 rounded-full bg-[#14b8a6]" />}
+                  </span>
+                  
+                  <div className="space-y-1 bg-stone-950/40 p-2.5 rounded-2xl border border-stone-900/60">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[8px] font-mono text-stone-500">{formatEntryDate(entry.date)}</span>
+                    </div>
+
+                    {entry.moodTags && entry.moodTags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {entry.moodTags.map((tId: string) => {
+                          const tag = MOOD_TAGS.find(m => m.id === tId);
+                          return tag ? (
+                            <span key={tId} className={`px-1.5 py-0.5 rounded text-[8px] border font-medium ${tag.color}`}>
+                              {lang === 'pt' ? tag.labelPt : tag.labelEn}
+                            </span>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+
+                    {entry.quickNote && (
+                      <p className="text-[10px] text-stone-300 italic font-light leading-normal">
+                        "{entry.quickNote}"
+                      </p>
+                    )}
+
+                    {!entry.quickNote && entry.text && (
+                      <p className="text-[9px] text-stone-400 font-light truncate leading-normal">
+                        {entry.text}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Visual Progress bars for each 'resonance' category */}

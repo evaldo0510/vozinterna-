@@ -85,19 +85,28 @@ function App() {
         unlockedNewBadge = true;
       }
 
+      // Calculate new calibrated resonance alignment score and history entries
+      const oldScore = currentUser.resonanceScore || 72;
+      const newResonanceScore = Math.min(100, Math.max(30, oldScore + 2 + Math.floor(Math.random() * 4)));
+      const todayDateStr = new Date().toLocaleDateString(lang === 'pt' ? 'pt-BR' : 'en-US', { day: '2-digit', month: '2-digit' });
+      const currentHistory = currentUser.resonanceHistory || [];
+      const newHistory = [...currentHistory, { date: todayDateStr, score: newResonanceScore }];
+
       try {
         const docRef = doc(db, 'users', currentUser.id);
         await updateDoc(docRef, {
           points: newPoints,
           level: newLevel,
           badges: newBadges,
+          resonanceScore: newResonanceScore,
+          resonanceHistory: newHistory,
           lastActive: new Date().toISOString()
         });
 
         addToast({
           type: 'session',
           title: lang === 'pt' ? 'Sessão Concluída!' : 'Session Completed!',
-          description: lang === 'pt' ? '+50 XP integrados ao seu perfil.' : '+50 XP integrated into your profile.'
+          description: lang === 'pt' ? `+50 XP & Calibração de Ressonância (${newResonanceScore}%) integrados ao perfil.` : `+50 XP & Resonance Calibration (${newResonanceScore}%) integrated.`
         });
 
         if (newLevel > oldLevel) {
