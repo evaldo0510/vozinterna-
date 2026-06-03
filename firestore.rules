@@ -64,8 +64,14 @@ service cloud.firestore {
       allow get: if isOwner(userId) && isValidId(userId);
       allow create: if isOwner(userId) && isValidId(userId) && isValidUser(request.resource.data) 
                     && request.resource.data.id == userId 
-                    && request.resource.data.isAdmin == false 
-                    && request.resource.data.plan == 'member'; // Bootstrapped tier
+                    && (
+                      (request.resource.data.isAdmin == false && request.resource.data.plan == 'member') ||
+                      (request.resource.data.isAdmin == true && request.resource.data.plan == 'guardian' && (
+                        request.resource.data.email == 'evaldo0510@gmail.com' ||
+                        request.resource.data.email == 'ajariristartups@gmail.com' ||
+                        request.resource.data.email == 'mentefelizterapias@gmail.com'
+                      ))
+                    );
       
       allow update: if isOwner(userId) && isValidId(userId) && isValidUser(request.resource.data)
                     && request.resource.data.isAdmin == resource.data.isAdmin // Prevent self-elevation
