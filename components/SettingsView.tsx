@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Language, NeurodivergentMode } from '../types';
-import { Sliders, Sun, Moon, Volume2, Globe, Sparkles, LogOut, Check } from 'lucide-react';
+import { Sliders, Sun, Moon, Volume2, Globe, Sparkles, LogOut, Check, HelpCircle } from 'lucide-react';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -14,6 +14,7 @@ interface SettingsViewProps {
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ user, lang, onSetLang, onLogout }) => {
   const [savingLoading, setSavingLoading] = useState(false);
+  const [bgSound, setBgSound] = useState(() => localStorage.getItem('pch_ambient_sound') || 'off');
 
   if (!user) return null;
 
@@ -70,6 +71,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ user, lang, onSetLan
       const docRef = doc(db, 'users', firebaseUser.uid);
       await updateDoc(docRef, {
         accessibilityMode: !isHighContrast,
+        lastActive: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingLoading(false);
+    }
+  };
+
+  const handleResetOnboarding = async () => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) return;
+
+    setSavingLoading(true);
+    try {
+      const docRef = doc(db, 'users', firebaseUser.uid);
+      await updateDoc(docRef, {
+        hasSeenOnboarding: false,
         lastActive: new Date().toISOString()
       });
     } catch (err) {
@@ -166,6 +185,69 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ user, lang, onSetLan
             <div className={`w-5 h-5 rounded-full bg-stone-950 transition-all ${
               isHighContrast ? 'translate-x-6' : 'translate-x-0'
             }`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Ambient Soundscapes Option */}
+      <div className="bg-stone-900/40 border border-stone-850/60 p-5 rounded-3xl space-y-4 backdrop-blur-md">
+        <div className="flex items-center space-x-2">
+          <Volume2 className="w-4 h-4 text-teal-400" />
+          <h4 className="text-[10px] uppercase text-stone-300 tracking-[0.2em] font-bold">
+            {lang === 'pt' ? 'Música de Fundo (Sintonia)' : 'Ambient Soundscape'}
+          </h4>
+        </div>
+        
+        <p className="text-[9px] text-stone-500 leading-normal -mt-1">
+          {lang === 'pt' 
+            ? 'Defina o som ambiente padrão que tocará suavemente em segundo plano durante suas sessões de chat.'
+            : 'Configure the default background audio that gently flows during your live chat sessions.'}
+        </p>
+
+        <div className="grid grid-cols-4 gap-1.5 p-1 bg-stone-950 border border-stone-900 rounded-lg">
+          {([
+            { id: 'off', label: lang === 'pt' ? 'Deslig.' : 'Off' },
+            { id: 'rain', label: lang === 'pt' ? 'Chuva' : 'Rain' },
+            { id: 'forest', label: lang === 'pt' ? 'Mata' : 'Forest' },
+            { id: 'deepspace', label: lang === 'pt' ? 'Espaço' : 'Space' }
+          ] as const).map((sound) => (
+            <button
+              key={sound.id}
+              onClick={() => {
+                localStorage.setItem('pch_ambient_sound', sound.id);
+                setBgSound(sound.id);
+              }}
+              className={`py-2 rounded text-[9px] font-mono uppercase tracking-widest transition-all cursor-pointer ${
+                bgSound === sound.id 
+                  ? 'bg-teal-500/15 text-teal-400 font-bold border border-teal-500/30' 
+                  : 'text-stone-500 hover:text-stone-300 border border-transparent'
+              }`}
+            >
+              {sound.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Interactive Methodology Tour / Onboarding reset */}
+      <div className="bg-stone-900/40 border border-stone-850/60 p-5 rounded-3xl space-y-4 backdrop-blur-md">
+        <div className="flex justify-between items-center">
+          <div className="flex-1 pr-4">
+            <h4 className="text-xs font-bold text-stone-200 flex items-center gap-1.5">
+              <HelpCircle className="w-4 h-4 text-teal-400" />
+              <span>{lang === 'pt' ? 'Guia da Metodologia PCH' : 'PCH Methodology Hub'}</span>
+            </h4>
+            <p className="text-[9px] text-stone-500 leading-normal mt-1">
+              {lang === 'pt' 
+                ? 'Inicie a visita guiada imersiva de 2 minutos para rever as bases de atenção e o design do templo.' 
+                : 'Run the 2-minute step-by-step tour to re-explore our psychiatric cadence and visual navigation.'}
+            </p>
+          </div>
+          <button 
+            onClick={handleResetOnboarding}
+            className="px-3.5 py-2 hover:bg-teal-500/10 border border-stone-800 hover:border-teal-500/30 text-stone-400 hover:text-teal-400 text-[9px] font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer whitespace-nowrap active:scale-[0.98]"
+          >
+            {lang === 'pt' ? 'Iniciar Tour' : 'Start Tour'}
           </button>
         </div>
       </div>

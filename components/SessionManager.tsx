@@ -113,7 +113,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
   const [selectedRegionTab, setSelectedRegionTab] = useState<'campo' | 'floresta' | 'lago' | 'montanha' | 'constelacao'>('campo');
 
   // New States: Rest Mode, Ambient Sound, and Gamification
-  const [ambientSound, setAmbientSound] = useState<'off' | 'rain' | 'forest' | 'waves'>(() => {
+  const [ambientSound, setAmbientSound] = useState<'off' | 'rain' | 'forest' | 'waves' | 'deepspace'>(() => {
     return (localStorage.getItem('pch_ambient_sound') as any) || 'off';
   });
   const [ambientVolume, setAmbientVolume] = useState<number>(() => {
@@ -174,7 +174,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
   }, []);
 
   // Web Audio Synthesizer for Nature Sounds
-  const updateAmbientSynth = useCallback((type: 'off' | 'rain' | 'forest' | 'waves', volumeVal: number) => {
+  const updateAmbientSynth = useCallback((type: 'off' | 'rain' | 'forest' | 'waves' | 'deepspace', volumeVal: number) => {
     // If set to off or volume is 0, stop context and return
     if (type === 'off' || volumeVal <= 0) {
       if (natureSynthRef.current) {
@@ -323,6 +323,24 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
         };
 
         scheduleChirp();
+      } else if (type === 'deepspace') {
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(130, ctx.currentTime);
+        filter.Q.setValueAtTime(1.8, ctx.currentTime);
+
+        const lfo = ctx.createOscillator();
+        lfo.type = 'sine';
+        lfo.frequency.setValueAtTime(0.04, ctx.currentTime); // 25s waves of deep space filter sweep
+
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.setValueAtTime(45, ctx.currentTime);
+
+        lfo.connect(lfoGain);
+        lfoGain.connect(filter.frequency);
+        lfo.start(0);
+
+        natureSynthRef.current.lfoNode = lfo;
+        natureSynthRef.current.lfoGain = lfoGain;
       }
     } catch (e) {
       console.warn("Ambient Audio Synthesis failed to load: ", e);
@@ -1020,7 +1038,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
         )}
 
         {/* Painel do Núcleo da Inteligência Principal (5-layer processing view & anchor selects) */}
-        <div className="w-full max-w-xl bg-stone-900/40 border border-stone-850/60 rounded-3xl p-5 space-y-4 transition-all duration-500">
+        <div id="onboarding-intel" className="w-full max-w-xl bg-stone-900/40 border border-stone-850/60 rounded-3xl p-5 space-y-4 transition-all duration-500">
            <div className="flex justify-between items-center border-b border-stone-850/60 pb-2.5">
               <div className="flex items-center space-x-2">
                  <Activity className="w-4 h-4 text-teal-400 animate-pulse" />
@@ -1354,6 +1372,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
             {/* Left Buttons Group */}
             <div className="flex items-center space-x-1">
                <button 
+                 id="onboarding-garden"
                  onClick={() => setShowGarden(true)} 
                  className="p-3 text-stone-400 hover:text-emerald-400 transition-colors group relative" 
                  title="Jardim Interior"
@@ -1456,7 +1475,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
                     
                     {/* Select Atmosphere */}
                     <div className="grid grid-cols-4 gap-1.5 p-1 bg-stone-950 border border-stone-900 rounded-lg">
-                       {(['off', 'rain', 'waves', 'forest'] as const).map(soundType => (
+                       {(['off', 'rain', 'forest', 'deepspace'] as const).map(soundType => (
                           <button
                              key={soundType}
                              onClick={() => {
@@ -1469,10 +1488,10 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onDisconnect, lang, use
                                 : 'text-stone-500 hover:text-stone-300 border border-transparent'
                              }`}
                           >
-                             {soundType === 'off' && (lang === 'pt' ? 'Off' : 'Off')}
+                             {soundType === 'off' && (lang === 'pt' ? 'Desl.' : 'Off')}
                              {soundType === 'rain' && (lang === 'pt' ? 'Chuva' : 'Rain')}
-                             {soundType === 'waves' && (lang === 'pt' ? 'Ondas' : 'Waves')}
                              {soundType === 'forest' && (lang === 'pt' ? 'Mata' : 'Forest')}
+                             {soundType === 'deepspace' && (lang === 'pt' ? 'Espaço' : 'Space')}
                           </button>
                        ))}
                     </div>

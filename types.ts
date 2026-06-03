@@ -41,6 +41,7 @@ export interface User {
   manifestoStep?: number;
   manifestoCompleted?: boolean;
   profileCompleted?: boolean;
+  hasSeenOnboarding?: boolean;
   badges?: string[];
 }
 

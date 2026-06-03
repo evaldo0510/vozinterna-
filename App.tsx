@@ -15,10 +15,12 @@ import { ManifestoView } from './components/ManifestoView';
 import { UserProfileView } from './components/UserProfileView';
 import { SettingsView } from './components/SettingsView';
 import { AdminDashboardView } from './components/AdminDashboardView';
+import { OnboardingGuide } from './components/OnboardingGuide';
+import { NotificationToast, Toast } from './components/NotificationToast';
 
 import { auth, db, OperationType, handleFirestoreError } from './lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 
 // Icons using lucide-react
 import { BookOpen, MessageSquare, User as UserIcon, Sliders, Shield, LogOut, HelpCircle } from 'lucide-react';
@@ -43,6 +45,82 @@ function App() {
   const [showJournal, setShowJournal] = useState(false);
   const [showConcept, setShowConcept] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
+
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = (toast: Omit<Toast, 'id'>) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { ...toast, id } as Toast]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4500);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleSessionEnd = async () => {
+    if (currentUser) {
+      const oldPoints = currentUser.points || 0;
+      const newPoints = oldPoints + 50; 
+      const oldLevel = currentUser.level || 1;
+      const newLevel = Math.floor(newPoints / 100) + 1;
+      
+      const newBadges = [...(currentUser.badges || [])];
+      let unlockedNewBadge = false;
+      let badgeName = '';
+
+      if (newPoints >= 100 && !newBadges.includes('Sintonizador de Emoções') && !newBadges.includes('Emotion Tuner')) {
+        badgeName = lang === 'pt' ? 'Sintonizador de Emoções' : 'Emotion Tuner';
+        newBadges.push(badgeName);
+        unlockedNewBadge = true;
+      } else if (newPoints >= 250 && !newBadges.includes('Explorador da Calma') && !newBadges.includes('Calm Explorer')) {
+        badgeName = lang === 'pt' ? 'Explorador da Calma' : 'Calm Explorer';
+        newBadges.push(badgeName);
+        unlockedNewBadge = true;
+      } else if (newPoints >= 500 && !newBadges.includes('Sábio do Silêncio') && !newBadges.includes('Silence Sage')) {
+        badgeName = lang === 'pt' ? 'Sábio do Silêncio' : 'Silence Sage';
+        newBadges.push(badgeName);
+        unlockedNewBadge = true;
+      }
+
+      try {
+        const docRef = doc(db, 'users', currentUser.id);
+        await updateDoc(docRef, {
+          points: newPoints,
+          level: newLevel,
+          badges: newBadges,
+          lastActive: new Date().toISOString()
+        });
+
+        addToast({
+          type: 'session',
+          title: lang === 'pt' ? 'Sessão Concluída!' : 'Session Completed!',
+          description: lang === 'pt' ? '+50 XP integrados ao seu perfil.' : '+50 XP integrated into your profile.'
+        });
+
+        if (newLevel > oldLevel) {
+          addToast({
+            type: 'level',
+            title: lang === 'pt' ? 'Novo Nível Alcançado! 🎉' : 'New Level Unlocked! 🎉',
+            description: lang === 'pt' ? `Você evoluiu para o Nível ${newLevel}!` : `You evolved to Level ${newLevel}!`
+          });
+        }
+
+        if (unlockedNewBadge) {
+          addToast({
+            type: 'badge',
+            title: lang === 'pt' ? 'Medalha Conquistada! 🏆' : 'Badge Earned! 🏆',
+            description: badgeName
+          });
+        }
+      } catch (err) {
+        console.error('Error updating user session stats:', err);
+      }
+    }
+    setActiveScreen('profile');
+  };
 
   // Sync auth state and load user profile doc live from Firestore database
   useEffect(() => {
@@ -70,6 +148,7 @@ function App() {
               
               // New Gamification & Orientation onboarding flags
               profileCompleted: !!data.profileCompleted,
+              hasSeenOnboarding: !!data.hasSeenOnboarding,
               manifestoCompleted: !!data.manifestoCompleted,
               communicationPreference: data.communicationPreference,
               neuroMode: data.neuroMode,
@@ -169,7 +248,7 @@ function App() {
           
           {/* Main App Header with live Level indicator and Tab Switchers */}
           <header className="w-full bg-stone-950 border-b border-stone-900 p-4 flex flex-row justify-between items-center z-50">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3" id="onboarding-level">
               <Logo className="w-8 h-8 text-teal-400 rotate-6" />
               <div className="flex flex-col">
                 <span className="font-serif text-[11px] font-bold tracking-[0.2em] text-stone-100 uppercase">
@@ -185,6 +264,7 @@ function App() {
             <nav className="flex items-center gap-2">
               {/* Journal launcher */}
               <button 
+                id="onboarding-journal"
                 onClick={() => setShowJournal(true)}
                 className="p-2.5 text-stone-400 hover:text-teal-400 rounded-xl bg-stone-900/40 border border-stone-850 hover:border-teal-500/20 transition-all cursor-pointer flex items-center justify-center"
                 title={lang === 'pt' ? 'Meu Diário' : 'My Journal'}
@@ -196,6 +276,7 @@ function App() {
 
               {/* Chat view */}
               <button 
+                id="onboarding-chat"
                 onClick={() => setActiveScreen('chat')}
                 className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
                   activeScreen === 'chat' 
@@ -209,6 +290,7 @@ function App() {
 
               {/* Profile view */}
               <button 
+                id="onboarding-profile"
                 onClick={() => setActiveScreen('profile')}
                 className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
                   activeScreen === 'profile' 
@@ -224,6 +306,7 @@ function App() {
 
               {/* Settings view */}
               <button 
+                id="onboarding-settings"
                 onClick={() => setActiveScreen('settings')}
                 className={`p-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer border ${
                   activeScreen === 'settings' 
@@ -259,7 +342,7 @@ function App() {
           <main className="flex-1 overflow-y-auto w-full relative">
             {activeScreen === 'chat' && (
               <SessionManager 
-                onDisconnect={() => setActiveScreen('profile')} 
+                onDisconnect={handleSessionEnd} 
                 lang={lang} 
                 userPlan={userPlan} 
                 onUpgrade={() => {}} 
@@ -305,6 +388,8 @@ function App() {
 
       {/* Global Modals */}
       <JournalModal isOpen={showJournal} onClose={() => setShowJournal(false)} lang={lang} />
+      <OnboardingGuide lang={lang} currentUser={currentUser} />
+      <NotificationToast toasts={toasts} onRemove={removeToast} lang={lang} />
     </div>
   );
 }

@@ -101,6 +101,68 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
         </p>
       </div>
 
+      {/* Visual Progress bars for each 'resonance' category */}
+      <div className="bg-stone-900/35 border border-stone-850/50 p-5 rounded-3xl space-y-4 backdrop-blur-md">
+        <h4 className="text-[9px] uppercase text-stone-500 tracking-[0.2em] font-bold border-b border-stone-900 pb-2">
+          {lang === 'pt' ? 'Ressonância & Crescimento' : 'Resonance Categories'}
+        </h4>
+        
+        <div className="space-y-4">
+          {([
+            {
+              id: 'embrace',
+              name: lang === 'pt' ? 'Acolhimento & Calma' : 'Embrace & Calm',
+              desc: lang === 'pt' ? 'Pensamentos e regulação de ansiedade' : 'Anxiety soothing and calm mapping',
+              score: points === 0 ? 15 : Math.max(10, (points * 12) % 100),
+              color: 'from-amber-500 to-orange-400'
+            },
+            {
+              id: 'reflection',
+              name: lang === 'pt' ? 'Reflexão Cognitiva' : 'Cognitive Reflection',
+              desc: lang === 'pt' ? 'Autoconhecimento e processamento' : 'Self-awareness and mental alignment',
+              score: points === 0 ? 20 : Math.max(10, (points * 8) % 100),
+              color: 'from-teal-500 to-emerald-400'
+            },
+            {
+              id: 'metaphor',
+              name: lang === 'pt' ? 'Sintonia Poética' : 'Poetic Metaphors',
+              desc: lang === 'pt' ? 'Integração de símbolos terapêuticos' : 'Connection with sensory metaphors',
+              score: points === 0 ? 10 : Math.max(10, (points * 10) % 100),
+              color: 'from-fuchsia-500 to-pink-500'
+            },
+            {
+              id: 'breathing',
+              name: lang === 'pt' ? 'Consciência do Sopro' : 'Resonant Breathing',
+              desc: lang === 'pt' ? 'Controle síncrono da respiração' : 'Rhythmic breathing and focus control',
+              score: points === 0 ? 25 : Math.max(10, (points * 15) % 100),
+              color: 'from-sky-500 to-indigo-500'
+            },
+            {
+              id: 'action',
+              name: lang === 'pt' ? 'Ação Suave' : 'Gentle Human Actions',
+              desc: lang === 'pt' ? 'Integração social e gestos generosos' : 'Social connection and support actions',
+              score: points === 0 ? 15 : Math.max(10, (points * 7) % 100),
+              color: 'from-emerald-400 to-teal-400'
+            }
+          ]).map((cat) => (
+            <div key={cat.id} className="space-y-1.5">
+              <div className="flex justify-between items-center text-[10px]">
+                <span className="font-bold text-stone-300">{cat.name}</span>
+                <span className="font-mono text-stone-500">{cat.score}%</span>
+              </div>
+              
+              <div className="w-full h-1.5 bg-stone-950 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full bg-gradient-to-r ${cat.color} transition-all duration-1000`}
+                  style={{ width: `${cat.score}%` }}
+                />
+              </div>
+              <p className="text-[8px] text-stone-600 leading-normal">{cat.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Custom adaptive preferences active visual lines */}
       <div className="bg-stone-900/30 border border-stone-850/50 rounded-3xl p-5 space-y-4">
         <h4 className="text-[9px] uppercase text-stone-500 tracking-[0.2em] font-bold border-b border-stone-900 pb-2">
