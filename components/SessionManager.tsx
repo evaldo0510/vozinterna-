@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
+import { motion, AnimatePresence } from 'motion/react';
+import { GoogleGenAI, LiveServerMessage, Modality, Type } from '@google/genai';
 import { SessionStatus, Language, UserPlan, User, NeurodivergentMode, GardenPlant } from '../types';
 import { getSystemInstruction, MODEL_NAME, TRANSLATIONS, VOICE_IDS, PLAN_LIMITS, WISDOM_QUOTES } from '../constants';
 import AudioVisualizer from './AudioVisualizer';
@@ -12,6 +13,7 @@ import {
 import { MoodConstellation } from './MoodConstellation';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { useMotorAdaptativo } from '../hooks/useMotorAdaptativo';
 
 interface SessionManagerProps {
   onDisconnect: () => void;
@@ -21,6 +23,8 @@ interface SessionManagerProps {
   currentUser?: User | null;
   isMinimalMode?: boolean;
   onToggleMinimalMode?: () => void;
+  impersonatedUser?: User | null;
+  onClearImpersonation?: () => void;
 }
 
 // Inline Icons
@@ -83,17 +87,39 @@ async function decodeAudioData(
   return buffer;
 }
 
-const SessionManager: React.FC<SessionManagerProps> = ({ 
+const Particle: React.FC<{ delay: number; x: number }> = ({ delay, x }) => {
+  return (
+    <motion.div
+      initial={{ y: '100vh', opacity: 0, scale: 0.5 }}
+      animate={{ 
+        y: '-10vh', 
+        opacity: [0, 1, 1, 0], 
+        scale: [0.5, 1.2, 0.8],
+        x: [x, x + (Math.sin(delay) * 40)] 
+      }}
+      transition={{ duration: 4.5, delay: delay, repeat: Infinity, ease: 'easeOut' }}
+      className="absolute text-teal-400/80 select-none pointer-events-none fill-current z-[100] font-mono text-lg"
+      style={{ left: `${x}%` }}
+    >
+      ✦
+    </motion.div>
+  );
+};
+
+const SessionManager: React.FC<SessionManagerProps> = ({  
   onDisconnect, 
   lang, 
   userPlan, 
   onUpgrade, 
   currentUser,
   isMinimalMode = false,
-  onToggleMinimalMode
+  onToggleMinimalMode,
+  impersonatedUser,
+  onClearImpersonation
 }) => {
   const [status, setStatus] = useState<SessionStatus>(SessionStatus.CONNECTING);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [speechRecError, setSpeechRecError] = useState<string | null>(null);
   const [volume, setVolume] = useState(0);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
@@ -104,15 +130,218 @@ const SessionManager: React.FC<SessionManagerProps> = ({
   const [voice, setVoice] = useState<'essencia' | 'esperanca' | 'serenidade' | 'infantil' | 'sabedoria'>('essencia');
   const [voicePitch, setVoicePitch] = useState(1.0);
   const [speechRate, setSpeechRate] = useState(1.0);
+  const [voicePersona, setVoicePersona] = useState<'natural' | 'elder' | 'supporter' | 'poet' | 'playful' | 'custom'>('natural');
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>('');
+  const [browserVoices, setBrowserVoices] = useState<any[]>([]);
+
+  // Load available speech synthesis voices
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      setBrowserVoices(voices);
+    };
+
+    loadVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
+
+  // Update speed/pitch based on voicePersona Selection
+  useEffect(() => {
+    if (voicePersona === 'natural') {
+      setVoicePitch(1.0);
+      setSpeechRate(1.0);
+    } else if (voicePersona === 'elder') {
+      setVoicePitch(0.75);
+      setSpeechRate(0.82);
+    } else if (voicePersona === 'supporter') {
+      setVoicePitch(1.15);
+      setSpeechRate(1.05);
+    } else if (voicePersona === 'poet') {
+      setVoicePitch(0.95);
+      setSpeechRate(0.85);
+    } else if (voicePersona === 'playful') {
+      setVoicePitch(1.35);
+      setSpeechRate(1.2);
+    }
+  }, [voicePersona]);
 
   // States for Adaptive Consciousness additions
   const [neuroMode, setNeuroMode] = useState<NeurodivergentMode>('natural');
   const [customSystemPrompt, setCustomSystemPrompt] = useState<string>('');
   const [selectedFeeling, setSelectedFeeling] = useState<string | null>(null);
   const [selectedMetaphor, setSelectedMetaphor] = useState<string | null>(null);
+  
+  // Dynamically pull configuration from adaptive motor based on preferences (neurotype and emotional state)
+  const adaptivoConfig = useMotorAdaptativo(neuroMode, selectedFeeling || undefined);
+
+  // Sync vocal rates from adaptive system automatically
+  useEffect(() => {
+    if (voicePersona !== 'custom') {
+      setSpeechRate(adaptivoConfig.voiceRate);
+      setVoicePitch(adaptivoConfig.voicePitch);
+    }
+  }, [adaptivoConfig, voicePersona]);
   const [showReferral, setShowReferral] = useState(false);
   const [showGarden, setShowGarden] = useState(false);
   const [gardenPlants, setGardenPlants] = useState<GardenPlant[]>([]);
+
+  // Adaptive Journey States
+  const [autismTab, setAutismTab] = useState<'talk' | 'breath' | 'register' | 'rest'>('talk');
+  const [childFeeling, setChildFeeling] = useState<string | null>(null);
+  const [burnoutEnergy, setBurnoutEnergy] = useState<number>(50);
+  const [griefRemembrance, setGriefRemembrance] = useState<boolean>(false);
+
+  // Celebration States
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationType, setCelebrationType] = useState<'level' | 'badge' | 'none'>('none');
+  const [unlockedItemName, setUnlockedItemName] = useState('');
+  const [isSavingSnapshot, setIsSavingSnapshot] = useState<boolean>(false);
+
+  const analyzeTranscriptAndAppendSnapshot = async () => {
+    const transcript = sessionTranscriptRef.current.trim();
+    if (transcript.length < 15) {
+      console.log("Transcript too short to extract sentiment:", transcript.length);
+      return;
+    }
+
+    try {
+      if (!process.env.API_KEY) throw new Error("API Key Missing.");
+      
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = `
+Analyze the following therapeutic conversation transcript between the User and Dr. Evaldo (PCH voice therapeutic guide).
+Determine the emotional tone, sentiment, and core issues discussed.
+
+Transcript:
+${transcript}
+
+Return a JSON object with:
+1. sentimentTags: An array of strings containing matching sentiment IDs. Pick 1 to 3 tags that describe the user's emotional state in this session. Choose ONLY from these valid IDs: ['embraced', 'serene', 'inspired', 'anxious', 'connected', 'flowing', 'grounded'].
+2. summary: A highly empathetic and brief paragraph (3-4 sentences) summarizing the interaction, the emotional trajectory, and the insights explored during the session. Write in the same language as the transcript (${lang === 'pt' ? 'Portuguese' : 'English'}).
+3. insight: A gentle, uplifting poetic-cognitive reframing or suggestion tailored to the user's emotional state, following the therapeutic style of Dr. Evaldo Poeta. Write in the same language as the transcript (${lang === 'pt' ? 'Portuguese' : 'English'}).
+`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              sentimentTags: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: "List of mood tags from: ['embraced', 'serene', 'inspired', 'anxious', 'connected', 'flowing', 'grounded']"
+              },
+              summary: {
+                type: Type.STRING,
+                description: "An empathetic paragraph summarizing the interaction."
+              },
+              insight: {
+                type: Type.STRING,
+                description: "Uplifting poetic-cognitive reframing tailored to the user."
+              }
+            },
+            required: ["sentimentTags", "summary", "insight"]
+          }
+        }
+      });
+
+      const resultText = response.text?.trim();
+      if (!resultText) throw new Error("Empty response from sentiment analysis.");
+
+      const parsed = JSON.parse(resultText);
+      const { sentimentTags = [], summary = "", insight = "" } = parsed;
+
+      const titleStr = lang === 'pt' ? 'Snapshot de Sessão' : 'Session Snapshot';
+      const combinedText = `${summary}\n\n**${lang === 'pt' ? 'Lampejo Poético' : 'Uplifting Poetic Insight'}:**\n${insight}`;
+
+      const entryId = Date.now().toString();
+      const newEntry = {
+        id: entryId,
+        date: new Date().toISOString(),
+        text: combinedText,
+        prompt: titleStr,
+        moodTags: sentimentTags.filter((t: string) => ['embraced', 'serene', 'inspired', 'anxious', 'connected', 'flowing', 'grounded'].includes(t)),
+        quickNote: lang === 'pt' ? 'Voz Interior PCH • Relato da Sessão' : 'Inner Voice PCH • Session Snapshot'
+      };
+
+      const cUser = auth.currentUser;
+      if (cUser) {
+        try {
+          const docRef = doc(db, 'users', cUser.uid, 'journals', entryId);
+          await setDoc(docRef, {
+            ...newEntry,
+            userId: cUser.uid
+          });
+          console.log("Session Snapshot saved to Firestore successfully!");
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `users/${cUser.uid}/journals/${entryId}`);
+        }
+      } else {
+        const stored = localStorage.getItem('pch_journal_entries');
+        let localEntries = [];
+        if (stored) {
+          try {
+            localEntries = JSON.parse(stored);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        const updated = [newEntry, ...localEntries];
+        localStorage.setItem('pch_journal_entries', JSON.stringify(updated));
+        console.log("Session Snapshot saved to LocalStorage successfully!");
+      }
+
+    } catch (e) {
+      console.error("Failed to capture/append session sentiment snapshot:", e);
+    }
+  };
+
+  const handlePreDisconnect = async () => {
+    setIsSavingSnapshot(true);
+    await analyzeTranscriptAndAppendSnapshot();
+    setIsSavingSnapshot(false);
+
+    if (currentUser) {
+      const oldPoints = currentUser.points || 0;
+      const rewardPoints = elapsedSeconds > 45 ? 60 : 35;
+      const newPoints = oldPoints + rewardPoints;
+      
+      const oldLevel = currentUser.level || 1;
+      const newLevel = Math.floor(newPoints / 100) + 1;
+      
+      const oldBadges = currentUser.badges || [];
+      
+      let badgeEarned = '';
+      if (newPoints >= 100 && !oldBadges.includes('Sintonizador de Emoções') && !oldBadges.includes('Emotion Tuner')) {
+        badgeEarned = lang === 'pt' ? 'Sintonizador de Emoções' : 'Emotion Tuner';
+      } else if (newPoints >= 250 && !oldBadges.includes('Explorador da Calma') && !oldBadges.includes('Calm Explorer')) {
+        badgeEarned = lang === 'pt' ? 'Explorador da Calma' : 'Calm Explorer';
+      } else if (newPoints >= 500 && !oldBadges.includes('Sábio do Silêncio') && !oldBadges.includes('Silence Sage')) {
+        badgeEarned = lang === 'pt' ? 'Sábio do Silêncio' : 'Silence Sage';
+      }
+
+      if (newLevel > oldLevel) {
+        setCelebrationType('level');
+        setUnlockedItemName(newLevel.toString());
+        setShowCelebration(true);
+      } else if (badgeEarned) {
+        setCelebrationType('badge');
+        setUnlockedItemName(badgeEarned);
+        setShowCelebration(true);
+      } else {
+        onDisconnect();
+      }
+    } else {
+      onDisconnect();
+    }
+  };
   const [showWaterEffect, setShowWaterEffect] = useState<string | null>(null);
   const [voiceAlert, setVoiceAlert] = useState<string | null>(null);
 
@@ -137,7 +366,6 @@ const SessionManager: React.FC<SessionManagerProps> = ({
     const val = localStorage.getItem('pch_daily_conversations');
     return val ? parseInt(val, 10) : 0;
   });
-  const [showCelebration, setShowCelebration] = useState(false);
   const [showWisdom, setShowWisdom] = useState(true);
 
   // Audio refs and helper triggers
@@ -381,10 +609,120 @@ const SessionManager: React.FC<SessionManagerProps> = ({
   const [breathingScale, setBreathingScale] = useState(1.0);
 
   const audioContextRef = useRef<AudioContext | null>(null);
+  const inputAudioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
   const nextStartTimeRef = useRef<number>(0);
   const activeSessionRef = useRef<any>(null);
+  const recognitionRef = useRef<any>(null);
+
+  const [speechTranscript, setSpeechTranscript] = useState<string>('');
+  const [isSpeechRecognitionRunning, setIsSpeechRecognitionRunning] = useState<boolean>(false);
+  
+  const [aiSpeechText, setAiSpeechText] = useState<string>('');
+  const accumulatedTextRef = useRef<string>('');
+
+  const speechQueueRef = useRef<string[]>([]);
+  const isSpeakingActiveRef = useRef<boolean>(false);
+  const unspokenChunkRef = useRef<string>('');
+  const sessionTranscriptRef = useRef<string>('');
+
+  const clearSpeechQueue = useCallback(() => {
+    speechQueueRef.current = [];
+    unspokenChunkRef.current = '';
+    isSpeakingActiveRef.current = false;
+    setIsAiSpeaking(false);
+    setAiSpeechText('');
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {
+        console.warn("Cancel speech synthesis failed:", e);
+      }
+    }
+  }, []);
+
+  const speechRateRef = useRef(speechRate);
+  const voicePitchRef = useRef(voicePitch);
+  const selectedVoiceURIRef = useRef(selectedVoiceURI);
+  const langRef = useRef(lang);
+
+  useEffect(() => { speechRateRef.current = speechRate; }, [speechRate]);
+  useEffect(() => { voicePitchRef.current = voicePitch; }, [voicePitch]);
+  useEffect(() => { selectedVoiceURIRef.current = selectedVoiceURI; }, [selectedVoiceURI]);
+  useEffect(() => { langRef.current = lang; }, [lang]);
+
+  const triggerNextSpeech = useCallback(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (isSpeakingActiveRef.current) return;
+    if (speechQueueRef.current.length === 0) {
+      return;
+    }
+
+    const textToSpeak = speechQueueRef.current.shift();
+    if (!textToSpeak) return;
+
+    isSpeakingActiveRef.current = true;
+    setIsAiSpeaking(true);
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.lang = langRef.current === 'pt' ? 'pt-BR' : 'en-US';
+    utterance.rate = Math.max(0.5, Math.min(2.0, speechRateRef.current));
+    utterance.pitch = Math.max(0.5, Math.min(2.0, voicePitchRef.current));
+
+    const voices = window.speechSynthesis.getVoices();
+    let preferredVoice = null;
+    if (selectedVoiceURIRef.current) {
+      preferredVoice = voices.find(v => v.voiceURI === selectedVoiceURIRef.current);
+    }
+    if (!preferredVoice) {
+      if (langRef.current === 'pt') {
+        preferredVoice = voices.find(v => v.lang.startsWith('pt') && v.name.toLowerCase().includes('google')) || 
+                         voices.find(v => v.lang.startsWith('pt'));
+      } else {
+        preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('google')) || 
+                         voices.find(v => v.lang.startsWith('en'));
+      }
+    }
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onend = () => {
+      isSpeakingActiveRef.current = false;
+      setTimeout(() => {
+        triggerNextSpeech();
+      }, 50);
+    };
+
+    utterance.onerror = (e) => {
+      console.error("Queue Speech Synthesis error:", e);
+      isSpeakingActiveRef.current = false;
+      setTimeout(() => {
+        triggerNextSpeech();
+      }, 50);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const speakWithWebSpeech = useCallback((textToSpeak: string) => {
+    clearSpeechQueue();
+    if (!textToSpeak.trim()) return;
+    speechQueueRef.current = [textToSpeak];
+    triggerNextSpeech();
+  }, [clearSpeechQueue, triggerNextSpeech]);
+
+  const isMicMutedRef = useRef(isMicMuted);
+  const inputSensitivityRef = useRef(inputSensitivity);
+
+  useEffect(() => {
+    isMicMutedRef.current = isMicMuted;
+  }, [isMicMuted]);
+
+  useEffect(() => {
+    inputSensitivityRef.current = inputSensitivity;
+  }, [inputSensitivity]);
 
   const text = TRANSLATIONS[lang];
   const accMode = currentUser?.accessibilityMode || false;
@@ -517,16 +855,45 @@ const SessionManager: React.FC<SessionManagerProps> = ({
 
   const cleanupAudio = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach(track => {
+        try { track.stop(); } catch (e) {}
+      });
     }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      try {
+        audioContextRef.current.close();
+      } catch (e) {
+        console.warn("Error closing AudioContext", e);
+      }
+    }
+    if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
+      try {
+        inputAudioContextRef.current.close();
+      } catch (e) {
+        console.warn("Error closing input AudioContext", e);
+      }
+    }
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      } catch (e) {
+        console.warn("Error stopping speech recognition in cleanup", e);
+      }
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {
+        console.warn("Error cancelling speech synthesis in cleanup", e);
+      }
     }
   }, []);
 
   const connectToGemini = useCallback(async () => {
     try {
       cleanupAudio();
+      sessionTranscriptRef.current = '';
       setStatus(SessionStatus.CONNECTING);
 
       if (!process.env.API_KEY) throw new Error("API Key Missing.");
@@ -535,7 +902,16 @@ const SessionManager: React.FC<SessionManagerProps> = ({
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       audioContextRef.current = audioCtx;
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let mediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (micErr: any) {
+        console.error("Microphone access denied:", micErr);
+        const permMsg = lang === 'pt' 
+          ? "Acesso ao microfone negado ou não permitido. Por favor, libere as permissões do microfone nas configurações de segurança do seu navegador (clique no cadeado ao lado da barra de endereço) e tente novamente."
+          : "Microphone access denied or blocked. Please grant microphone permissions in your browser's security/site settings (click the lock icon next to the address bar) and click Retry.";
+        throw new Error(permMsg);
+      }
       streamRef.current = mediaStream;
 
       const currentTime = new Date().toLocaleTimeString(lang);
@@ -569,6 +945,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({
             voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE_IDS[voice] } },
           },
           systemInstruction: instruction,
+          outputAudioTranscription: {},
         },
         callbacks: {
           onopen: () => {
@@ -579,6 +956,8 @@ const SessionManager: React.FC<SessionManagerProps> = ({
                 ? (lang === 'pt' ? `Olá Dr. Evaldo, hoje eu me sinto: ${selectedFeeling}` : `Hello Dr. Evaldo, today I feel: ${selectedFeeling}`)
                 : (lang === 'pt' ? `Dr. Evaldo, me sinto mudo e escolhi o símbolo: ${selectedMetaphor}` : `Dr. Evaldo, I am wordless and chose the symbol: ${selectedMetaphor}`);
               
+              sessionTranscriptRef.current += `\nUser: ${greetStr}`;
+
               sessionPromise.then((s: any) => {
                 s.send({
                   clientContent: {
@@ -593,6 +972,46 @@ const SessionManager: React.FC<SessionManagerProps> = ({
             }
           },
           onmessage: async (message: LiveServerMessage) => {
+            // 1. Process text parts from the AI turn for Web Speech Synthesis & UI display
+            const parts = message.serverContent?.modelTurn?.parts;
+            if (parts) {
+              for (const part of parts) {
+                if (part.text) {
+                  accumulatedTextRef.current += part.text;
+                  setAiSpeechText(accumulatedTextRef.current);
+
+                  // Accumulate into unspoken queue buffer for immediate streaming speech
+                  unspokenChunkRef.current += part.text;
+
+                  // Split unspoken chunk into complete sentences/phrases
+                  const txt = unspokenChunkRef.current;
+                  const lastPunctuationIndex = Math.max(
+                    txt.lastIndexOf('.'),
+                    txt.lastIndexOf('?'),
+                    txt.lastIndexOf('!'),
+                    txt.lastIndexOf(';'),
+                    txt.lastIndexOf(':'),
+                    txt.lastIndexOf('\n')
+                  );
+
+                  if (lastPunctuationIndex !== -1) {
+                    const chunkToSpeak = txt.substring(0, lastPunctuationIndex + 1);
+                    unspokenChunkRef.current = txt.substring(lastPunctuationIndex + 1);
+
+                    const sentences = chunkToSpeak
+                      .split(/[.!?;\n:]+/)
+                      .map(s => s.trim())
+                      .filter(s => s.length > 2); // Speak meaningful clauses
+
+                    if (sentences.length > 0) {
+                      // Web Speech Synthesis is bypassed during the active session to prioritize natural Gemini Live streaming audio
+                    }
+                  }
+                }
+              }
+            }
+
+            // 2. Play base64 audio natively (Google Live active real-time low-latency stream)
             const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (base64Audio) {
               const now = Date.now();
@@ -600,6 +1019,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({
                 lastIncrementTimeRef.current = now;
                 incrementConversations();
               }
+              
               setIsAiSpeaking(true);
               nextStartTimeRef.current = Math.max(nextStartTimeRef.current, audioCtx.currentTime);
               
@@ -622,9 +1042,22 @@ const SessionManager: React.FC<SessionManagerProps> = ({
                 }
               };
             }
+
+            // 3. When the turn is complete, save transcripts to session history and reset buffer
+            const isTurnComplete = message.serverContent?.turnComplete;
+            if (isTurnComplete) {
+              unspokenChunkRef.current = '';
+              const responseText = accumulatedTextRef.current.trim();
+              if (responseText) {
+                sessionTranscriptRef.current += `\nDr. Evaldo (AI): ${responseText}`;
+              }
+              accumulatedTextRef.current = ''; // Reset accumulation for next turn
+            }
           },
-          onerror: (e) => {
+          onerror: (e: any) => {
             console.error("Live API Error:", e);
+            const msg = e instanceof Error ? e.message : (e && typeof e === 'object' && 'message' in e ? (e as any).message : String(e));
+            setErrorMsg(lang === 'pt' ? `Erro de conexão em tempo real com Dr. Evaldo: ${msg}` : `Realtime connection error with Dr. Evaldo: ${msg}`);
             setStatus(SessionStatus.ERROR);
           },
           onclose: () => setStatus(SessionStatus.ENDED)
@@ -634,27 +1067,34 @@ const SessionManager: React.FC<SessionManagerProps> = ({
       activeSessionRef.current = sessionPromise;
 
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+      inputAudioContextRef.current = inputCtx;
       const srcNode = inputCtx.createMediaStreamSource(mediaStream);
       const processor = inputCtx.createScriptProcessor(4096, 1, 1);
       srcNode.connect(processor);
       processor.connect(inputCtx.destination);
       
       processor.onaudioprocess = (e) => {
-          if (isMicMuted) return;
+          if (isMicMutedRef.current) return;
           const input = e.inputBuffer.getChannelData(0);
           
           let sum = 0;
           for(let i=0; i<input.length; i++) sum += input[i] * input[i];
           const rms = Math.sqrt(sum / input.length);
           setVolume(rms);
-          setIsUserSpeaking(rms > inputSensitivity);
+
+          const isSpeaking = rms > inputSensitivityRef.current;
+          setIsUserSpeaking(isSpeaking);
+          if (isSpeaking) {
+            // Immediately interrupt and mute AI's speech queue when user starts speaking
+            clearSpeechQueue();
+          }
 
           const pcm16 = new Int16Array(input.length);
           for(let i=0; i<input.length; i++) pcm16[i] = input[i] * 32767;
           
           sessionPromise.then(session => {
             session.sendRealtimeInput({ 
-              media: { 
+              audio: { 
                 mimeType: 'audio/pcm;rate=16000', 
                 data: encode(new Uint8Array(pcm16.buffer)) 
               } 
@@ -666,13 +1106,124 @@ const SessionManager: React.FC<SessionManagerProps> = ({
       setErrorMsg(e.message);
       setStatus(SessionStatus.ERROR);
     }
-  }, [lang, voice, accMode, neuroMode, inputSensitivity, isMicMuted, selectedFeeling, selectedMetaphor]);
+  }, [lang, voice, accMode, neuroMode, selectedFeeling, selectedMetaphor]);
 
   useEffect(() => {
     connectToGemini();
     const t = setInterval(() => setElapsedSeconds(s => s + 1), 1000);
     return () => { cleanupAudio(); clearInterval(t); };
   }, [connectToGemini, cleanupAudio]);
+
+  // Hook to automatically unmute mic and trigger listener when session connects successfully
+  useEffect(() => {
+    if (status === SessionStatus.CONNECTED) {
+      setIsMicMuted(false);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    }
+  }, [status]);
+
+  // Sync Web Speech API SpeechRecognition dynamically with active session and mic state
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn("SpeechRecognition not supported in this browser.");
+      return;
+    }
+
+    if (status === SessionStatus.CONNECTED && !isMicMuted) {
+      try {
+        if (!recognitionRef.current) {
+          const rec = new SpeechRecognition();
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.lang = lang === 'pt' ? 'pt-BR' : 'en-US';
+
+          rec.onstart = () => {
+            setIsSpeechRecognitionRunning(true);
+            setSpeechTranscript('');
+            setSpeechRecError(null); // Clear previous errors on successful start!
+            triggerVoiceAlert(lang === 'pt' ? 'Reconhecimento de Voz Ativo' : 'Voice Recognition Active');
+          };
+
+          rec.onerror = (event: any) => {
+            console.error('Speech recognition error in Session:', event.error);
+            setSpeechRecError(event.error);
+            setIsSpeechRecognitionRunning(false);
+          };
+
+          rec.onend = () => {
+            setIsSpeechRecognitionRunning(false);
+            // Auto restart if still connected and unmuted
+            if (activeSessionRef.current && !isMicMutedRef.current) {
+              try {
+                rec.start();
+              } catch (e) {
+                console.warn("SpeechRec auto-restart ignored", e);
+              }
+            }
+          };
+
+          rec.onresult = (event: any) => {
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+              const textStr = event.results[i][0].transcript;
+              if (event.results[i].isFinal) {
+                finalTranscript += textStr;
+              } else {
+                interimTranscript += textStr;
+              }
+            }
+
+            const currentLiveText = interimTranscript || finalTranscript;
+            if (currentLiveText.trim()) {
+              setSpeechTranscript(currentLiveText);
+            }
+
+            if (finalTranscript.trim()) {
+              const finalQuery = finalTranscript.trim();
+              console.log("Web Speech API final transcription captured:", finalQuery);
+              sessionTranscriptRef.current += `\nUser: ${finalQuery}`;
+              
+              // We do not send parallel text message turns to the Live Session here,
+              // as raw microphone audio is already actively streaming real-time to the audio channel.
+              // This prevents dual input injection and lets the model speak naturally.
+
+              // After 4 seconds, clear transcript display with fade
+              setTimeout(() => {
+                setSpeechTranscript(prev => prev === currentLiveText ? '' : prev);
+              }, 4000);
+            }
+          };
+
+          recognitionRef.current = rec;
+        }
+
+        recognitionRef.current.start();
+      } catch (e) {
+        console.warn("Recognition start failed or already running:", e);
+      }
+    } else {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.warn("Recognition stop ignored", e);
+        }
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
+    };
+  }, [isMicMuted, status, lang]);
 
   // Propagate plant watering to LocalStorage/Firestore and growth stages
   const handleWaterPlant = async (id: string) => {
@@ -827,6 +1378,8 @@ const SessionManager: React.FC<SessionManagerProps> = ({
         ? `Sintonizar no estado de espírito: ${textStr}.`
         : `Tuning into my current feeling: ${textStr}.`;
 
+      sessionTranscriptRef.current += `\nUser: [Tuned feeling: ${textStr}]`;
+
       activeSessionRef.current.then((session: any) => {
         session.send({
           clientContent: {
@@ -852,6 +1405,8 @@ const SessionManager: React.FC<SessionManagerProps> = ({
       const textToSend = lang === 'pt' 
         ? `Escolhi o símbolo da metáfora visual: ${textStr}. Dr. Evaldo, por favor integre o que esse símbolo representa no meu estado de espírito hoje usando a Poesia Cognitiva Hipnótica.`
         : `I chose the visual metaphor symbol: ${textStr}. Dr. Evaldo, please integrate what this symbol represents into my current emotional state using Hypnotic Cognitive Poetry.`;
+
+      sessionTranscriptRef.current += `\nUser: [Selected metaphor: ${textStr}]`;
 
       activeSessionRef.current.then((session: any) => {
         session.send({
@@ -898,19 +1453,51 @@ const SessionManager: React.FC<SessionManagerProps> = ({
   let fontOverride = '';
 
   if (neuroMode === 'anxiety') {
-    themeBg = 'bg-emerald-950/20';
-    themeCard = 'border-emerald-900/30 bg-emerald-950/15 backdrop-blur-2xl';
-    accentBorder = 'border-emerald-800/40';
+    themeBg = 'bg-[#031c16] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-950/20 via-stone-950 to-stone-950';
+    themeCard = 'border-emerald-900/35 bg-emerald-950/15 backdrop-blur-2xl';
+    accentBorder = 'border-emerald-800/40 text-emerald-400';
   } else if (neuroMode === 'dyslexia') {
-    textSpacing = 'tracking-[0.14em]';
-    lineSpacing = 'leading-[1.95] font-sans';
+    textSpacing = 'tracking-[0.15em]';
+    lineSpacing = 'leading-[1.95] font-sans font-medium';
     fontOverride = 'font-sans';
+    themeBg = 'bg-[#151311]';
+    themeCard = 'border-stone-800 bg-[#221e1b]/80';
+    accentBorder = 'border-stone-750 text-amber-200';
   } else if (neuroMode === 'adhd') {
-    themeBg = 'bg-stone-950';
-    themeCard = 'border-stone-800/80 bg-stone-900/60';
+    themeBg = 'bg-stone-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-950/10 via-stone-950 to-stone-950';
+    themeCard = 'border-amber-950/25 bg-stone-900/50';
+    accentBorder = 'border-amber-950/30 text-amber-400';
   } else if (neuroMode === 'autism') {
-    themeBg = 'bg-slate-950';
-    themeCard = 'border-slate-800 bg-slate-900/50';
+    themeBg = 'bg-[#090e1d]';
+    themeCard = 'border-blue-950 bg-[#101931]/60';
+    accentBorder = 'border-blue-900/30 text-blue-400 font-bold';
+  } else if (neuroMode === 'senior') {
+    themeBg = 'bg-[#0a0a0a]';
+    themeCard = 'border-stone-850 bg-[#161616]';
+    accentBorder = 'border-stone-800 text-stone-200';
+    fontOverride = 'font-serif';
+    lineSpacing = 'leading-relaxed text-[13px] font-medium';
+  } else if (neuroMode === 'child') {
+    themeBg = 'bg-[#0f0a20] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#1d123e]/20 to-[#0f0a20]';
+    themeCard = 'border-indigo-950 bg-[#1a1435]/65';
+    accentBorder = 'border-indigo-900/40 text-indigo-400';
+  } else if (neuroMode === 'down') {
+    themeBg = 'bg-[#0e1211]';
+    themeCard = 'border-teal-500/25 bg-[#141b18]';
+    accentBorder = 'border-teal-400/40 text-teal-300 font-extrabold';
+    lineSpacing = 'leading-relaxed text-[12.5px] font-extrabold';
+  } else if (neuroMode === 'gifted') {
+    themeBg = 'bg-[#02010c] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#180d3b]/20 via-[#02010c] to-[#02010c]';
+    themeCard = 'border-indigo-950/60 bg-[#070529]/65';
+    accentBorder = 'border-indigo-900/40 text-violet-300';
+  } else if (neuroMode === 'burnout') {
+    themeBg = 'bg-[#0f0c0b]';
+    themeCard = 'border-stone-850 bg-[#1a1412]/50';
+    accentBorder = 'border-stone-850 text-orange-300';
+  } else if (neuroMode === 'grief') {
+    themeBg = 'bg-[#100808]';
+    themeCard = 'border-rose-950/30 bg-[#1e1010]/50';
+    accentBorder = 'border-rose-900/40 text-rose-300';
   }
 
   return (
@@ -924,19 +1511,25 @@ const SessionManager: React.FC<SessionManagerProps> = ({
                <div className="flex flex-col">
                  <span className="font-serif text-sm text-stone-200 tracking-wider uppercase">{text?.title}</span>
                  <span className="text-[8px] text-teal-400/70 uppercase tracking-widest font-mono">
-                   {neuroMode === 'natural' && (lang === 'pt' ? 'Experiência Padrão' : 'Default Experience')}
-                   {neuroMode === 'adhd' && (lang === 'pt' ? 'Modo TDAH Ativo' : 'ADHD Mode Active')}
-                   {neuroMode === 'autism' && (lang === 'pt' ? 'Modo Autismo Ativo' : 'Autism Mode Active')}
-                   {neuroMode === 'dyslexia' && (lang === 'pt' ? 'Modo Dislexia Ativo' : 'Dyslexia Mode Active')}
-                   {neuroMode === 'anxiety' && (lang === 'pt' ? 'Modo Ansiedade Ativo' : 'Anxiety Mode Active')}
-                   {neuroMode === 'inclusive' && (lang === 'pt' ? 'Modo Inclusivo Ativo' : 'Inclusive Mode Active')}
+                   {neuroMode === 'natural' && (lang === 'pt' ? 'Experiência Padrão 🍃' : 'Default Experience 🍃')}
+                    {neuroMode === 'senior' && (lang === 'pt' ? 'Modo Idoso Ativo 👵' : 'Seniors Mode Active 👵')}
+                    {neuroMode === 'child' && (lang === 'pt' ? 'Modo Infantil Ativo 👶' : 'Children Mode Active 👶')}
+                    {neuroMode === 'down' && (lang === 'pt' ? 'Modo S. Down Ativo ❤️' : 'Down Mode Active ❤️')}
+                    {neuroMode === 'gifted' && (lang === 'pt' ? 'Modo A. Habilidades Ativo 🌌' : 'Gifted Mode Active 🌌')}
+                    {neuroMode === 'burnout' && (lang === 'pt' ? 'Modo Burnout Ativo 🔥' : 'Burnout Mode Active 🔥')}
+                    {neuroMode === 'grief' && (lang === 'pt' ? 'Modo Luto Ativo 🌹' : 'Grief Mode Active 🌹')}
+                   {neuroMode === 'adhd' && (lang === 'pt' ? 'Modo TDAH Ativo ⚡' : 'ADHD Mode Active ⚡')}
+                   {neuroMode === 'autism' && (lang === 'pt' ? 'Modo Autismo Ativo 🧩' : 'Autism Mode Active 🧩')}
+                   {neuroMode === 'dyslexia' && (lang === 'pt' ? 'Modo Dislexia Ativo 📚' : 'Dyslexia Mode Active 📚')}
+                   {neuroMode === 'anxiety' && (lang === 'pt' ? 'Modo Ansiedade Ativo 🌬️' : 'Anxiety Mode Active 🌬️')}
+                   {neuroMode === 'inclusive' && (lang === 'pt' ? 'Modo Inclusivo Ativo 🌿' : 'Inclusive Mode Active 🌿')}
                  </span>
                </div>
             </div>
 
             {/* Mode Slicers */}
             <div className="flex items-center space-x-1.5 p-1 bg-stone-900/40 border border-stone-800/60 rounded-full max-w-full overflow-x-auto no-scrollbar scroll-smooth">
-              {(['natural', 'adhd', 'autism', 'dyslexia', 'anxiety', 'inclusive'] as NeurodivergentMode[]).map(mode => (
+              {(['natural', 'adhd', 'autism', 'dyslexia', 'anxiety', 'senior', 'child', 'down', 'gifted', 'burnout', 'grief'] as NeurodivergentMode[]).map(mode => (
                 <button
                   key={mode}
                   onClick={() => setNeuroMode(mode)}
@@ -946,13 +1539,44 @@ const SessionManager: React.FC<SessionManagerProps> = ({
                     : 'text-stone-500 hover:text-stone-300 border border-transparent'
                   }`}
                 >
-                  {text?.modes?.[mode] || mode}
+                  {mode === 'natural' && (lang === 'pt' ? 'Padrão 🍃' : 'Standard 🍃')}
+                  {mode === 'adhd' && (lang === 'pt' ? 'TDAH ⚡' : 'ADHD ⚡')}
+                  {mode === 'autism' && (lang === 'pt' ? 'Autismo 🧩' : 'Autism 🧩')}
+                  {mode === 'dyslexia' && (lang === 'pt' ? 'Dislexia 📚' : 'Dyslexia 📚')}
+                  {mode === 'anxiety' && (lang === 'pt' ? 'Ansiedade 🌬️' : 'Anxiety 🌬️')}
+                  {mode === 'senior' && (lang === 'pt' ? 'Idoso 👵' : 'Seniors 👵')}
+                  {mode === 'child' && (lang === 'pt' ? 'Infantil 👶' : 'Children 👶')}
+                  {mode === 'down' && (lang === 'pt' ? 'S. Down ❤️' : 'Down ❤️')}
+                  {mode === 'gifted' && (lang === 'pt' ? 'A. Habilidades 🌌' : 'Gifted 🌌')}
+                  {mode === 'burnout' && (lang === 'pt' ? 'Burnout 🔥' : 'Burnout 🔥')}
+                  {mode === 'grief' && (lang === 'pt' ? 'Luto 🌹' : 'Grief 🌹')}
                 </button>
               ))}
             </div>
 
             <div className="hidden md:block font-mono text-[10px] text-stone-500">{Math.floor(elapsedSeconds/60)}:{(elapsedSeconds%60).toString().padStart(2,'0')}</div>
          </div>
+      )}
+
+      {/* Impersonated Active Profile Banner */}
+      {impersonatedUser && (
+        <div className="w-full max-w-4xl bg-teal-950/20 border border-teal-900/40 text-teal-300 px-4 py-2.5 rounded-2xl flex flex-row justify-between items-center z-45 text-xs backdrop-blur-md">
+          <div className="flex items-center space-x-2">
+            <span className="animate-pulse flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
+            </span>
+            <span className="font-mono text-[9px] uppercase tracking-wider text-teal-400">
+              {lang === 'pt' ? `Simulação de Perfil Ativa: ${impersonatedUser.name} (${impersonatedUser.email})` : `Active Profile Simulation: ${impersonatedUser.name} (${impersonatedUser.email})`}
+            </span>
+          </div>
+          <button 
+            onClick={onClearImpersonation}
+            className="text-stone-400 hover:text-stone-200 font-mono text-[9.5px] uppercase cursor-pointer transition-all border border-stone-850 hover:border-stone-700 bg-stone-900/40 px-3 py-1 rounded-xl"
+          >
+            {lang === 'pt' ? 'Restaurar Meu Perfil' : 'Restore My Profile'}
+          </button>
+        </div>
       )}
 
       {/* Floating Active Voice Actions Info Alerts */}
@@ -1011,18 +1635,454 @@ const SessionManager: React.FC<SessionManagerProps> = ({
            </div>
 
            <AudioVisualizer volume={volume} isActive={isUserSpeaking || isAiSpeaking} color={isAiSpeaking ? "rgb(20, 184, 166)" : "rgb(168, 162, 158)"} />
+
+            {/* AI Speech Text display (Web Speech Synthesis transcription) */}
+            {aiSpeechText && (
+              <div id="ai-caption-bubble" className="mt-4 w-full max-w-sm px-4 py-3 bg-teal-950/30 backdrop-blur-md border border-teal-500/30 rounded-2xl text-center leading-relaxed shadow-lg animate-none z-20">
+                <div className="flex items-center justify-center space-x-1 mb-1 bg-teal-900/20 py-0.5 px-2 rounded-full w-fit mx-auto">
+                  <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-ping" />
+                  <span className="text-[8px] font-bold text-teal-400 uppercase tracking-widest font-mono">
+                    {lang === 'pt' ? 'Mente IA (Fórmula de Voz)' : 'Mind AI (Vocal Blueprint)'}
+                  </span>
+                </div>
+                <p className="text-[11.5px] text-stone-100 font-serif leading-relaxed italic">
+                  "{aiSpeechText}"
+                </p>
+              </div>
+            )}
+
+            {/* Interactive visual audio wave animation synced with speech input */}
+            {isSpeechRecognitionRunning && (
+              <div className="flex items-center justify-center space-x-1 w-full max-w-xs mt-4 h-10 px-4 bg-teal-900/10 border border-teal-950/20 rounded-full self-center z-20">
+                <span className="text-[8px] font-mono font-bold text-teal-400/80 uppercase tracking-widest mr-2">{lang === 'pt' ? 'Frequência:' : 'Frequency:'}</span>
+                {[...Array(15)].map((_, i) => {
+                  const centerDist = Math.abs(i - 7);
+                  const factor = Math.max(0.25, (8 - centerDist) / 8);
+                  const dynamicHeight = 4 + (volume * 70 * factor) + (Math.sin(elapsedSeconds * 4 + i) * 5 * (volume > 0.015 ? 1 : 0.25));
+                  return (
+                    <span
+                      key={i}
+                      className="w-1 rounded-full bg-gradient-to-t from-teal-500 via-emerald-400 to-teal-300 transition-all duration-75"
+                      style={{
+                        height: `${Math.min(36, dynamicHeight)}px`,
+                        opacity: volume > 0.015 ? 1.0 : 0.4,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+             {/* Supportive Speech Recognition Diagnostic Tip */}
+             {speechRecError && speechRecError !== 'aborted' && (
+               <div className="mt-4 w-full max-w-sm px-4 py-3 bg-red-950/20 backdrop-blur-md border border-red-500/30 rounded-2xl text-center leading-relaxed shadow-lg z-20 animate-none">
+                 <div className="flex items-center justify-center space-x-1 mb-1.5 py-0.5 px-2 rounded-full w-fit mx-auto bg-red-900/10">
+                   <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                   <span className="text-[8px] font-bold text-red-400 uppercase tracking-widest font-mono">
+                     {lang === 'pt' ? 'Sinal de Voz Restrito' : 'Voice Signal Restrained'}
+                   </span>
+                 </div>
+                 <p className="text-[11px] text-stone-300 leading-relaxed font-sans">
+                   {speechRecError === 'not-allowed' ? (
+                     lang === 'pt' 
+                       ? 'O navegador suspendeu o reconhecimento de voz parcial. Certifique-se de liberar o microfone nos ajustes do site (clique no ícone de de cadeado).' 
+                       : 'The browser suspended partial speech recognition. Please check your mic permissions in site settings (click the lock icon).'
+                   ) : (
+                     lang === 'pt'
+                       ? `Não foi possível sintonizar a escuta de texto (${speechRecError}). O canal de voz principal com Dr. Evaldo continua ativo!`
+                       : `Voice transcription suspended (${speechRecError}). The main streaming voice channel with Dr. Evaldo is still fully active!`
+                   )}
+                 </p>
+               </div>
+             )}
+
+           {/* Custom Web Speech API Live Transcript Bubble */}
+           {speechTranscript && (
+             <div id="voice-transcript-bubble" className="mt-4 w-full max-w-sm px-4 py-3 bg-stone-950/80 backdrop-blur-md border border-teal-500/20 rounded-2xl text-center leading-relaxed font-sans shadow-lg shadow-teal-500/5 animate-none">
+               <div className="flex items-center justify-center space-x-1 mb-1">
+                 <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce" />
+                 <span className="text-[8px] font-bold text-teal-400 uppercase tracking-widest font-mono">
+                   {lang === 'pt' ? 'Mente Fala (Reconhecido)' : 'Mind Speak (Recognized)'}
+                 </span>
+               </div>
+               <p className="text-xs text-stone-200 font-medium font-sans">
+                 "{speechTranscript}"
+               </p>
+             </div>
+           )}
            
-           {/* Focus sentence indicator for TDAH (ADHD) or standard prompt feedback */}
+           {/* =========================================================
+                MOTOR ADAPTATIVO PCH - MULTI-SENSORY CLINICAL DASHBOARDS
+                ========================================================= */}
            {neuroMode === 'adhd' && (
              <div className="mt-4 p-2 bg-stone-950/60 border border-stone-800 rounded-xl text-center">
                <span className="text-[10px] text-amber-400 uppercase tracking-widest font-black block mb-1">FOCO DE HOJE</span>
+                <div className="hidden">Deprecated ADHD text</div>
                <p className="text-xs text-stone-300 leading-relaxed italic">"Deixe de lado o ruído externo. Apenas uma palavra por vez."</p>
              </div>
            )}
         </div>
 
         {/* Respirador Integrado (Grounding Breath Coach) - Displayed as top card in Anxiety Mode or togglable */}
-        {(neuroMode === 'anxiety' || neuroMode === 'inclusive') && (
+        {/* =========================================================
+              MOTOR ADAPTATIVO PCH - ACTIVE ACCESSIBILITY PORTFOLIO
+              ========================================================= */}
+         <div className="w-full max-w-md transition-all duration-1000 mt-4 mb-2">
+            {/* 1. NATURAL / STANDARD PROFILE */}
+            {neuroMode === 'natural' && (
+              <div className="w-full p-4 bg-stone-900/30 border border-stone-850/60 rounded-2xl flex flex-col items-center">
+                <div className="w-full flex justify-between items-center text-[10px] uppercase font-mono tracking-widest text-[#14b8a6] mb-1 animate-none">
+                  <span>Índice de Sintonia Interior (ISI)</span>
+                  <span className="font-bold text-[#14b8a6]">{(currentUser?.resonanceScore || 75) + 5}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-stone-950 rounded-full overflow-hidden mb-3 border border-stone-900 animate-none">
+                  <div 
+                    className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full transition-all duration-1000"
+                    style={{ width: `${Math.min(100, Math.max(30, (currentUser?.resonanceScore || 75) + 5))}%` }}
+                  />
+                </div>
+                <div className="flex items-center space-x-2 text-[9px] font-mono text-stone-400 self-start animate-none">
+                  <span>Metáfora Da Sincronia:</span>
+                  <span className="text-stone-300 font-bold">
+                    {((currentUser?.resonanceScore || 75) + 3) <= 20 ? '🌱 Semente' :
+                     ((currentUser?.resonanceScore || 75) + 3) <= 45 ? '🌿 Broto' :
+                     ((currentUser?.resonanceScore || 75) + 3) <= 70 ? '🌳 Árvore' :
+                     ((currentUser?.resonanceScore || 75) + 3) <= 90 ? '✨ Florescimento' : '🌌 Constelação Interior'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* 2. ADHD / TDAH - MINIMALIST SINGLE FOCUS MISSION */}
+            {neuroMode === 'adhd' && (
+              <div className="w-full p-4 bg-stone-900/40 border border-stone-850 rounded-2xl text-left font-sans shadow-lg animate-none">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h5 className="text-[10px] text-amber-400 font-black tracking-widest uppercase flex items-center gap-1">⚡ {lang === 'pt' ? 'Missão Única do Dia' : 'Today\'s Single Focus'}</h5>
+                    <p className="text-[9px] text-stone-400 mt-0.5">{lang === 'pt' ? 'Mente ágil, voo suave.' : 'Swift mind, smooth landing.'}</p>
+                  </div>
+                  <div className="flex items-center space-x-1 text-[9px] font-mono text-amber-400 bg-amber-950/20 px-2 py-0.5 rounded border border-amber-900/10">
+                    <span>Sementes de Foco:</span>
+                    <span className="font-bold">✦ ✦ ✦ ✧ ✧ (+3)</span>
+                  </div>
+                </div>
+                <div className="my-2 p-3.5 bg-stone-950/80 border border-stone-850/80 rounded-xl">
+                  <span className="text-[7.5px] font-mono font-bold tracking-widest text-amber-500 uppercase block mb-1">★ FOCO PRINCIPAL</span>
+                  <p className="text-[11.5px] text-stone-100 italic leading-relaxed">
+                    {lang === 'pt' 
+                      ? '“Conclua apenas um foco consciente hoje. Deixe o ruído externo passar. Siga o balanço.”' 
+                      : '“Complete exactly one mindful action today. Let external clutter drift away. Flow with ease.”'}
+                  </p>
+                </div>
+                <div className="flex justify-between items-center text-[8px] font-mono text-stone-500 pt-1">
+                  <span>⚠️ Sem menus excessivos ou poluição mental</span>
+                  <span>1 Atividade por Vez</span>
+                </div>
+              </div>
+            )}
+
+            {/* 3. AUTISM / AUTISMO - PREDICTABLE INTERACTION CARD */}
+            {neuroMode === 'autism' && (
+              <div className="w-full p-4 bg-[#0a1122]/40 border border-blue-900/35 rounded-2xl font-mono text-left shadow-lg animate-none">
+                <div className="flex justify-between items-center mb-3 border-b border-blue-950/50 pb-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm">🧩</span>
+                    <h5 className="text-[10px] text-blue-400 font-black tracking-widest uppercase">Estabilidade e Rotina</h5>
+                  </div>
+                  <span className="text-[8.5px] font-mono font-bold text-blue-400 bg-blue-950/40 px-2 py-0.5 rounded border border-blue-900/30">
+                    Constelação: ⭐️ ⭐️ ⭐️ ⭐️ ✧
+                  </span>
+                </div>
+                
+                {/* Fixed visual roadmap buttons */}
+                <div className="grid grid-cols-4 gap-1.5 mb-3">
+                  {(['talk', 'breath', 'register', 'rest'] as const).map(tab => {
+                    const isSelected = autismTab === tab;
+                    return (
+                      <button
+                        key={tab}
+                        onClick={() => setAutismTab(tab)}
+                        className="py-2 px-0.5 rounded-xl text-[9px] font-bold tracking-wider transition-all pointer-events-auto cursor-pointer text-center bg-stone-900/50 border border-stone-800 text-stone-400 hover:text-stone-200"
+                        style={{
+                          backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.25)' : '',
+                          borderColor: isSelected ? 'rgba(96, 165, 250, 0.5)' : '',
+                          color: isSelected ? '#dbeafe' : ''
+                        }}
+                      >
+                        {tab === 'talk' && (lang === 'pt' ? '🗣️ Conversar' : '🗣️ Talk')}
+                        {tab === 'breath' && (lang === 'pt' ? '🌬️ Respirar' : '🌬️ Breathe')}
+                        {tab === 'register' && (lang === 'pt' ? '📝 Diário' : '📝 Journal')}
+                        {tab === 'rest' && (lang === 'pt' ? '😴 Pausa' : '😴 Pause')}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="p-3 bg-stone-950/70 border border-blue-950/40 rounded-xl">
+                  <span className="text-[8px] font-mono font-semibold text-blue-500 uppercase tracking-widest block mb-1">
+                    {lang === 'pt' ? 'Instrução do Guardião' : 'Guardian Instructions'}
+                  </span>
+                  <p className="text-[10px] text-stone-300 leading-relaxed">
+                    {autismTab === 'talk' && (lang === 'pt' ? 'Fale ou digite no seu próprio ritmo. Sem pressões, sem surpresas de contexto.' : 'Speak or type at your own pace. Clean structure, no context jumps.')}
+                    {autismTab === 'breath' && (lang === 'pt' ? 'Acompanhe o respirador circular verde mais abaixo para se acalmar.' : 'Follow the green circular breathing coach below to align energy.')}
+                    {autismTab === 'register' && (lang === 'pt' ? 'Seus pensamentos estão salvos no Diário Interior de forma linear.' : 'Your inner thoughts are saved inside your Private Journal space.')}
+                    {autismTab === 'rest' && (lang === 'pt' ? 'Sessão estruturada segura concluída. Sinta a constelação amigável.' : 'Structured alignment completed. Rest key metrics inside.')}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 4. ANXIETY / ANSIEDADE - EXPLICIT WELCOME SANCTUARY */}
+            {neuroMode === 'anxiety' && (
+              <div className="w-full p-4 bg-[#021d15]/50 border border-emerald-900/30 rounded-2xl text-left font-sans shadow-lg animate-none">
+                <div className="flex items-center space-x-2 text-emerald-400 mb-2">
+                  <span className="text-sm">🗼</span>
+                  <h5 className="text-[10px] text-emerald-400 font-extrabold tracking-widest uppercase">Faroleiro da Calmaria</h5>
+                </div>
+                
+                <div className="p-3.5 bg-emerald-950/30 border border-emerald-900/35 rounded-xl text-center shadow-inner mb-2">
+                  <p className="text-xs font-serif font-bold text-emerald-250 animate-pulse leading-relaxed">
+                    {lang === 'pt' ? '“Você está seguro, protegido e totalmente amparado neste exato momento.”' : '“You are completely safe, protected, and fully grounded at this very moment.”'}
+                  </p>
+                </div>
+
+                <div className="flex justify-between items-center text-[8.5px] font-mono text-emerald-500/80 animate-none">
+                  <span>📍 Porto Seguro: Alinhado</span>
+                  <span>Nível de Estresse: Reduzindo</span>
+                </div>
+              </div>
+            )}
+
+            {/* 5. SENIORS / IDOSO - LARGE TYPOGRAPHY CLICKS */}
+            {neuroMode === 'senior' && (
+              <div className="w-full p-5 bg-[#141414] border border-stone-800 rounded-2xl text-left space-y-3 font-serif shadow-lg animate-none">
+                <div className="flex justify-between items-center border-b border-stone-855 pb-2 font-sans">
+                  <span className="text-xs font-serif font-bold text-stone-100 flex items-center gap-1.5">👵 {lang === 'pt' ? 'Guardião das Memórias' : 'Memory Keeper'}</span>
+                  <span className="text-[9px] font-mono text-stone-400">{lang === 'pt' ? 'Livro de Memórias' : 'History Log'}</span>
+                </div>
+                <p className="text-xs text-stone-300 leading-relaxed font-serif animate-none">
+                  {lang === 'pt' 
+                    ? 'Querido guardião, suas recordações de hoje são pedras de ouro no seu legado de sabedoria. O que mais te trouxe alegria ou gratidão nas últimas horas?' 
+                    : 'Dear keeper, your memories are golden steps on your path of wisdom. What brought you peace or gentle joy in the past hours?'}
+                </p>
+                <div className="grid grid-cols-1 gap-2 pt-1 font-serif">
+                  <button 
+                    onClick={() => {
+                        const diaryTab = document.getElementById('diary-tab-trigger');
+                        if (diaryTab) diaryTab.click();
+                    }}
+                    className="w-full py-2.5 px-4 bg-stone-900 hover:bg-stone-850 border border-stone-800 rounded-xl text-xs text-stone-200 text-center transition-colors shadow cursor-pointer pointer-events-auto"
+                  >
+                     {lang === 'pt' ? '✍️ Registrar Minha História' : '✍️ Write My Story'}
+                  </button>
+                  <button 
+                    onClick={() => {
+                        const diaryTab = document.getElementById('diary-tab-trigger');
+                        if (diaryTab) diaryTab.click();
+                    }}
+                    className="w-full py-2.5 px-4 bg-stone-900 hover:bg-stone-855 border border-stone-800 rounded-xl text-xs text-stone-200 text-center transition-colors shadow cursor-pointer pointer-events-auto"
+                  >
+                     {lang === 'pt' ? '🕊️ Compartilhar Gratidão' : '🕊️ Share Thankfulness'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 6. KIDS / INFANTIL - PASSARINHO FUN INTERACTIVE CHANGER */}
+            {neuroMode === 'child' && (
+              <div className="w-full p-4 bg-indigo-950/20 border border-indigo-900/35 rounded-2xl text-center space-y-3 font-sans shadow-lg animate-none">
+                <div className="flex justify-center items-center space-x-2">
+                  <span className="text-lg animate-none">🐥</span>
+                  <h5 className="text-[10px] text-indigo-400 font-extrabold tracking-widest uppercase">Passarinho PCH</h5>
+                </div>
+                <p className="text-[11px] text-indigo-200 font-medium font-sans">
+                  {lang === 'pt' ? 'Como você se sente hoje, amiguinho?' : 'How do you feel today, little friend?'}
+                </p>
+                
+                <div className="flex items-center justify-center space-x-1.5 animate-none">
+                  {[
+                    { e: '🐥', l: 'Feliz', h: 'Happy' },
+                    { e: '🧸', l: 'Cansado', h: 'Tired' },
+                    { e: '☁️', l: 'Sensível', h: 'Calm' },
+                    { e: '🌈', l: 'Mágico', h: 'Magic' }
+                  ].map((emo) => (
+                    <button
+                      key={emo.e}
+                      onClick={() => setChildFeeling(emo.e)}
+                      className="p-2 py-1 rounded-xl border text-base transition-all active:scale-95 flex flex-col items-center cursor-pointer pointer-events-auto"
+                      style={{
+                        backgroundColor: childFeeling === emo.e ? 'rgba(99, 102, 241, 0.25)' : 'rgba(28, 25, 23, 0.5)',
+                        borderColor: childFeeling === emo.e ? 'rgba(129, 140, 248, 0.4)' : 'rgba(44, 40, 36, 0.8)'
+                      }}
+                    >
+                      <span className="text-base">{emo.e}</span>
+                      <span className="text-[7.5px] mt-0.5 text-stone-400 font-mono">{lang === 'pt' ? emo.l : emo.h}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {childFeeling && (
+                  <div className="p-3 bg-stone-950/70 border border-indigo-955 rounded-xl text-left animate-fade-in text-[10px] text-stone-350 font-sans leading-relaxed">
+                    <span className="text-[8px] font-mono text-indigo-400 uppercase tracking-widest block mb-0.5">Voz do Amigo Passarinho</span>
+                    {lang === 'pt' 
+                      ? `O Passarinho PCH pousou pertinho de você porque viu que seu coração está ${childFeeling === '🐥' ? 'Feliz e Brilhante' : childFeeling === '🧸' ? 'um pouco Cansado' : childFeeling === '☁️' ? 'Calmo como uma Nuvem Suave' : 'Mágico e cheio de Imaginação'}. Ele canta uma poesia de carinho para você agora!`
+                      : `Our companion bird landed beside you because he saw you feel ${childFeeling === '🐥' ? 'Happy and Bright' : childFeeling === '🧸' ? 'Tired' : childFeeling === '☁️' ? 'Calm like a Soft Cloud' : 'Magical and full of Dreams'}. He whistles a sweet song of peace!`}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 7. DOWN / ASSISTIVE ARCO-IRIS VOICE CARD */}
+            {neuroMode === 'down' && (
+              <div className="w-full p-4 bg-teal-950/10 border border-teal-500/20 rounded-[2.5rem] text-center space-y-4 font-sans shadow-lg animate-none">
+                <div className="flex justify-center items-center space-x-2 text-teal-400 font-bold font-sans">
+                  <span className="text-xl animate-bounce">🌈</span>
+                  <span className="text-[11px] font-black tracking-widest uppercase text-teal-300">Amigo Arco-Íris</span>
+                </div>
+                
+                <h4 className="text-[12.5px] font-black text-stone-100 font-sans animate-none">
+                  {lang === 'pt' ? 'Clique no botão grande para me escutar dizer uma fofura!' : 'Click the big button to hear me talk directly to you!'}
+                </h4>
+
+                <div className="p-1 font-sans">
+                  <button 
+                    onClick={() => {
+                      const msg = lang === 'pt' 
+                        ? 'Você é uma pessoa maravilhosa e cheia de amor. Estou muito feliz que estamos conversando!' 
+                        : 'You are wonderful and full of love. I am so glad we are talking right now!';
+                      try {
+                        const utterance = new SpeechSynthesisUtterance(msg);
+                        utterance.lang = lang === 'pt' ? 'pt-BR' : 'en-US';
+                        window.speechSynthesis.speak(utterance);
+                      } catch (e) {
+                        console.error('Audio assist failure', e);
+                      }
+                    }}
+                    className="w-full py-4 bg-teal-500 hover:bg-teal-400 active:scale-95 text-stone-950 font-black text-xs uppercase tracking-widest rounded-full transition-all duration-300 pointer-events-auto cursor-pointer shadow-lg shadow-teal-500/25 border-b-2 border-teal-600"
+                  >
+                     🔊 {lang === 'pt' ? 'OUVIR MÚSICA DA VOZ' : 'LISTEN TO MY GUIDING VOICE'}
+                  </button>
+                </div>
+
+                <div className="flex justify-center space-x-1.5 text-[10px] font-bold text-teal-400/90 font-mono uppercase">
+                  <span>✦ Amigos virtuais: Ativo</span>
+                </div>
+              </div>
+            )}
+
+            {/* 8. DYSLEXIA / TRANSCRIPTS EASY PLAYER */}
+            {neuroMode === 'dyslexia' && (
+              <div className="w-full p-4 bg-stone-900/30 border border-stone-800 rounded-2xl text-left space-y-2 font-sans shadow-lg animate-none">
+                <div className="flex justify-between items-center text-amber-200 border-b border-stone-850 pb-1 flex-wrap gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-[0.15em] flex items-center gap-1">📚 {lang === 'pt' ? 'Facilitador de Leitura' : 'Reader Assist'}</span>
+                  <button 
+                    onClick={() => {
+                      const activeText = selectedFeeling ? (lang === 'pt' ? `Sinto agora: ${selectedFeeling}. Respire suavemente no balanço da voz.` : `I feel like: ${selectedFeeling}. Relax and follow the calm wind structure.`) : (lang === 'pt' ? 'Santuário de luz da hipnose poética cognitiva.' : 'Cognitive poetics hypnosis safe sanctuary.');
+                      try {
+                        const utterance = new SpeechSynthesisUtterance(activeText);
+                        utterance.lang = lang === 'pt' ? 'pt-BR' : 'en-US';
+                        window.speechSynthesis.speak(utterance);
+                      } catch (e) {
+                        console.error('Speech utility issue', e);
+                      }
+                    }}
+                    className="py-1 px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[8.5px] uppercase tracking-widest text-[#d97706] rounded font-mono cursor-pointer transition-all pointer-events-auto"
+                  >
+                    🔊 {lang === 'pt' ? 'Ouvir Texto Falado' : 'Play text voice audio'}
+                  </button>
+                </div>
+                <p className="text-[10px] text-stone-400 leading-relaxed tracking-[0.14em] font-sans font-medium">
+                  {lang === 'pt' 
+                    ? 'Oferecemos fonte com alta legibilidade espacial, espaçamento aumentado e leitura automatizada para facilitar seu descanso cognitivo.' 
+                    : 'We provide heavy letter spacing, musical cadence indicators, and instant reader utilities to optimize reading comfort.'}
+                </p>
+              </div>
+            )}
+
+            {/* 9. GIFTED / ALTAS HABILIDADES - COSMIC CONCEPT MATRIX */}
+            {neuroMode === 'gifted' && (
+              <div className="w-full p-4 bg-violet-950/10 border border-violet-900/35 rounded-2xl text-left space-y-2 font-mono shadow-lg animate-none">
+                <div className="flex justify-between items-center border-b border-violet-950 pb-1.5 flex-wrap gap-1">
+                  <span className="text-[10px] font-black tracking-widest uppercase text-violet-400 flex items-center gap-1 font-mono">🌌 {lang === 'pt' ? 'Explorador Intelectual' : 'Intellectual Depth MAP'}</span>
+                  <span className="text-[8.5px] font-mono text-violet-400 uppercase">Profundidade Ativa</span>
+                </div>
+                <span className="text-[8px] font-mono text-stone-500 block uppercase">CONCEITO DO DIA</span>
+                <p className="text-[11px] text-stone-300 italic leading-relaxed font-serif">
+                  {lang === 'pt' 
+                    ? '“Se a mente humana é um sistema de conexões poéticas, até onde vai sua habilidade de expandir a realidade interna?”' 
+                    : '“If the human mind is mapped through poetic resonances, how deep goes your ability to project and expand inner reality?”'}
+                </p>
+                <div className="pt-1.5 flex items-center space-x-1 font-mono text-[9px] text-stone-500">
+                  <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse animate-none animate-none" />
+                  <span>Cognitive Thread: Active Connections V3</span>
+                </div>
+              </div>
+            )}
+
+            {/* 10. BURNOUT - SUAVE PROGRESS DECOMPRESSION CONTROLS */}
+            {neuroMode === 'burnout' && (
+              <div className="w-full p-4 bg-[#161211]/80 border border-stone-850 rounded-2xl text-left space-y-3.5 font-sans shadow-lg animate-none">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] text-orange-400 font-black tracking-widest uppercase flex items-center gap-1 animate-none">🔥 {lang === 'pt' ? 'Carga de Cobrança Interna' : 'Internal Pressure Release'}</span>
+                  <span className="text-[9px] font-mono text-stone-500">Decompress Core Active</span>
+                </div>
+                
+                <div className="space-y-1.5 font-sans animate-none">
+                  <div className="flex justify-between items-center text-[8.5px] font-mono text-stone-300 mb-0.5">
+                    <span>Nível de Auto-Cobrança:</span>
+                    <span className="text-orange-400 font-bold">{burnoutEnergy}%</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="10" 
+                    max="100" 
+                    value={burnoutEnergy}
+                    onChange={(e) => setBurnoutEnergy(parseInt(e.target.value))}
+                    className="w-full accent-orange-500 cursor-pointer h-1.5 bg-stone-950 rounded-lg appearance-none pointer-events-auto"
+                  />
+                  <p className="text-[8.5px] text-stone-400 font-mono">
+                    {lang === 'pt' ? 'Arraste para reduzir manualmente o nível de urgência interna de hoje.' : 'Slide to manually reduce your level of internal pressure now.'}
+                  </p>
+                </div>
+
+                <div className="flex justify-between items-center text-[8.5px] font-mono text-stone-500 border-t border-stone-900 pt-2 animate-none">
+                  <span>Esgotamento: Reduzindo Passo</span>
+                  <span>Fogueiras: Sincronizadas</span>
+                </div>
+              </div>
+            )}
+
+            {/* 11. GRIEF / LUTO - SAFE MEMORIAL ROSE GARDEN */}
+            {neuroMode === 'grief' && (
+              <div className="w-full p-4 bg-rose-950/10 border border-rose-900/30 rounded-2xl text-left space-y-3 font-serif shadow-lg animate-none animate-none">
+                <div className="flex justify-between items-center border-b border-rose-950/20 pb-1.5">
+                  <span className="text-[10px] text-[#fda4af] font-black tracking-widest uppercase flex items-center gap-1 font-sans">🌹 {lang === 'pt' ? 'Santuário de Lembranças' : 'Sanctuary of Grace'}</span>
+                  <span className="text-[8.5px] font-mono text-rose-450 uppercase animate-none">Espaço Reservado</span>
+                </div>
+                <p className="text-xs text-rose-200 leading-relaxed font-serif italic text-center animate-none">
+                  {lang === 'pt' 
+                    ? '“Tudo o que amamos profundamente torna-se parte de quem somos.”' 
+                    : '“What we once enjoyed and deeply loved we can never lose, for it becomes a secure lock of our heart.”'}
+                </p>
+
+                <div className="flex items-center space-x-3 bg-stone-950/50 p-2.5 rounded-xl border border-rose-950/20 animate-none">
+                  <button 
+                    onClick={() => setGriefRemembrance(!griefRemembrance)}
+                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-rose-550/5 hover:bg-rose-500/10 border border-rose-500/20 text-rose-450 shrink-0 text-lg cursor-pointer pointer-events-auto animate-none"
+                  >
+                    {griefRemembrance ? '🕯️' : '🌸'}
+                  </button>
+                  <p className="text-[9.5px] text-stone-400 leading-snug font-sans font-medium">
+                    {griefRemembrance 
+                      ? (lang === 'pt' ? 'Vela virtual acesa em memória e honra eterna. Respire fundo.' : 'Virtual candle lit in timeless honor. Take a long, gentle breath.')
+                      : (lang === 'pt' ? 'Clique no botão ao lado para acender uma vela virtual do amor.' : 'Click the icon to light a secure virtual memory candle.')}
+                  </p>
+                </div>
+              </div>
+            )}
+         </div>
+
+         {(neuroMode === 'anxiety' || neuroMode === 'inclusive') && (
           <div className={`w-full max-w-md p-6 rounded-[2rem] border text-center transition-all duration-1000 flex flex-col items-center relative overflow-hidden bg-gradient-to-br from-emerald-950/10 to-teal-950/10 ${accentBorder}`}>
              <span className="text-[8px] text-emerald-400 uppercase tracking-[0.3em] font-black mb-3 select-none">Exercício Respiratório de Aterramento</span>
              
@@ -1387,6 +2447,74 @@ const SessionManager: React.FC<SessionManagerProps> = ({
 
       {/* Main Bottom Control Deck with clean modular alignments */}
       <div className={`flex flex-col items-center space-y-4 w-full pb-3 md:pb-6 z-30 transition-all duration-[2000ms] ${isRestMode ? 'opacity-40 hover:opacity-100' : 'opacity-100'}`}>
+        
+        {/* Floating Ambient Sound Controller */}
+        <div className="flex flex-col sm:flex-row items-center gap-2.5 p-2 px-4 bg-stone-900/40 backdrop-blur-xl border border-stone-850/80 rounded-[1.75rem] sm:rounded-full w-[95vw] sm:w-[90vw] max-w-xl shadow-lg transition-all duration-300 hover:border-teal-500/20">
+          <div className="flex items-center space-x-1.5 border-r border-stone-850/80 pr-3.5 self-start sm:self-center">
+            <Volume2 className="w-3.5 h-3.5 text-teal-400" />
+            <span className="text-[8.5px] font-mono font-bold tracking-widest text-stone-400">
+              {lang === 'pt' ? 'AMBIENTE' : 'AMBIENT'}
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-1.5 flex-1 overflow-x-auto no-scrollbar py-0.5 w-full">
+            {(['off', 'rain', 'forest', 'waves', 'deepspace'] as const).map(soundType => {
+              const isActive = ambientSound === soundType;
+              let emoji = '🔇';
+              if (soundType === 'rain') emoji = '🌧️';
+              if (soundType === 'forest') emoji = '🌲';
+              if (soundType === 'waves') emoji = '🌊';
+              if (soundType === 'deepspace') emoji = '🌌';
+
+              return (
+                <button
+                  key={soundType}
+                  onClick={() => {
+                    setAmbientSound(soundType);
+                    localStorage.setItem('pch_ambient_sound', soundType);
+                    triggerVoiceAlert(lang === 'pt' ? `Ambiente: ${soundType === 'off' ? 'Silêncio' : soundType === 'rain' ? 'Chuva' : soundType === 'forest' ? 'Mata' : soundType === 'waves' ? 'Ondas' : 'Espaço'}` : `Atmosphere: ${soundType}`);
+                  }}
+                  className={`px-2.5 py-1 rounded-full text-[8.1px] font-bold uppercase tracking-widest font-mono transition-all flex items-center space-x-1.5 shrink-0 ${
+                    isActive 
+                      ? 'bg-teal-500/10 text-teal-300 border border-teal-500/30' 
+                      : 'text-stone-500 hover:text-stone-300 border border-transparent hover:bg-stone-850/10'
+                  }`}
+                >
+                  <span>{emoji}</span>
+                  <span>
+                    {soundType === 'off' && (lang === 'pt' ? 'Silêncio' : 'Off')}
+                    {soundType === 'rain' && (lang === 'pt' ? 'Chuva' : 'Rain')}
+                    {soundType === 'forest' && (lang === 'pt' ? 'Mata' : 'Forest')}
+                    {soundType === 'waves' && (lang === 'pt' ? 'Ondas' : 'Waves')}
+                    {soundType === 'deepspace' && (lang === 'pt' ? 'Espaço' : 'Space')}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {ambientSound !== 'off' && (
+            <div className="flex items-center space-x-2 w-full sm:w-[120px] border-t sm:border-t-0 sm:border-l border-stone-850/80 pt-1.5 sm:pt-0 sm:pl-3 mr-1">
+              <span className="text-[8px] font-mono text-stone-500 font-semibold whitespace-nowrap min-w-[24px]">
+                {Math.round(ambientVolume * 100)}%
+              </span>
+              <input 
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={ambientVolume}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  setAmbientVolume(v);
+                  localStorage.setItem('pch_ambient_volume', v.toString());
+                }}
+                className="w-full h-1 bg-stone-800 accent-teal-500 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+          )}
+        </div>
+
         <div className="flex items-center justify-between w-[95vw] sm:w-[90vw] max-w-xl p-3 bg-stone-900/60 backdrop-blur-xl border border-stone-800 rounded-full shadow-2xl">
             
             {/* Left Buttons Group */}
@@ -1422,7 +2550,18 @@ const SessionManager: React.FC<SessionManagerProps> = ({
             
             {/* Main Central Mic Action */}
             <button 
-                onClick={() => setIsMicMuted(!isMicMuted)}
+                onClick={() => {
+                  const newState = !isMicMuted;
+                  setIsMicMuted(newState);
+                  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                    navigator.vibrate(newState ? [30] : [50, 40, 50]);
+                  }
+                  if (!newState) {
+                    triggerVoiceAlert(lang === 'pt' ? 'Microfone Ativado' : 'Microphone Activated');
+                  } else {
+                    triggerVoiceAlert(lang === 'pt' ? 'Microfone Mute / Silenciado' : 'Microphone Silenced');
+                  }
+                }}
                 className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
                   isMicMuted 
                   ? 'bg-red-950/20 border border-red-900/30 text-red-500 hover:bg-red-950/40' 
@@ -1443,10 +2582,13 @@ const SessionManager: React.FC<SessionManagerProps> = ({
                </button>
 
                <button 
-                 onClick={onDisconnect} 
-                 className="px-4 py-2.5 bg-stone-950/40 hover:bg-red-950/10 hover:border-red-900/30 border border-transparent text-stone-400 hover:text-red-400 transition-colors text-[9px] uppercase tracking-widest font-black rounded-full"
+                 onClick={handlePreDisconnect} 
+                 disabled={isSavingSnapshot}
+                 className="px-4 py-2.5 bg-stone-950/40 hover:bg-red-950/10 hover:border-red-900/30 border border-transparent text-stone-400 hover:text-red-400 transition-colors text-[9px] uppercase tracking-widest font-black rounded-full disabled:opacity-50"
                >
-                 Sair
+                 {isSavingSnapshot 
+                   ? (lang === 'pt' ? 'Processando...' : 'Saving Snapshot...')
+                   : (lang === 'pt' ? 'Sair' : 'Exit')}
                </button>
             </div>
         </div>
@@ -1469,6 +2611,41 @@ const SessionManager: React.FC<SessionManagerProps> = ({
 
               <div className="space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar pr-1">
                  
+                 {/* Motor Adaptativo PCH Engine System Stats */}
+                 <div className="p-4 bg-teal-950/10 border border-teal-900/30 rounded-xl flex flex-col space-y-3 font-sans text-left">
+                    <div className="flex items-center space-x-2">
+                       <Activity className="w-4 h-4 text-teal-400 animate-pulse" />
+                       <span className="text-xs font-bold text-teal-300 uppercase tracking-widest">{lang === 'pt' ? 'Motor Adaptativo' : 'PCH Adaptive Engine'}</span>
+                       <div className="bg-teal-500/10 border border-teal-500/30 px-1.5 py-0.5 rounded text-[8px] text-teal-400 font-mono tracking-wide uppercase">
+                         {lang === 'pt' ? 'Ativo' : 'Active'}
+                       </div>
+                    </div>
+                    <p className="text-[10px] text-stone-400 leading-relaxed font-light">
+                       {lang === 'pt' 
+                          ? 'Mapeia seu neurotipo e sentimento ativo para sintonizar a interface, relaxamento, e cadência de voz de Dr. Evaldo.' 
+                          : 'Maps your active neurotype and feelings to perfectly synchronize interface layers, colors, and Dr. Evaldo\'s vocal delivery.'}
+                    </p>
+                    
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                       <div className="p-2 bg-stone-950 border border-stone-900 rounded-lg flex flex-col">
+                          <span className="text-[8px] text-stone-500 uppercase tracking-wider">{lang === 'pt' ? 'Cadência de Voz' : 'Vocal Spacing'}</span>
+                          <span className="text-xs text-stone-200 font-mono font-bold">{adaptivoConfig.voiceRate.toFixed(2)}x</span>
+                       </div>
+                       <div className="p-2 bg-stone-950 border border-stone-900 rounded-lg flex flex-col">
+                          <span className="text-[8px] text-stone-500 uppercase tracking-wider">{lang === 'pt' ? 'Tom de Voz' : 'Vocal Pitch'}</span>
+                          <span className="text-xs text-stone-200 font-mono font-bold">{adaptivoConfig.voicePitch.toFixed(2)}x</span>
+                       </div>
+                       <div className="p-2 bg-stone-950 border border-stone-900 rounded-lg flex flex-col">
+                          <span className="text-[8px] text-stone-500 uppercase tracking-wider">{lang === 'pt' ? 'Atmosfera Ativa' : 'Active Vibe'}</span>
+                          <span className="text-xs text-teal-400 font-mono uppercase font-bold text-ellipsis overflow-hidden whitespace-nowrap">{adaptivoConfig.visualAtmosphere}</span>
+                       </div>
+                       <div className="p-2 bg-stone-950 border border-stone-900 rounded-lg flex flex-col">
+                          <span className="text-[8px] text-stone-500 uppercase tracking-wider">{lang === 'pt' ? 'Acessibilidade' : 'Accessibility'}</span>
+                          <span className="text-xs text-stone-200 font-mono font-bold">{adaptivoConfig.accessibilityOptimized ? 'ON' : 'OFF'}</span>
+                       </div>
+                    </div>
+                 </div>
+
                  {/* Modo Repouso section */}
                  <div className="p-4 bg-stone-900/30 border border-stone-800 rounded-xl flex flex-col space-y-2">
                     <div className="flex justify-between items-center">
@@ -1502,8 +2679,8 @@ const SessionManager: React.FC<SessionManagerProps> = ({
                     </div>
                     
                     {/* Select Atmosphere */}
-                    <div className="grid grid-cols-4 gap-1.5 p-1 bg-stone-950 border border-stone-900 rounded-lg">
-                       {(['off', 'rain', 'forest', 'deepspace'] as const).map(soundType => (
+                    <div className="grid grid-cols-5 gap-1.5 p-1 bg-stone-950 border border-stone-900 rounded-lg">
+                       {(['off', 'rain', 'forest', 'waves', 'deepspace'] as const).map(soundType => (
                           <button
                              key={soundType}
                              onClick={() => {
@@ -1519,7 +2696,8 @@ const SessionManager: React.FC<SessionManagerProps> = ({
                              {soundType === 'off' && (lang === 'pt' ? 'Desl.' : 'Off')}
                              {soundType === 'rain' && (lang === 'pt' ? 'Chuva' : 'Rain')}
                              {soundType === 'forest' && (lang === 'pt' ? 'Mata' : 'Forest')}
-                             {soundType === 'deepspace' && (lang === 'pt' ? 'Espaço' : 'Space')}
+                             {soundType === 'waves' && (lang === 'pt' ? 'Ondas' : 'Waves')}
+                              {soundType === 'deepspace' && (lang === 'pt' ? 'Espaço' : 'Space')}
                           </button>
                        ))}
                     </div>
@@ -1569,44 +2747,137 @@ const SessionManager: React.FC<SessionManagerProps> = ({
                  </div>
 
                  {/* Ajustes de Voz (Pitch & Rate) */}
-                 <div className="p-4 bg-stone-900/30 border border-stone-800 rounded-xl flex flex-col space-y-3.5">
-                    <span className="text-xs font-bold text-stone-200 uppercase tracking-widest">{lang === 'pt' ? 'Opções de Voz da IA' : 'AI Speech Options'}</span>
-                    
-                    {/* Voice Select */}
-                    <div className="flex flex-col space-y-2">
-                       <span className="text-[10px] text-stone-500 uppercase tracking-widest">{lang === 'pt' ? 'Voz do Guia' : 'Guide Voice'}</span>
-                       <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-950 border border-stone-900 rounded-xl">
-                          {(['essencia', 'esperanca', 'serenidade', 'infantil', 'sabedoria'] as const).map((vKey) => (
-                             <button
-                                key={vKey}
-                                onClick={() => setVoice(vKey)}
-                                className={`px-2 py-1.5 text-[8px] font-mono uppercase tracking-widest rounded-lg border transition-all ${
-                                   voice === vKey 
-                                   ? 'bg-teal-950/30 border-teal-500/40 text-teal-300 font-bold' 
-                                   : 'bg-transparent border-transparent text-stone-500 hover:text-stone-300'
-                                }`}
-                             >
-                                {text?.settings?.[`voice_${vKey}`] || vKey}
-                             </button>
-                          ))}
-                       </div>
+                 <div className="p-4 bg-stone-900/30 border border-stone-800 rounded-xl flex flex-col space-y-4 font-sans text-left">
+                    <div className="flex flex-col space-y-1">
+                       <span className="text-xs font-black text-stone-200 uppercase tracking-widest">{lang === 'pt' ? 'Perfis de Voz (Web Synthesis)' : 'Voice Personas (Web Synthesis)'}</span>
+                       <span className="text-[8.5px] text-stone-500 mb-1 leading-relaxed">
+                          {lang === 'pt' ? 'Selecione uma persona vocal ou configure um tom exclusivo personalizado.' : 'Choose a synthetic vocal identity or calibrate a custom vocal footprint.'}
+                       </span>
                     </div>
 
-                    {/* Speed Rate Slider */}
-                    <div className="flex flex-col space-y-1">
-                       <div className="flex justify-between items-center text-[9px] text-stone-500 uppercase tracking-widest">
-                          <span>{lang === 'pt' ? 'Velocidade' : 'Speed'}</span>
-                          <span>{speechRate.toFixed(1)}x</span>
+                    {/* Voice Persona Presets Grid */}
+                    <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-stone-950 border border-stone-900 rounded-xl">
+                       {(['natural', 'elder', 'supporter', 'poet', 'playful', 'custom'] as const).map((persona) => {
+                          const label = {
+                             natural: lang === 'pt' ? '🍃 Padrão' : '🍃 Default',
+                             elder: lang === 'pt' ? '👵 Sábio' : '👵 Wise',
+                             supporter: lang === 'pt' ? '✨ Acolhedor' : '✨ Soft',
+                             poet: lang === 'pt' ? '🌹 Poeta' : '🌹 Poet',
+                             playful: lang === 'pt' ? '🎈 Brincalhão' : '🎈 Playful',
+                             custom: lang === 'pt' ? '⚙️ Ajustes' : '⚙️ Custom'
+                          }[persona];
+                          return (
+                             <button
+                                key={persona}
+                                onClick={() => setVoicePersona(persona)}
+                                className={`px-2 py-2 text-[9px] font-mono uppercase tracking-wider rounded-lg border transition-all ${
+                                   voicePersona === persona 
+                                   ? 'bg-gradient-to-r from-teal-950/40 to-teal-900/30 border-teal-500/50 text-teal-300 font-bold shadow-sm shadow-teal-500/5' 
+                                   : 'bg-transparent border-transparent text-stone-500 hover:text-stone-300 hover:bg-stone-900/20'
+                                }`}
+                             >
+                                {label}
+                             </button>
+                          );
+                       })}
+                    </div>
+
+                    {/* Dynamic Options depending on customization */}
+                    <div className="flex flex-col space-y-3.5 pt-1 border-t border-stone-900">
+                       {/* Selector of Active Accent Vocal */}
+                       <div className="flex flex-col space-y-1.5">
+                          <div className="flex justify-between items-center">
+                             <span className="text-[9px] text-stone-400 uppercase tracking-widest font-bold">
+                                {lang === 'pt' ? 'Sotaque / Accent Vocal' : 'Vocal Accent Profile'}
+                             </span>
+                             {selectedVoiceURI && (
+                                <button 
+                                   onClick={() => {
+                                      setSelectedVoiceURI('');
+                                      setVoicePersona('natural');
+                                   }}
+                                   className="text-[8px] text-teal-400/80 hover:text-teal-300 underline font-mono"
+                                >
+                                   {lang === 'pt' ? 'Reset' : 'Reset'}
+                                </button>
+                             )}
+                          </div>
+                          {browserVoices.length === 0 ? (
+                             <div className="text-[9px] text-stone-600 italic">
+                                {lang === 'pt' ? 'Carregando sotaques do navegador...' : 'Loading browser voice list...'}
+                             </div>
+                          ) : (
+                             <select
+                                value={selectedVoiceURI}
+                                onChange={(e) => {
+                                   setSelectedVoiceURI(e.target.value);
+                                   setVoicePersona('custom');
+                                }}
+                                className="w-full text-[10px] font-mono bg-stone-950 text-stone-200 border border-stone-850 p-2 rounded-xl focus:border-teal-500/40 focus:outline-none cursor-pointer"
+                             >
+                                <option value="">
+                                   {lang === 'pt' ? '🍃 Automático (Voz Padrão do Sistema)' : '🍃 Automatic (System Default Voice)'}
+                                </option>
+                                {browserVoices
+                                   .filter(v => v.lang.startsWith(lang === 'pt' ? 'pt' : 'en'))
+                                   .map((v, idx) => (
+                                      <option key={idx} value={v.voiceURI}>
+                                         {v.name} ({v.lang})
+                                      </option>
+                                   ))
+                                }
+                                {/* Other languages as fallback */}
+                                {browserVoices
+                                   .filter(v => !v.lang.startsWith(lang === 'pt' ? 'pt' : 'en'))
+                                   .map((v, idx) => (
+                                      <option key={`fallback-${idx}`} value={v.voiceURI}>
+                                         {v.name} ({v.lang})
+                                      </option>
+                                   ))
+                                }
+                             </select>
+                          )}
                        </div>
-                       <input 
-                          type="range"
-                          min="0.6"
-                          max="1.4"
-                          step="0.1"
-                          value={speechRate}
-                          onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
-                          className="w-full accent-teal-500 h-1.5 rounded-lg border-transparent appearance-none bg-stone-850 cursor-pointer"
-                       />
+
+                       {/* Speed Rate Slider */}
+                       <div className="flex flex-col space-y-1">
+                          <div className="flex justify-between items-center text-[9px] text-stone-500 uppercase tracking-widest">
+                             <span>{lang === 'pt' ? 'Velocidade Vocal' : 'Vocal Speed'}</span>
+                             <span className="text-teal-400 font-mono font-bold">{speechRate.toFixed(2)}x</span>
+                          </div>
+                          <input 
+                             type="range"
+                             min="0.5"
+                             max="1.5"
+                             step="0.05"
+                             value={speechRate}
+                             onChange={(e) => {
+                                setSpeechRate(parseFloat(e.target.value));
+                                setVoicePersona('custom');
+                             }}
+                             className="w-full accent-teal-500 h-1.5 bg-stone-850 rounded appearance-none cursor-pointer"
+                          />
+                       </div>
+
+                       {/* Pitch Slider */}
+                       <div className="flex flex-col space-y-1">
+                          <div className="flex justify-between items-center text-[9px] text-stone-500 uppercase tracking-widest">
+                             <span>{lang === 'pt' ? 'Frequência de Tom' : 'Vocal Pitch'}</span>
+                             <span className="text-teal-400 font-mono font-bold">{voicePitch.toFixed(2)}x</span>
+                          </div>
+                          <input 
+                             type="range"
+                             min="0.5"
+                             max="1.5"
+                             step="0.05"
+                             value={voicePitch}
+                             onChange={(e) => {
+                                setVoicePitch(parseFloat(e.target.value));
+                                setVoicePersona('custom');
+                             }}
+                             className="w-full accent-teal-500 h-1.5 bg-stone-850 rounded appearance-none cursor-pointer"
+                          />
+                       </div>
                     </div>
                  </div>
 
@@ -1658,56 +2929,114 @@ const SessionManager: React.FC<SessionManagerProps> = ({
         </div>
       )}
 
-      {/* Confetti Animation Layer */}
+      {/* Confetti & Cosmic Celebration Animation Layer */}
       {showCelebration && (
-        <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
-          <style>{`
-            @keyframes fall {
-              0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
-              10% { opacity: 1; }
-              90% { opacity: 1; }
-              100% { transform: translateY(105vh) rotate(360deg); opacity: 0; }
-            }
-            .animate-fall {
-              animation: fall linear infinite;
-            }
-          `}</style>
-          {[...Array(50)].map((_, i) => {
-            const delay = Math.random() * 5;
-            const left = Math.random() * 100;
-            const size = Math.random() * 6 + 4;
-            const color = ['bg-yellow-400', 'bg-teal-400', 'bg-emerald-400', 'bg-amber-400', 'bg-rose-400'][Math.floor(Math.random() * 5)];
-            return (
-              <div 
-                key={i}
-                className={`absolute rounded-full filter blur-[1px] animate-fall ${color}`}
-                style={{
-                  left: `${left}%`,
-                  top: `-20px`,
-                  width: `${size}px`,
-                  height: `${size}px`,
-                  animationDelay: `${delay}s`,
-                  animationDuration: `${Math.random() * 5 + 3}s`,
-                  opacity: Math.random() * 0.8 + 0.2
-                }}
-              />
-            );
-          })}
-          <div className="absolute inset-x-8 top-1/4 bg-teal-950/40 backdrop-blur-md border border-teal-500/20 p-6 rounded-[2rem] text-center shadow-2xl z-50 max-w-sm mx-auto flex flex-col items-center">
-             <button
-                onClick={() => setShowCelebration(false)}
-                className="absolute top-3 right-3 text-teal-400/50 hover:text-teal-400 p-1 pointer-events-auto"
-             >
-                <X className="w-4 h-4" />
-             </button>
-             <Award className="w-12 h-12 text-yellow-400 animate-bounce mb-2" />
-             <h3 className="font-serif text-lg tracking-widest text-teal-300 uppercase select-none">{lang === 'pt' ? 'Mente Expandida!' : 'Consciousness Aligned!'}</h3>
-             <p className="text-[10px] text-stone-300 font-mono mt-1.5 leading-relaxed">
-                {lang === 'pt' 
-                   ? 'Missão diária de 3 conversas concluída com sucesso!'
-                   : 'Daily mission of 3 sessions has been beautifully synchronized!'}
-             </p>
-          </div>
+        <div className="absolute inset-0 bg-stone-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-hidden">
+          {/* Cosmic upward floating stars */}
+          {[...Array(15)].map((_, i) => (
+            <Particle key={i} delay={i * 0.3} x={Math.random() * 90 + 5} />
+          ))}
+
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="w-full max-w-sm bg-stone-900/40 border border-teal-500/20 rounded-[2.5rem] p-8 text-center relative shadow-2xl shadow-teal-500/5 flex flex-col items-center select-none"
+          >
+            {/* Pulsing Backlight */}
+            <div className="absolute inset-0 bg-gradient-to-b from-teal-500/5 to-transparent rounded-[2.5rem] pointer-events-none" />
+
+            {/* Rotating Sacred Geometry Mandalas */}
+            <div className="relative mb-6">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                className="w-24 h-24 rounded-full border border-teal-500/30 flex items-center justify-center p-1"
+              >
+                <div className="w-full h-full rounded-full border-2 border-dashed border-teal-400/20" />
+              </motion.div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                {celebrationType === 'level' ? (
+                  <motion.div 
+                    initial={{ rotate: -180, scale: 0 }}
+                    animate={{ rotate: 0, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 10 }}
+                    className="w-14 h-14 bg-teal-500/15 border border-teal-500/40 rounded-full flex items-center justify-center shadow-lg shadow-teal-500/10 text-teal-300 font-mono text-xl font-bold"
+                  >
+                    Lvl {unlockedItemName}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ rotate: 180, scale: 0 }}
+                    animate={{ rotate: 0, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 10 }}
+                  >
+                    <Award className="w-12 h-12 text-teal-400 drop-shadow-[0_0_10px_rgba(20,184,166,0.5)]" />
+                  </motion.div>
+                )}
+              </div>
+            </div>
+
+            {/* Typography Heading */}
+            <motion.h3 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="text-xs uppercase tracking-[0.25em] text-teal-400 font-bold font-mono"
+            >
+              {lang === 'pt' ? 'Sincronização Completa' : 'Synchronization Complete'}
+            </motion.h3>
+
+            <motion.h4
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-xl font-light font-serif text-stone-200 mt-2 tracking-wide"
+            >
+              {celebrationType === 'level' 
+                ? (lang === 'pt' ? 'Novo Nível Conquistado!' : 'New Level Earned!') 
+                : (lang === 'pt' ? 'Medalha Desbloqueada!' : 'Badge Unlocked!')}
+            </motion.h4>
+
+            {/* Badge or Level name details with ambient feedback */}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.5, type: 'spring' }}
+              className="mt-4 px-4 py-2 bg-teal-500/5 border border-teal-500/10 rounded-full inline-block"
+            >
+              <span className="text-stone-300 text-xs font-mono font-medium">
+                {celebrationType === 'level' 
+                  ? (lang === 'pt' ? `Nível ${unlockedItemName} atingido` : `Level ${unlockedItemName} reached`)
+                  : unlockedItemName}
+              </span>
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="text-[10px] text-stone-500 font-mono mt-4 leading-relaxed max-w-xs"
+            >
+              {lang === 'pt' 
+                ? 'Sua ressonância cresce a cada interação. Suas conquistas estão guardadas e integradas ao seu santuário interno.'
+                : 'Your resonance expands with every interaction. Your milestones are preserved and integrated into your inner sanctuary.'}
+            </motion.p>
+
+            {/* Interactive portal exit to main controller */}
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              onClick={() => {
+                setShowCelebration(false);
+                onDisconnect();
+              }}
+              className="mt-8 px-8 py-3 bg-teal-500 hover:bg-teal-400 hover:scale-105 active:scale-95 text-stone-950 font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-teal-500/20 cursor-pointer pointer-events-auto"
+            >
+              {lang === 'pt' ? 'Integrar ao Painel' : 'Integrate to Panel'}
+            </motion.button>
+          </motion.div>
         </div>
       )}
 

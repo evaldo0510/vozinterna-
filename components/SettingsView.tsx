@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Language, NeurodivergentMode } from '../types';
-import { Sliders, Sun, Moon, Volume2, Globe, Sparkles, LogOut, Check, HelpCircle } from 'lucide-react';
+import { Sliders, Sun, Moon, Volume2, Globe, Sparkles, LogOut, Check, HelpCircle, Download } from 'lucide-react';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 
 interface SettingsViewProps {
@@ -15,6 +15,98 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({ user, lang, onSetLang, onLogout }) => {
   const [savingLoading, setSavingLoading] = useState(false);
   const [bgSound, setBgSound] = useState(() => localStorage.getItem('pch_ambient_sound') || 'off');
+  const [journalEntries, setJournalEntries] = useState<any[]>([]);
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const colRef = collection(db, 'users', user.id, 'journals');
+      unsubscribe = onSnapshot(colRef, (snapshot) => {
+        const fetched: any[] = [];
+        snapshot.forEach((snapDoc) => {
+          const d = snapDoc.data();
+          fetched.push({
+            id: snapDoc.id,
+            date: d.date,
+            text: d.text,
+            moodTags: d.moodTags || [],
+            quickNote: d.quickNote || ''
+          });
+        });
+        fetched.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setJournalEntries(fetched);
+      }, (err) => {
+        console.error("Failed to sync journals for settings:", err);
+      });
+    } else {
+      // Offline fallback
+      try {
+        const stored = localStorage.getItem('pch_journal_entries');
+        if (stored) {
+          setJournalEntries(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error("Failed to load local journal entries", e);
+      }
+    }
+    return () => unsubscribe();
+  }, [user.id]);
+
+  const downloadJSON = () => {
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        points: user.points || 0,
+        level: user.level || 1,
+        resonanceScore: user.resonanceScore || 0
+      },
+      resonanceHistory: user.resonanceHistory || [],
+      journalEntries: journalEntries
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `inner_voice_resonance_data_${user.id}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const downloadCSV = () => {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Date,Type,Value/Score,Text/Notes,Mood Tags\r\n";
+
+    const rHistory = user.resonanceHistory || [];
+    rHistory.forEach(item => {
+      const escapedDate = `"${item.date.replace(/"/g, '""')}"`;
+      const escapedType = `"Resonance Score"`;
+      const escapedValue = `"${item.score}"`;
+      csvContent += `${escapedDate},${escapedType},${escapedValue},"",""\r\n`;
+    });
+
+    journalEntries.forEach(entry => {
+      const rawDate = entry.date ? new Date(entry.date).toISOString() : new Date().toISOString();
+      const escapedDate = `"${rawDate.replace(/"/g, '""')}"`;
+      const escapedType = `"Journal Entry"`;
+      const valuePlaceholder = `""`;
+      const escapedText = `"${(entry.quickNote || entry.text || "").replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
+      const escapedMoods = `"${(entry.moodTags || []).join('; ')}"`;
+      csvContent += `${escapedDate},${escapedType},${valuePlaceholder},${escapedText},${escapedMoods}\r\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", encodedUri);
+    downloadAnchor.setAttribute("download", `inner_voice_resonance_data_${user.id}.csv`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
 
   if (!user) return null;
 
@@ -226,6 +318,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ user, lang, onSetLan
               {sound.label}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Data Portability / Export History */}
+      <div className="bg-stone-900/40 border border-stone-850/60 p-5 rounded-3xl space-y-4 backdrop-blur-md">
+        <h4 className="text-[9px] uppercase text-stone-500 tracking-[0.2em] font-bold">
+          {lang === 'pt' ? 'Exportar Dados & Portabilidade' : 'Data Portability & Export'}
+        </h4>
+        
+        <p className="text-[9px] text-stone-500 leading-normal -mt-1">
+          {lang === 'pt' 
+            ? 'Faça o download completo das suas métricas de ressonância e registros de diário para backup ou revisão externa.'
+            : 'Download a full summary of your resonance tuning scores and personal journal logs for records or backup.'}
+        </p>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={downloadJSON}
+            className="py-2.5 px-3 bg-stone-950 hover:bg-teal-500/10 border border-stone-850/65 hover:border-teal-500/30 text-stone-400 hover:text-teal-400 text-[9px] font-mono uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center space-x-1.5 active:scale-[0.98]"
+            title={lang === 'pt' ? 'Exportar em JSON' : 'Export as JSON'}
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>JSON</span>
+          </button>
+          
+          <button
+            onClick={downloadCSV}
+            className="py-2.5 px-3 bg-stone-950 hover:bg-teal-500/10 border border-stone-850/65 hover:border-teal-500/30 text-stone-400 hover:text-teal-400 text-[9px] font-mono uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center space-x-1.5 active:scale-[0.98]"
+            title={lang === 'pt' ? 'Exportar em CSV' : 'Export as CSV'}
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>CSV</span>
+          </button>
         </div>
       </div>
 

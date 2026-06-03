@@ -10,7 +10,7 @@ export enum SessionStatus {
 export type Language = 'en' | 'pt' | 'es' | 'fr' | 'de' | 'it' | 'ja' | 'ru' | 'hi';
 export type UserPlan = 'visitor' | 'member' | 'guardian';
 
-export type NeurodivergentMode = 'natural' | 'adhd' | 'autism' | 'dyslexia' | 'anxiety' | 'inclusive';
+export type NeurodivergentMode = 'natural' | 'adhd' | 'autism' | 'dyslexia' | 'anxiety' | 'inclusive' | 'down' | 'senior' | 'child' | 'gifted' | 'burnout' | 'grief';
 
 export interface GardenPlant {
   id: string;
@@ -71,3 +71,50 @@ export interface GamificationEvent {
   type: 'points' | 'badge' | 'mission';
   value: string | number;
 }
+
+// Inner Garden structure
+export interface InnerGarden {
+  id: string;
+  userId: string;
+  plants: GardenPlant[];
+  waterPoints: number;
+  lastUpdated: string;
+}
+
+// Inner Harmony Index (ISI) / Índice de Sintonia Interior
+export interface InnerHarmonyIndex {
+  id: string;
+  userId: string;
+  score: number; // 0 to 100 index
+  date: string; // ISO String
+  emotionalState: string;
+  neurotype: NeurodivergentMode;
+  resonanceMetrics: {
+    attention: number;
+    calm: number;
+    connection: number;
+  };
+}
+
+// Diary Logs / Registros de Diário
+export interface DiaryLog {
+  id: string;
+  userId: string;
+  date: string; // ISO String
+  feeling: string;
+  note: string;
+  neuroMode: NeurodivergentMode;
+  isiScore: number;
+  poeticPrompt?: string;
+}
+
+// Accessibility Settings / Configurações de Acessibilidade
+export interface AccessibilitySettings {
+  highContrast: boolean;
+  largeFont: boolean;
+  simplifiedLanguage: boolean;
+  screenReaderOptimized: boolean;
+  subtitlesEnabled: boolean;
+  inputMethod: 'voice' | 'text' | 'hybrid';
+}
+

@@ -73,12 +73,18 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
 
   const translateNeuro = (mode: string | undefined) => {
     switch(mode) {
-      case 'adhd': return lang === 'pt' ? 'PCH adaptada para TDAH' : 'PCH adapted for ADHD';
-      case 'autism': return lang === 'pt' ? 'Acessibilidade para Autismo' : 'Accessibility for Autism';
-      case 'dyslexia': return lang === 'pt' ? 'Leitura para Dislexia' : 'Reading for Dyslexia';
-      case 'anxiety': return lang === 'pt' ? 'Exercícios para Ansiedade' : 'Comfort for Anxiety';
+      case 'adhd': return lang === 'pt' ? 'PCH adaptada para TDAH ⚡' : 'PCH adapted for ADHD ⚡';
+      case 'autism': return lang === 'pt' ? 'Acessibilidade para Autismo 🧩' : 'Accessibility for Autism 🧩';
+      case 'dyslexia': return lang === 'pt' ? 'Leitura para Dislexia 📚' : 'Reading for Dyslexia 📚';
+      case 'anxiety': return lang === 'pt' ? 'Exercícios para Ansiedade 🌬️' : 'Comfort for Anxiety 🌬️';
+      case 'senior': return lang === 'pt' ? 'Idosos: Conexão & Legado 👵' : 'Seniors: Grace & Memories 👵';
+      case 'child': return lang === 'pt' ? 'Infantil: Abordagem Lúdica 👶' : 'Children: Playful Stories 👶';
+      case 'down': return lang === 'pt' ? 'Acessibilidade Síndrome de Down ❤️' : 'Down Syndrome Visual Companion ❤️';
+      case 'gifted': return lang === 'pt' ? 'Altas Habilidades & Desafios 🌌' : 'Gifted & Conceptual Depth 🌌';
+      case 'burnout': return lang === 'pt' ? 'Decompressão suave de Burnout 🔥' : 'Soft Decompression for Burnout 🔥';
+      case 'grief': return lang === 'pt' ? 'Acolhimento ao Luto & Memória 🌹' : 'Space for Grief & Remembrance 🌹';
       case 'inclusive': return lang === 'pt' ? 'Modo de Consciência Adaptado' : 'Adaptive Inclusive Mode';
-      default: return lang === 'pt' ? 'Método PCH Tradicional' : 'Traditional PCH Standard';
+      default: return lang === 'pt' ? 'Método PCH Tradicional 🍃' : 'Traditional PCH Standard 🍃';
     }
   };
 

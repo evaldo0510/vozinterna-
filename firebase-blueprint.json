@@ -129,13 +129,50 @@
         "lastWatered": {
           "type": "string",
           "description": "Last watered ISO date string."
-        },
-        "userId": {
-          "type": "string",
-          "description": "UID of the owning authenticated user."
         }
       },
-      "required": ["id", "type", "name", "stage", "color", "createdAt", "lastWatered", "userId"]
+      "required": ["id", "type", "name", "stage", "color", "createdAt", "lastWatered"]
+    },
+    "SystemConfig": {
+      "title": "System Configuration",
+      "description": "Global settings such as Dr. Evaldo system prompts.",
+      "type": "object",
+      "properties": {
+        "systemPrompt": {
+          "type": "string"
+        },
+        "guidedPoems": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "updatedBy": {
+          "type": "string"
+        }
+      }
+    },
+    "AdminLog": {
+      "title": "Admin Activity Log",
+      "description": "Logs recording actions taken by administrators.",
+      "type": "object",
+      "properties": {
+        "actionType": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "adminEmail": {
+          "type": "string"
+        },
+        "adminId": {
+          "type": "string"
+        }
+      }
     }
   },
   "firestore": {
@@ -150,6 +187,14 @@
     "/users/{userId}/plants/{plantId}": {
       "schema": "GardenPlant",
       "description": "Nested collection of Jardim Interior botanical elements grown by the user."
+    },
+    "/system_config/{configId}": {
+      "schema": "SystemConfig",
+      "description": "Global administration parameters and system prompts."
+    },
+    "/admin_logs/{logId}": {
+      "schema": "AdminLog",
+      "description": "Audit trail records for supervisors' modifications."
     }
   }
 }

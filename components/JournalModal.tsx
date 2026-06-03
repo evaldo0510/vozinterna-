@@ -51,8 +51,14 @@ const ListIcon = ({ className }: { className?: string }) => (
 );
 
 const PencilSquareIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+  <svg xmlns="http://www.w3.org/2050/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
     <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+  </svg>
+);
+
+const MicIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
   </svg>
 );
 
@@ -76,6 +82,89 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [quickNoteText, setQuickNoteText] = useState('');
   
+  // Speech Recognition States
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      const activeRec = (window as any).activeJournalRecognition;
+      if (activeRec) {
+        try {
+          activeRec.stop();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+  }, []);
+
+  const toggleSpeechRecognition = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setSpeechError(lang === 'pt' ? 'Reconhecimento de voz não suportado neste navegador.' : 'Voice recognition not supported in this browser.');
+      return;
+    }
+
+    if (isListening) {
+      const activeRec = (window as any).activeJournalRecognition;
+      if (activeRec) {
+        try {
+          activeRec.stop();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = lang === 'pt' ? 'pt-BR' : 'en-US';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setSpeechError(null);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        if (event.error === 'not-allowed') {
+          setSpeechError(lang === 'pt' ? 'Acesso ao microfone negado.' : 'Microphone access denied.');
+        } else {
+          setSpeechError(event.error);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.onresult = (event: any) => {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          }
+        }
+        if (finalTranscript) {
+          setCurrentText(prev => prev ? prev + ' ' + finalTranscript : finalTranscript);
+        }
+      };
+
+      recognition.start();
+      (window as any).activeJournalRecognition = recognition;
+    } catch (e: any) {
+      console.error(e);
+      setSpeechError(e.message);
+      setIsListening(false);
+    }
+  };
+
   const text = TRANSLATIONS[lang].journal;
 
   // Real-time Firestore Sync Observer
@@ -474,16 +563,39 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
                         />
                     </div>
                     
-                    {/* Input Area */}
-                    <div className="flex-1 min-h-[25vh]">
-                        <textarea 
-                            className="w-full h-full bg-transparent resize-none focus:outline-none text-stone-300 font-light text-base leading-relaxed placeholder-stone-700 p-2 selection:bg-teal-900/30 selection:text-teal-100"
-                            placeholder={text?.placeholder}
-                            value={currentText}
-                            onChange={(e) => setCurrentText(e.target.value)}
-                            autoFocus
-                        />
-                    </div>
+                     {/* Input Area */}
+                     <div className="flex flex-col border border-stone-850/60 rounded-xl p-3 bg-stone-900/10 focus-within:border-teal-500/50 transition-all">
+                         <div className="flex justify-between items-center pb-2 border-b border-stone-850/30 mb-2">
+                             <span className="text-[10px] uppercase tracking-wider text-stone-500 font-mono">
+                                {lang === 'pt' ? 'Corpo do Diário' : 'Journal Body'}
+                             </span>
+                             <div className="flex items-center space-x-2">
+                                {speechError && (
+                                    <span className="text-[9px] text-red-400 font-mono">{speechError}</span>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={toggleSpeechRecognition}
+                                    className={`px-3 py-1.5 rounded-full text-[10px] uppercase font-mono tracking-wider flex items-center space-x-1.5 transition-all cursor-pointer ${
+                                        isListening
+                                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
+                                            : 'bg-teal-950/20 text-teal-400 hover:text-teal-300 border border-teal-500/20 hover:border-teal-500/50'
+                                    }`}
+                                    title={lang === 'pt' ? 'Falar por Voz' : 'Speak into Journal'}
+                                >
+                                    <MicIcon className={`w-3.5 h-3.5 ${isListening ? 'animate-bounce' : ''}`} />
+                                    <span>{isListening ? (lang === 'pt' ? 'Escutando...' : 'Listening...') : (lang === 'pt' ? 'Ditar Texto' : 'Speak / Dictate')}</span>
+                                </button>
+                             </div>
+                         </div>
+                         <textarea 
+                             className="w-full min-h-[22vh] bg-transparent resize-none focus:outline-none text-stone-300 font-light text-base leading-relaxed placeholder-stone-700 p-2 selection:bg-teal-900/30 selection:text-teal-100"
+                             placeholder={text?.placeholder}
+                             value={currentText}
+                             onChange={(e) => setCurrentText(e.target.value)}
+                             autoFocus
+                         />
+                     </div>
                </div>
 
                {/* Action Bar */}

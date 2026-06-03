@@ -24,13 +24,17 @@ export const ProfileChoiceView: React.FC<ProfileChoiceViewProps> = ({ lang, curr
   ];
 
   const adaptationOptions = [
-    { id: 'natural' as const, label: lang === 'pt' ? 'Padrão' : 'Standard', desc: lang === 'pt' ? 'Experiência rítmica padrão' : 'Standard rhythmic flow' },
-    { id: 'adhd' as const, label: lang === 'pt' ? 'TDAH' : 'ADHD', desc: lang === 'pt' ? 'Respostas curtas e foco linear' : 'Short answers and linear focus' },
-    { id: 'autism' as const, label: lang === 'pt' ? 'Autismo' : 'Autism', desc: lang === 'pt' ? 'Instruções previsíveis e literais' : 'Predictable and literal steps' },
-    { id: 'dyslexia' as const, label: lang === 'pt' ? 'Dislexia' : 'Dyslexia', desc: lang === 'pt' ? 'Fontes legíveis, ritmo musical' : 'Clean fonts, musical narration' },
-    { id: 'anxiety' as const, label: lang === 'pt' ? 'Ansiedade' : 'Anxiety', desc: lang === 'pt' ? 'Respiração guiada e tranquilidade' : 'Guided breathing and comfort' },
-    { id: 'inclusive' as const, label: lang === 'pt' ? 'Idosos' : 'Seniors', desc: lang === 'pt' ? 'Alta acessibilidade estruturada' : 'High structural accessibility' },
-    { id: 'inclusive_kid' as const, label: lang === 'pt' ? 'Infantil' : 'Children', desc: lang === 'pt' ? 'Abordagem lúdica e acolhedora' : 'Warm, playful interactions' },
+    { id: 'natural' as const, label: lang === 'pt' ? 'Padrão 🍃' : 'Standard 🍃', desc: lang === 'pt' ? 'Experiência rítmica padrão' : 'Standard rhythmic flow' },
+    { id: 'adhd' as const, label: lang === 'pt' ? 'TDAH ⚡' : 'ADHD ⚡', desc: lang === 'pt' ? 'Prazos dinâmicos e sementes de foco' : 'Dynamic flow & focus seeds' },
+    { id: 'autism' as const, label: lang === 'pt' ? 'Autismo 🧩' : 'Autism 🧩', desc: lang === 'pt' ? 'Estrutura previsível e ícones' : 'Predictable structure & icons' },
+    { id: 'dyslexia' as const, label: lang === 'pt' ? 'Dislexia 📚' : 'Dyslexia 📚', desc: lang === 'pt' ? 'Fontes legíveis, áudio-leitor' : 'Clean fonts, audio helper' },
+    { id: 'anxiety' as const, label: lang === 'pt' ? 'Ansiedade 🌬️' : 'Anxiety 🌬️', desc: lang === 'pt' ? 'Respiração guiada e relaxamento' : 'Guided breathing & safety' },
+    { id: 'senior' as const, label: lang === 'pt' ? 'Idosos 👵' : 'Seniors 👵', desc: lang === 'pt' ? 'Contraste alto, legado e memórias' : 'High contrast, memory logs' },
+    { id: 'child' as const, label: lang === 'pt' ? 'Infantil 👶' : 'Children 👶', desc: lang === 'pt' ? 'Narrativas lúdicas e estrelas' : 'Playful stories & rewards' },
+    { id: 'down' as const, label: lang === 'pt' ? 'S. Down ❤️' : 'S. Down ❤️', desc: lang === 'pt' ? 'Botões expandidos e áudio total' : 'Expanded buttons & full audio' },
+    { id: 'gifted' as const, label: lang === 'pt' ? 'A. Habilidades 🌌' : 'A. Habilidades 🌌', desc: lang === 'pt' ? 'Desafios conceituais e reflexões' : 'Conceptual depth & mind maps' },
+    { id: 'burnout' as const, label: lang === 'pt' ? 'Burnout 🔥' : 'Burnout 🔥', desc: lang === 'pt' ? 'Redução suave de estresse' : 'Decompression & inner fire' },
+    { id: 'grief' as const, label: lang === 'pt' ? 'Luto 🌹' : 'Grief 🌹', desc: lang === 'pt' ? 'Honrar memórias e restaurar' : 'Honoring memories & healing' },
   ];
 
   const handleSave = async () => {
@@ -41,7 +45,7 @@ export const ProfileChoiceView: React.FC<ProfileChoiceViewProps> = ({ lang, curr
     try {
       const docRef = doc(db, 'users', user.uid);
       const chosenNeuroMode = adaptationMode;
-      const enableAccessibility = ['autism', 'inclusive'].includes(chosenNeuroMode);
+      const enableAccessibility = ['autism', 'down', 'senior'].includes(chosenNeuroMode);
 
       await updateDoc(docRef, {
         communicationPreference: commPreference,
@@ -131,7 +135,7 @@ export const ProfileChoiceView: React.FC<ProfileChoiceViewProps> = ({ lang, curr
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {adaptationOptions.map((opt) => {
-              const matchedId = opt.id === 'inclusive_kid' ? 'inclusive' : opt.id;
+              const matchedId = opt.id;
               const isActive = adaptationMode === matchedId;
               return (
                 <button

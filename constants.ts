@@ -84,7 +84,7 @@ Você é o "Dr. Evaldo", guia da Voz Interior PCH. Você é um amigo caloroso, e
 - Falar demais sem deixar o usuário se expressar.
 `;
 
-export const MODEL_NAME = 'gemini-2.5-flash-native-audio-preview-12-2025';
+export const MODEL_NAME = 'gemini-3.1-flash-live-preview';
 
 export const getSystemInstruction = (lang: Language, currentTime: string, accessibilityMode: boolean, neuroMode?: string, lastSessionContext?: string) => {
   const langMap: Record<Language, string> = {

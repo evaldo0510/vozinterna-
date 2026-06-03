@@ -9,9 +9,10 @@ import { motion, AnimatePresence } from 'motion/react';
 interface AdminDashboardViewProps {
   currentUser: User | null;
   lang: Language;
+  onImpersonateUser?: (user: User | null) => void;
 }
 
-export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentUser, lang }) => {
+export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentUser, lang, onImpersonateUser }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'system' | 'logs'>('users');
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -788,14 +789,30 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
                           <td className="py-3 px-2 text-amber-500 font-bold">{userObj.points || 0} XP (Lvl {userObj.level || 1})</td>
                           <td className="py-3 px-1 text-right">
                             {userObj.id !== currentUser?.id ? (
-                              <button
-                                onClick={() => setUserToDelete(userObj)}
-                                className="p-1.5 px-2.5 rounded bg-rose-950/20 border border-rose-900/30 hover:bg-rose-950/80 hover:border-rose-900 text-rose-400 hover:text-rose-100 transition-all font-sans text-[9px] uppercase tracking-wider font-semibold cursor-pointer active:scale-95 inline-flex items-center space-x-1"
-                                title={lang === 'pt' ? 'Remover Praticante' : 'Delete User'}
-                              >
-                                <Trash2 className="w-3 h-3" />
-                                <span className="hidden md:inline">{lang === 'pt' ? 'Remover' : 'Delete'}</span>
-                              </button>
+                              <div className="flex items-center justify-end space-x-1.5">
+                                <button
+                                  onClick={() => {
+                                    if (onImpersonateUser) {
+                                      onImpersonateUser(userObj);
+                                    }
+                                  }}
+                                  className="p-1.5 px-2.5 rounded bg-teal-950/20 border border-teal-900/30 hover:bg-teal-950/80 hover:border-teal-900 text-teal-400 hover:text-teal-100 transition-all font-sans text-[9px] uppercase tracking-wider font-semibold cursor-pointer active:scale-95 inline-flex items-center space-x-1"
+                                  title={lang === 'pt' ? 'Ativar microfone e interagir com perfil' : 'Activate mic and interact'}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-3 h-3">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                                  </svg>
+                                  <span>{lang === 'pt' ? 'Interagir' : 'Interact'}</span>
+                                </button>
+                                <button
+                                  onClick={() => setUserToDelete(userObj)}
+                                  className="p-1.5 px-2.5 rounded bg-rose-950/20 border border-rose-900/30 hover:bg-rose-950/80 hover:border-rose-900 text-rose-400 hover:text-rose-100 transition-all font-sans text-[9px] uppercase tracking-wider font-semibold cursor-pointer active:scale-95 inline-flex items-center space-x-1"
+                                  title={lang === 'pt' ? 'Remover Praticante' : 'Delete User'}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span className="hidden md:inline">{lang === 'pt' ? 'Remover' : 'Delete'}</span>
+                                </button>
+                              </div>
                             ) : (
                               <span className="text-[9px] uppercase font-mono text-stone-600 italic px-2.5">
                                 {lang === 'pt' ? 'Você' : 'You'}

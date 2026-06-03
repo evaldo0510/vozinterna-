@@ -5,6 +5,7 @@ import { Language, UserPlan, User } from './types';
 import Logo from './components/Logo';
 import { JournalModal } from './components/JournalModal';
 import { LandingModal } from './components/LandingModal';
+import { DailyCheckInModal } from './components/DailyCheckInModal';
 
 // MVP Foundation screens
 import { SplashView } from './components/SplashView';
@@ -40,12 +41,25 @@ function App() {
   const [lang, setLang] = useState<Language>('pt');
   const [userPlan, setUserPlan] = useState<UserPlan>('visitor');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [impersonatedUser, setImpersonatedUser] = useState<User | null>(null);
   const [activeScreen, setActiveScreen] = useState<NavigationScreen>('splash');
   
   const [showJournal, setShowJournal] = useState(false);
   const [showConcept, setShowConcept] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isMinimalMode, setIsMinimalMode] = useState(false);
+  const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
+
+  useEffect(() => {
+    if (currentUser && currentUser.profileCompleted && currentUser.manifestoCompleted) {
+      const today = new Date().toISOString().split('T')[0];
+      const localKey = `pch_last_check_in_date_${currentUser.id}`;
+      const lastCheckIn = localStorage.getItem(localKey);
+      if (lastCheckIn !== today) {
+        setShowDailyCheckIn(true);
+      }
+    }
+  }, [currentUser]);
 
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -355,16 +369,18 @@ function App() {
           )}
 
           {/* Main App active page container */}
-          <main className="flex-1 overflow-y-auto w-full relative">
+          <main className="flex-1 overflow-y-auto w-full relative ResponsiveLayout">
             {activeScreen === 'chat' && (
               <SessionManager 
                 onDisconnect={handleSessionEnd} 
                 lang={lang} 
                 userPlan={userPlan} 
                 onUpgrade={() => {}} 
-                currentUser={currentUser} 
+                currentUser={impersonatedUser || currentUser} 
                 isMinimalMode={isMinimalMode}
                 onToggleMinimalMode={() => setIsMinimalMode(!isMinimalMode)}
+                impersonatedUser={impersonatedUser}
+                onClearImpersonation={() => setImpersonatedUser(null)}
               />
             )}
 
@@ -394,6 +410,17 @@ function App() {
                 <AdminDashboardView 
                   currentUser={currentUser} 
                   lang={lang} 
+                  onImpersonateUser={(user) => {
+                    setImpersonatedUser(user);
+                    setActiveScreen('chat');
+                    addToast({
+                      type: 'session',
+                      title: lang === 'pt' ? 'Perfil Sintonizado' : 'Profile Tuned',
+                      description: lang === 'pt' 
+                        ? `Conectando voz ao perfil de ${user?.name}`
+                        : `Connecting voice to ${user?.name}'s profile`
+                    });
+                  }}
                 />
               </div>
             )}
@@ -406,6 +433,15 @@ function App() {
 
       {/* Global Modals */}
       <JournalModal isOpen={showJournal} onClose={() => setShowJournal(false)} lang={lang} />
+      {currentUser && (
+        <DailyCheckInModal
+          isOpen={showDailyCheckIn}
+          onClose={() => setShowDailyCheckIn(false)}
+          user={currentUser}
+          lang={lang}
+          onAddToast={addToast}
+        />
+      )}
       <OnboardingGuide lang={lang} currentUser={currentUser} />
       <NotificationToast toasts={toasts} onRemove={removeToast} lang={lang} />
     </div>

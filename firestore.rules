@@ -16,6 +16,12 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -51,12 +57,10 @@ service cloud.firestore {
         && data.type.size() <= 50
         && data.name is string 
         && data.name.size() <= 200 
-        && data.stage is int 
+        && data.stage is number 
         && data.color is string 
         && data.createdAt is string 
-        && data.lastWatered is string 
-        && data.userId is string 
-        && data.userId == request.auth.uid;
+        && data.lastWatered is string;
     }
 
     // User Resource Rules
@@ -105,6 +109,17 @@ service cloud.firestore {
                       && isValidGardenPlant(request.resource.data) 
                       && request.resource.data.id == resource.data.id;
       }
+    }
+
+    // System configurations read by users and managed by administrators
+    match /system_config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Administrative audit logs
+    match /admin_logs/{logId} {
+      allow read, write: if isAdmin();
     }
   }
 }

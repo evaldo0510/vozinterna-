@@ -39,7 +39,7 @@
         })();
     </script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Voz Interior PCH • Dr. Evaldo</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#080b14">
@@ -53,7 +53,7 @@
             background-color: #080b14;
             color: #f8fafc;
             margin: 0;
-            overflow: hidden;
+            overflow-x: hidden;
         }
         .font-serif {
             font-family: 'Playfair Display', serif;
@@ -78,6 +78,80 @@
             filter: blur(100px);
             opacity: 0.35;
             transition: all 3s ease;
+        }
+
+        /* ResponsiveLayout global mobile CSS abstractions */
+        .ResponsiveLayout {
+            width: 100%;
+            max-width: 100vw;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+
+        /* Clean vertical flow adjustments, paddings and font scale optimizations for mobile devices */
+        @media (max-width: 640px) {
+            .ResponsiveLayout {
+                padding-left: 0.75rem;
+                padding-right: 0.75rem;
+            }
+            .mobile-p-density {
+                padding: 1rem !important;
+            }
+            .mobile-m-density {
+                margin: 0.75rem 0 !important;
+            }
+            
+            /* Responsive global text overrides under ResponsiveLayout boundary */
+            .ResponsiveLayout h1 {
+                font-size: 1.75rem !important;
+                line-height: 2.25rem !important;
+                letter-spacing: -0.02em !important;
+            }
+            .ResponsiveLayout h2, .ResponsiveLayout .text-2xl, .ResponsiveLayout .text-3xl {
+                font-size: 1.35rem !important;
+                line-height: 1.85rem !important;
+                letter-spacing: -0.01em !important;
+            }
+            .ResponsiveLayout h3, .ResponsiveLayout .text-xl {
+                font-size: 1.15rem !important;
+                line-height: 1.6rem !important;
+            }
+            .ResponsiveLayout p, .ResponsiveLayout .text-base, .ResponsiveLayout .text-sm {
+                font-size: 0.85rem !important;
+                line-height: 1.35rem !important;
+            }
+            .ResponsiveLayout span:not(.font-mono), .ResponsiveLayout .text-xs {
+                font-size: 0.75rem !important;
+                line-height: 1.15rem !important;
+            }
+        }
+
+        /* Enforce native 44px touch targets on buttons, tags, or links inside ResponsiveLayout */
+        button,
+        [role="button"],
+        .clickable-touch,
+        .interactive-element {
+            min-height: 44px;
+            min-width: 44px;
+            box-sizing: border-box;
+            transition: transform 0.12s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.12s ease, opacity 0.12s ease, border-color 0.12s ease !important;
+        }
+
+        /* Tactile Feedback active:scale-95 rule for gorgeous click responsiveness */
+        button:active,
+        [role="button"]:active,
+        .clickable-touch:active,
+        .interactive-element:active,
+        .active\:scale-95:active {
+            transform: scale(0.95) !important;
+            opacity: 0.9 !important;
         }
     </style>
 </head>
