@@ -25,6 +25,23 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ volume, isActive, col
     opacity: number;
   }>>([]);
 
+  // Use refs in order to prevent resetting the 60fps requestAnimationFrame loop in useEffect
+  const volumeRef = useRef(volume);
+  const isActiveRef = useRef(isActive);
+  const colorRef = useRef(color);
+
+  useEffect(() => {
+    volumeRef.current = volume;
+  }, [volume]);
+
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
+
+  useEffect(() => {
+    colorRef.current = color;
+  }, [color]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -32,8 +49,8 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ volume, isActive, col
     if (!ctx) return;
 
     const render = () => {
-      // Smooth volume transition
-      const targetVolume = isActive ? Math.max(0.05, volume) : 0;
+      // Smooth volume transition using refs to prevent recreating the handler
+      const targetVolume = isActiveRef.current ? Math.max(0.05, volumeRef.current) : 0;
       smoothedVolumeRef.current += (targetVolume - smoothedVolumeRef.current) * 0.15;
       
       const v = smoothedVolumeRef.current;
@@ -48,14 +65,15 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ volume, isActive, col
       const baseRadius = 120 + (Math.sin(timeRef.current * 0.3) * 8); 
       const maxExpansion = 100;
 
-      // Extract RGB
-      const rgbMatch = color.match(/\d+\s*,\s*\d+\s*,\s*\d+/);
+      // Extract RGB using the active color ref
+      const activeColor = colorRef.current;
+      const rgbMatch = activeColor.match(/\d+\s*,\s*\d+\s*,\s*\d+/);
       const rgb = rgbMatch ? rgbMatch[0] : '20, 184, 166'; // Default to teal
 
       // Update and Draw Particles
       if (v > 0.1) {
         // Emit particles from the center when there's sound
-        const particleCount = Math.floor(v * 5);
+        const particleCount = Math.floor(v * 3); // Slightly optimized particle counts for performance
         for (let i = 0; i < particleCount; i++) {
           const angle = Math.random() * Math.PI * 2;
           const speed = 1 + Math.random() * 3 * v;
@@ -65,7 +83,7 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ volume, isActive, col
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
             life: 1.0,
-            size: 1 + Math.random() * 3,
+            size: 1 + Math.random() * 2.5,
             opacity: 0.5 + Math.random() * 0.5
           });
         }
@@ -171,7 +189,7 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ volume, isActive, col
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [volume, isActive, color]);
+  }, []);
 
   return (
     <canvas

@@ -50,24 +50,39 @@ function App() {
   const [isMinimalMode, setIsMinimalMode] = useState(false);
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
   
-  // Immersive mode & mobile swipe gestures
+  // Immersive mode & mobile swipe gestures with debounce & velocity constraints
   const [isFullyImmersive, setIsFullyImmersive] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [touchStartTime, setTouchStartTime] = useState<number>(0);
+  const [lastSwipeTime, setLastSwipeTime] = useState<number>(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (isFullyImmersive) return; // Disable swipes inside Full Immersion to focus on content
     setTouchStartX(e.touches[0].clientX);
     setTouchStartY(e.touches[0].clientY);
+    setTouchStartTime(Date.now());
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX === null || touchStartY === null) return;
+    if (isFullyImmersive || touchStartX === null || touchStartY === null) return;
     
     const diffX = e.changedTouches[0].clientX - touchStartX;
     const diffY = e.changedTouches[0].clientY - touchStartY;
+    const duration = Date.now() - touchStartTime;
+    const now = Date.now();
+
+    // 1. Debounce check: Enforce temporal refractory period (500ms minimum between screen transitions)
+    if (now - lastSwipeTime < 500) {
+      setTouchStartX(null);
+      setTouchStartY(null);
+      return;
+    }
     
-    // Only navigate if horizontal swipe is larger than vertical swipe & passes threshold
-    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
+    // 2. Velocity/Duration verification: High-speed gesture (<= 350ms) to discard slow scrolls
+    // 3. Horizontal Aspect Ratio check: Aspect ratio of X to Y must be at least 2.2 to discard diagonal scroll-drifts
+    // 4. Amplitude threshold: Swipes must exceed 75px to register
+    if (duration <= 350 && Math.abs(diffX) > Math.abs(diffY) * 2.2 && Math.abs(diffX) > 75) {
       const screens: NavigationScreen[] = ['chat', 'profile', 'settings'];
       const currentIndex = screens.indexOf(activeScreen as NavigationScreen);
       
@@ -76,11 +91,13 @@ function App() {
           // Swiped left -> Next page: Chat -> Profile -> Settings
           if (currentIndex < screens.length - 1) {
             setActiveScreen(screens[currentIndex + 1]);
+            setLastSwipeTime(now);
           }
         } else {
           // Swiped right -> Previous page: Settings -> Profile -> Chat
           if (currentIndex > 0) {
             setActiveScreen(screens[currentIndex - 1]);
+            setLastSwipeTime(now);
           }
         }
       }

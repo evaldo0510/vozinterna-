@@ -1062,6 +1062,21 @@ Return a JSON object with:
             }
           },
           onerror: (e: any) => {
+            const hasAbortWord = (msgStr: string) => {
+              const lower = msgStr.toLowerCase();
+              return lower.includes('abort') || lower.includes('cancel') || lower.includes('close') || lower.includes('db_closed');
+            };
+            const isAborted = e && (
+              (e.name === 'AbortError') || 
+              (e.message && hasAbortWord(e.message)) ||
+              (typeof e === 'string' && hasAbortWord(e))
+            );
+
+            if (isAborted) {
+              console.info("Live API Connection aborted or cancelled gracefully:", e);
+              return; // Avoid crashing/error modal for expected programmatic disconnects
+            }
+
             console.error("Live API Error:", e);
             const msg = e instanceof Error ? e.message : (e && typeof e === 'object' && 'message' in e ? (e as any).message : String(e));
             setErrorMsg(lang === 'pt' ? `Erro de conexão em tempo real com Dr. Evaldo: ${msg}` : `Realtime connection error with Dr. Evaldo: ${msg}`);

@@ -95,23 +95,14 @@ export const ImmersiveVisualEngine: React.FC<ImmersiveVisualEngineProps> = ({
 
     const targetCatData = PCH_VISUAL_LIBRARY.find(cat => cat.id === targetCategory) || PCH_VISUAL_LIBRARY[0];
     const pool = targetCatData.scenes;
-    const prospectiveScene = pool.find(s => 
-      s.elements.includes(profileTheme.keyword) || 
-      s.prompt.toLowerCase().includes(profileTheme.keyword)
-    ) || pool[Math.floor(Math.random() * pool.length)];
-
-    const targetDescription = prospectiveScene.prompt;
+    const cacheKey = `${neuroMode}_${targetCategory}_${emotionalState}`;
 
     // Load local cache to prevent redundant generation
     const localCacheStr = localStorage.getItem('pch_visual_cache') || '[]';
     const localCacheList: ImageCacheItem[] = JSON.parse(localCacheStr);
 
-    // Look for a cached entry that has the SAME description AND same emotional profile (emotionalState + neuroMode)
-    const existingCache = localCacheList.find(item => 
-      item.description === targetDescription && 
-      item.emotionalState === emotionalState && 
-      item.neuroMode === neuroMode
-    );
+    // Look for a cached entry that has the same unique key (neuroMode + targetCategory + emotionalState)
+    const existingCache = localCacheList.find(item => item.key === cacheKey);
 
     let selectedScene: VisualScene | null = null;
 
@@ -136,20 +127,29 @@ export const ImmersiveVisualEngine: React.FC<ImmersiveVisualEngineProps> = ({
     }
 
     if (!selectedScene) {
-      // Cache Miss: Choose dedicated scene matching category
+      // Cache Miss: Choose dedicated scene matching category or randomly from pool
+      const prospectiveScene = pool.find(s => 
+        s.elements.includes(profileTheme.keyword) || 
+        s.prompt.toLowerCase().includes(profileTheme.keyword)
+      ) || pool[Math.floor(Math.random() * pool.length)];
+
       selectedScene = prospectiveScene;
       setIsLastLoadedFromCache(false);
 
+      const targetDescription = selectedScene.prompt;
+
       // Persist to local visual cache with descriptive & emotional indicators
       const newCacheItem: ImageCacheItem = {
-        key: `${neuroMode}_${targetCategory}_${emotionalState}`,
+        key: cacheKey,
         sceneId: selectedScene.id,
         description: targetDescription,
         emotionalState: emotionalState,
         neuroMode: neuroMode,
         timestamp: Date.now()
       };
-      const updatedCache = [newCacheItem, ...localCacheList.slice(0, 19)]; // Keep maximum 20 cached entries
+      
+      // Filter out outdated cached entries with the same key before saving
+      const updatedCache = [newCacheItem, ...localCacheList.filter(item => item.key !== cacheKey).slice(0, 19)];
       localStorage.setItem('pch_visual_cache', JSON.stringify(updatedCache));
 
       // Increment stats
