@@ -5,6 +5,7 @@ import { SessionStatus, Language, UserPlan, User, NeurodivergentMode, GardenPlan
 import { getSystemInstruction, MODEL_NAME, TRANSLATIONS, VOICE_IDS, PLAN_LIMITS, WISDOM_QUOTES } from '../constants';
 import AudioVisualizer from './AudioVisualizer';
 import Logo from './Logo';
+import { ImmersiveVisualEngine } from './ImmersiveVisualEngine';
 import { 
   Sprout, Heart, Droplet, Flower, AlertCircle, Compass, Sparkles, 
   Eye, EyeOff, Moon, Sun, Activity, Info, X, ChevronRight, CheckCircle2,
@@ -898,7 +899,7 @@ Return a JSON object with:
 
       if (!process.env.API_KEY) throw new Error("API Key Missing.");
       
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY, apiVersion: 'v1alpha' });
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       audioContextRef.current = audioCtx;
 
@@ -1149,7 +1150,9 @@ Return a JSON object with:
 
           rec.onerror = (event: any) => {
             console.error('Speech recognition error in Session:', event.error);
-            setSpeechRecError(event.error);
+            if (event.error !== 'no-speech' && event.error !== 'aborted') {
+              setSpeechRecError(event.error);
+            }
             setIsSpeechRecognitionRunning(false);
           };
 
@@ -1353,6 +1356,9 @@ Return a JSON object with:
     // Plant progress can boost slightly
     try {
       const currentUser = auth.currentUser;
+      if (currentUser) {
+        updateDoc(doc(db, 'users', currentUser.uid), { emotionalState: feelingKey }).catch(() => {});
+      }
       const boostedPlants = gardenPlants.map(p => {
         if (Math.random() > 0.5 && p.stage < 3) {
           const updatedPlant = { ...p, stage: p.stage + 1 };
@@ -1592,8 +1598,39 @@ Return a JSON object with:
         
         {/* Dynamic Mood Constellation Chart (Emotional Resonance Scoring Graph) */}
         {!isMinimalMode && (
-          <div className="w-full max-w-md">
+          <div className="w-full max-w-md space-y-6">
             <MoodConstellation history={currentUser?.resonanceHistory || []} lang={lang} />
+            
+            <div className="p-1 bg-stone-900/30 border border-stone-850/50 rounded-3xl backdrop-blur-md">
+              <div className="p-3 border-b border-stone-900/80 flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-teal-400 font-mono">
+                  {lang === 'pt' ? '🖼️ Visual Imersivo PCH' : '🖼️ PCH Immersive Scenery'}
+                </span>
+                <span className="text-[8px] bg-teal-500/10 px-2 py-0.5 rounded-full text-teal-300 font-mono">
+                  {neuroMode.toUpperCase()}
+                </span>
+              </div>
+              <ImmersiveVisualEngine 
+                emotionalState={selectedFeeling || currentUser?.emotionalState || 'neutral'} 
+                neuroMode={neuroMode} 
+                lang={lang} 
+                inline={true}
+                onAddPoints={async (pts) => {
+                  if (!currentUser) return;
+                  try {
+                    const userRef = doc(db, 'users', currentUser.id);
+                    const newPoints = (currentUser.points || 0) + pts;
+                    const newLevel = Math.floor(newPoints / 100) + 1;
+                    await updateDoc(userRef, {
+                      points: newPoints,
+                      level: newLevel
+                    });
+                  } catch (e) {
+                    console.error("Error updating points:", e);
+                  }
+                }}
+              />
+            </div>
           </div>
         )}
 
@@ -1674,7 +1711,7 @@ Return a JSON object with:
             )}
 
              {/* Supportive Speech Recognition Diagnostic Tip */}
-             {speechRecError && speechRecError !== 'aborted' && (
+             {speechRecError && speechRecError !== 'aborted' && speechRecError !== 'no-speech' && (
                <div className="mt-4 w-full max-w-sm px-4 py-3 bg-red-950/20 backdrop-blur-md border border-red-500/30 rounded-2xl text-center leading-relaxed shadow-lg z-20 animate-none">
                  <div className="flex items-center justify-center space-x-1 mb-1.5 py-0.5 px-2 rounded-full w-fit mx-auto bg-red-900/10">
                    <ShieldAlert className="w-3.5 h-3.5 text-red-400" />

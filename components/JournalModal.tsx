@@ -429,6 +429,60 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
     }
   };
 
+  const handleTxtExport = () => {
+    if (entries.length === 0) return;
+
+    try {
+      let content = '';
+      const titleStr = lang === 'pt' ? 'DIÁRIO DE REFLEXÕES - VOZ INTERIOR PCH' : 'JOURNAL OF REFLECTIONS - INNER VOICE PCH';
+      content += `${titleStr}\n`;
+      content += `==================================================\n`;
+      const printedAtStr = new Date().toLocaleString(lang === 'pt' ? 'pt-BR' : 'en-US');
+      content += `${lang === 'pt' ? 'Exportado em:' : 'Exported on:'} ${printedAtStr}\n`;
+      content += `${lang === 'pt' ? 'Total de reflexões:' : 'Total entries:'} ${entries.length}\n`;
+      content += `==================================================\n\n`;
+
+      const sorted = [...entries].reverse();
+      sorted.forEach((entry, idx) => {
+        const itemDateStr = new Date(entry.date).toLocaleString(lang === 'pt' ? 'pt-BR' : 'en-US');
+        content += `REGISTRO #${idx + 1}\n`;
+        content += `${lang === 'pt' ? 'Data' : 'Date'}: ${itemDateStr}\n`;
+        
+        if (entry.moodTags && entry.moodTags.length > 0) {
+          const tags = entry.moodTags.map(tagId => {
+            const match = MOOD_TAGS.find(t => t.id === tagId);
+            return match ? (lang === 'pt' ? match.labelPt : match.labelEn) : tagId;
+          }).join(', ');
+          content += `${lang === 'pt' ? 'Estado Emocional' : 'Emotional State'}: ${tags}\n`;
+        }
+        
+        if (entry.quickNote) {
+          content += `${lang === 'pt' ? 'Nota Rápida' : 'Quick Note'}: "${entry.quickNote}"\n`;
+        }
+        
+        if (entry.prompt) {
+          content += `Prompt: "${entry.prompt}"\n`;
+        }
+        
+        content += `--------------------------------------------------\n`;
+        content += `${entry.text || ''}\n`;
+        content += `==================================================\n\n`;
+      });
+
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = lang === 'pt' ? 'diario_reflexoes_voz_interior.txt' : 'inner_voice_reflections_journal.txt';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to export as txt:", err);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -453,7 +507,18 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
                                 <svg className="w-3.5 h-3.5 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                                <span>{lang === 'pt' ? 'Exportar Diário (PDF)' : 'Export Journal (PDF)'}</span>
+                                <span>{lang === 'pt' ? 'Exportar (PDF)' : 'Export (PDF)'}</span>
+                            </button>
+                            <span className="text-stone-800 text-[10px] select-none leading-none">|</span>
+                            <button 
+                                onClick={handleTxtExport}
+                                className="text-[10px] uppercase font-mono tracking-wider font-extrabold text-amber-400 hover:text-amber-300 transition-colors flex items-center space-x-1.5 leading-none cursor-pointer"
+                                title={lang === 'pt' ? 'Baixar todas as reflexões salvas como arquivo .txt' : 'Download all saved reflections as a .txt file'}
+                            >
+                                <svg className="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>{lang === 'pt' ? 'Exportar (TXT)' : 'Export (TXT)'}</span>
                             </button>
                           </>
                         )}

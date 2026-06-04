@@ -180,6 +180,7 @@ function App() {
               manifestoCompleted: !!data.manifestoCompleted,
               communicationPreference: data.communicationPreference,
               neuroMode: data.neuroMode,
+              emotionalState: data.emotionalState,
               points: data.points || 0,
               level: data.level || 1,
               badges: data.badges || []
@@ -232,6 +233,23 @@ function App() {
     }
   };
 
+  const getStateMetadata = (state?: string) => {
+    const s = (state || 'neutral').toLowerCase();
+    if (s.includes('low') || s.includes('sad') || s.includes('triste') || s.includes('melanc') || s.includes('heavy') || s.includes('pesado')) {
+      return { pt: 'Sintonia Lunar ❄️', en: 'Lunar Tuning ❄️', color: 'text-blue-400 border-blue-500/20 bg-blue-500/10', pulse: 'bg-blue-400' };
+    }
+    if (s.includes('anx') || s.includes('accel') || s.includes('anxio') || s.includes('angr') || s.includes('raiv') || s.includes('irrit')) {
+      return { pt: 'Sintonia de Calma ⚡', en: 'Calming Wave ⚡', color: 'text-orange-400 border-orange-500/20 bg-orange-500/10', pulse: 'bg-orange-400' };
+    }
+    if (s.includes('flow') || s.includes('peace') || s.includes('seren') || s.includes('paz') || s.includes('tranqu')) {
+      return { pt: 'Sintonia Oceânica 🌊', en: 'Oceanic Wave 🌊', color: 'text-cyan-400 border-cyan-500/20 bg-cyan-500/10', pulse: 'bg-cyan-400' };
+    }
+    if (s.includes('align') || s.includes('hope') || s.includes('conec') || s.includes('esper') || s.includes('estrel')) {
+      return { pt: 'Ress. Estelar ✨', en: 'Stellar Ress. ✨', color: 'text-pink-400 border-pink-500/20 bg-pink-500/10', pulse: 'bg-pink-400' };
+    }
+    return { pt: 'Sintonia Estável ⛰️', en: 'Stable Grounding ⛰️', color: 'text-teal-400 border-teal-500/20 bg-teal-500/10', pulse: 'bg-teal-400' };
+  };
+
   // Pre-authenticating loading screen
   if (loadingProfile && auth.currentUser) {
     return (
@@ -278,10 +296,14 @@ function App() {
           {!isMinimalMode && (
             <header className="w-full bg-stone-950 border-b border-stone-900 p-4 flex flex-row justify-between items-center z-50">
               <div className="flex items-center space-x-3" id="onboarding-level">
-                <Logo className="w-8 h-8 text-teal-400 rotate-6" />
+                <Logo className="w-8 h-8 rotate-6 transition-all duration-700" emotionalState={currentUser.emotionalState} />
                 <div className="flex flex-col">
-                  <span className="font-serif text-[11px] font-bold tracking-[0.2em] text-stone-100 uppercase">
+                  <span className="font-serif text-[11px] font-bold tracking-[0.2em] text-stone-100 uppercase flex items-center gap-2">
                     {lang === 'pt' ? 'VOZ INTERIOR' : 'INNER VOICE'}
+                    <span className={`px-1.5 py-0.5 rounded border text-[7px] font-mono tracking-wide flex items-center space-x-1 ${getStateMetadata(currentUser.emotionalState).color}`}>
+                      <span className={`w-1 h-1 rounded-full animate-pulse ${getStateMetadata(currentUser.emotionalState).pulse}`} />
+                      <span>{lang === 'pt' ? getStateMetadata(currentUser.emotionalState).pt : getStateMetadata(currentUser.emotionalState).en}</span>
+                    </span>
                   </span>
                   <span className="text-[8px] text-stone-500 font-mono tracking-widest uppercase">
                     LVL {currentUser.level || 1} • {currentUser.points || 0} XP
@@ -345,7 +367,7 @@ function App() {
                 >
                   <Sliders className="w-4 h-4" />
                   <span className="text-[9px] uppercase font-bold tracking-wider hidden sm:inline">
-                    {lang === 'pt' ? 'Ajustes' : 'Ajusts'}
+                    {lang === 'pt' ? 'Ajustes' : 'Settings'}
                   </span>
                 </button>
 

@@ -38,6 +38,7 @@ export interface User {
   avatar?: string;
   communicationPreference?: 'voice' | 'text' | 'image' | 'hybrid';
   neuroMode?: NeurodivergentMode;
+  emotionalState?: string;
   manifestoStep?: number;
   manifestoCompleted?: boolean;
   profileCompleted?: boolean;

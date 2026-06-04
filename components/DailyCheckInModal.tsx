@@ -59,6 +59,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
       await updateDoc(userRef, {
         resonanceScore: chosen.score,
         resonanceHistory: newHistory,
+        emotionalState: chosen.id,
         points: newPoints,
         level: newLevel,
         lastActive: new Date().toISOString()

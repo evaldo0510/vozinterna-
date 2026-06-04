@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { User, Language } from '../types';
-import { Award, ShieldCheck, Mail, Calendar, Sparkles, Sliders, MessageSquare, Heart, Smile } from 'lucide-react';
+import { Award, ShieldCheck, Mail, Calendar, Sparkles, Sliders, MessageSquare, Heart, Smile, FileDown } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { ResonanceInsights } from './ResonanceInsights';
+import { InnerHarmonyChart } from './InnerHarmonyChart';
 import { MOOD_TAGS } from './JournalModal';
 
 interface UserProfileViewProps {
@@ -88,6 +90,210 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
     }
   };
 
+  const exportPDF = () => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      let y = 20;
+      const leftMargin = 20;
+      const pageHeight = 297;
+      
+      const checkPageOverflow = (neededHeight: number) => {
+        if (y + neededHeight > pageHeight - 20) {
+          doc.addPage();
+          y = 20;
+        }
+      };
+
+      // Header block
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor(20, 184, 166); // Teal primary color matching app theme
+      doc.text(lang === 'pt' ? 'Voz Interior - Relatorio PCH' : 'Voz Interior - PCH Report', leftMargin, y);
+      y += 8;
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(115, 115, 115); // Neutral text
+      doc.text(lang === 'pt' ? 'Sua Jornada de Autoconhecimento e Ressonancia Cognitiva' : 'Your Self-Knowledge and Cognitive Resonance Journey', leftMargin, y);
+      y += 12;
+      
+      // Horizontal divider
+      doc.setDrawColor(229, 229, 229);
+      doc.line(leftMargin, y, 190, y);
+      y += 10;
+      
+      // User Profile details
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(38, 38, 38);
+      doc.text(lang === 'pt' ? 'Perfil do Explorador' : 'Explorer Profile', leftMargin, y);
+      y += 8;
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(64, 64, 64);
+      
+      doc.text(`${lang === 'pt' ? 'Nome' : 'Name'}: ${user.name}`, leftMargin, y);
+      y += 6;
+      doc.text(`${lang === 'pt' ? 'E-mail' : 'Email'}: ${user.email}`, leftMargin, y);
+      y += 6;
+      doc.text(`${lang === 'pt' ? 'Plano' : 'Plan'}: ${user.plan === 'guardian' ? 'Guardian (Guardiao)' : 'Standard (Membro)'}`, leftMargin, y);
+      y += 6;
+      
+      doc.text(`${lang === 'pt' ? 'Nivel de Progresso' : 'Progress Level'}: Nivel ${level} (${points} XP)`, leftMargin, y);
+      y += 6;
+      
+      const cleanNeuro = translateNeuro(user.neuroMode).replace(/[^\x00-\x7F]/g, "").trim(); // strip emojis for PDF safety
+      const cleanComm = translateComm(user.communicationPreference).replace(/[^\x00-\x7F]/g, "").trim(); // strip emojis for PDF safety
+      
+      doc.text(`${lang === 'pt' ? 'Estilo Cognitivo' : 'Cognitive Style'}: ${cleanNeuro}`, leftMargin, y);
+      y += 6;
+      doc.text(`${lang === 'pt' ? 'Canal Preferencial' : 'Preferred Channel'}: ${cleanComm}`, leftMargin, y);
+      y += 12;
+      
+      // Section 1: Resonance Scores
+      checkPageOverflow(40);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(38, 38, 38);
+      doc.text(lang === 'pt' ? 'Categorias de Ressonancia' : 'Resonance Categories', leftMargin, y);
+      y += 8;
+      
+      const categories = [
+        {
+          name: lang === 'pt' ? 'Acolhimento & Calma' : 'Embrace & Calm',
+          score: points === 0 ? 15 : Math.max(10, (points * 12) % 100),
+          desc: lang === 'pt' ? 'Fluxos de autocompaixao e atenuacao de ansiedade.' : 'Anxiety soothing and inner self-compassion mapping.'
+        },
+        {
+          name: lang === 'pt' ? 'Reflexao Cognitiva' : 'Cognitive Reflection',
+          score: points === 0 ? 20 : Math.max(10, (points * 8) % 100),
+          desc: lang === 'pt' ? 'Analise objetiva e alinhamento de clareza mental.' : 'Self-awareness, deep logical clarity and mental alignment.'
+        },
+        {
+          name: lang === 'pt' ? 'Sintonia Poetica' : 'Poetic Metaphors',
+          score: points === 0 ? 10 : Math.max(10, (points * 10) % 100),
+          desc: lang === 'pt' ? 'Integracao de simbolos imageticos e metaforas curativas.' : 'Connection with sensory metaphors and symbolic representations.'
+        },
+        {
+          name: lang === 'pt' ? 'Consciencia do Sopro' : 'Resonant Breathing',
+          score: points === 0 ? 25 : Math.max(10, (points * 15) % 100),
+          desc: lang === 'pt' ? 'Estados de foco sincrono e controle respiratorio.' : 'Rhythmic breathing feedback, pace and focus control.'
+        },
+        {
+          name: lang === 'pt' ? 'Acao Suave' : 'Gentle Human Actions',
+          score: points === 0 ? 15 : Math.max(10, (points * 7) % 100),
+          desc: lang === 'pt' ? 'Abertura social e gestos generosos.' : 'Social empathy, connection and support actions.'
+        }
+      ];
+      
+      categories.forEach(cat => {
+        checkPageOverflow(18);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(20, 184, 166);
+        doc.text(`${cat.name}: ${cat.score}%`, leftMargin, y);
+        y += 5;
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(82, 82, 82);
+        doc.text(cat.desc, leftMargin, y);
+        y += 7;
+      });
+      
+      y += 5;
+      
+      // Section 2: JournalEntries / Timeline
+      checkPageOverflow(30);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(38, 38, 38);
+      doc.text(lang === 'pt' ? 'Historico de Sentimentos Registrados' : 'Tracked Sentiment History', leftMargin, y);
+      y += 8;
+      
+      if (journalEntries.length === 0) {
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(10);
+        doc.setTextColor(115, 115, 115);
+        doc.text(lang === 'pt' ? 'Nenhum registro emocional encontrado.' : 'No emotional records logged.', leftMargin, y);
+      } else {
+        const MOOD_TAGS_MAP: Record<string, { labelPt: string, labelEn: string }> = {
+          joy: { labelPt: 'Alegria', labelEn: 'Joy' },
+          sadness: { labelPt: 'Tristeza', labelEn: 'Sadness' },
+          anger: { labelPt: 'Raiva', labelEn: 'Anger' },
+          fear: { labelPt: 'Medo', labelEn: 'Fear' },
+          calm: { labelPt: 'Calma', labelEn: 'Calm' },
+          anxiety: { labelPt: 'Ansiedade', labelEn: 'Anxiety' },
+          fatigue: { labelPt: 'Exaustao', labelEn: 'Fatigue' },
+          hope: { labelPt: 'Esperanca', labelEn: 'Hope' }
+        };
+
+        const getMoodTagLabel = (tId: string) => {
+          const m = MOOD_TAGS_MAP[tId];
+          return m ? (lang === 'pt' ? m.labelPt : m.labelEn) : tId;
+        };
+
+        journalEntries.forEach((entry, idx) => {
+          checkPageOverflow(32);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9.5);
+          doc.setTextColor(64, 64, 64);
+          
+          const entryDate = new Date(entry.date).toLocaleDateString(lang === 'pt' ? 'pt-BR' : 'en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          doc.text(`[#${idx + 1}] ${entryDate}`, leftMargin, y);
+          y += 5;
+          
+          // Mood tags
+          if (entry.moodTags && entry.moodTags.length > 0) {
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(9);
+            doc.setTextColor(120, 113, 108);
+            
+            const tagsFormatted = (entry.moodTags as string[]).map(tId => getMoodTagLabel(tId)).join(', ');
+            doc.text(`${lang === 'pt' ? 'Sentimentos' : 'Feelings'}: ${tagsFormatted}`, leftMargin + 4, y);
+            y += 5;
+          }
+          
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9.5);
+          doc.setTextColor(38, 38, 38);
+          
+          if (entry.quickNote) {
+            const splitNote = doc.splitTextToSize(`"${entry.quickNote}"`, 160);
+            doc.text(splitNote, leftMargin + 4, y);
+            y += (splitNote.length * 4.5) + 1;
+          }
+          
+          if (entry.text) {
+            const splitText = doc.splitTextToSize(entry.text, 160);
+            doc.text(splitText, leftMargin + 4, y);
+            y += (splitText.length * 4.5) + 1;
+          }
+          
+          y += 3; // spacer between items
+        });
+      }
+      
+      // Save output
+      doc.save(lang === 'pt' ? 'voz_interior_jornada_pch.pdf' : 'inner_voice_pch_journey.pdf');
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+    }
+  };
+
   const userBadges = (user as any).badges || ['Explorador Interior'];
 
   return (
@@ -129,6 +335,15 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
         </div>
       </div>
 
+      {/* Export to PDF Action button */}
+      <button
+        onClick={exportPDF}
+        className="w-full py-3 px-4 rounded-2xl bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/20 hover:border-teal-500/40 text-teal-300 hover:text-teal-200 text-xs font-bold font-mono uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+      >
+        <FileDown className="w-4 h-4 text-teal-400 animate-pulse" />
+        <span>{lang === 'pt' ? 'Exportar Relatório PDF' : 'Export PDF Report'}</span>
+      </button>
+
       {/* Gamification Level Status Card */}
       <div className="bg-stone-900/20 border border-stone-850/50 p-6 rounded-3xl space-y-4 backdrop-blur-md">
         <div className="flex justify-between items-center text-xs">
@@ -153,6 +368,9 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
 
       {/* Resonance Insights (Harmonic Progress Line Chart) */}
       <ResonanceInsights user={user} lang={lang} />
+
+      {/* Índice de Sintonia Interior (ISI) Chart using recharts */}
+      <InnerHarmonyChart user={user} lang={lang} />
 
       {/* Linha do Tempo de Sentimentos */}
       <div className="bg-stone-900/30 border border-stone-850/50 rounded-3xl p-5 space-y-4 backdrop-blur-md">
