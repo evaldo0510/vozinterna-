@@ -338,8 +338,10 @@ function App() {
   return (
     <div className={`h-screen w-full transition-colors duration-705 flex flex-col relative font-sans overflow-hidden select-none ${
       isLightTheme && activeScreen === 'home'
-        ? 'bg-[#fdfbf6] text-stone-800' 
-        : 'bg-stone-950 text-stone-200'
+        ? 'bg-[#F4EFE6] text-stone-800' 
+        : activeScreen === 'home'
+          ? 'bg-[#0B1516] text-[#E0E7E5]'
+          : 'bg-stone-950 text-stone-200'
     }`}>
       
       {/* 1. OFF-SESSION / UNLOGGED CHANNELS */}
@@ -546,19 +548,21 @@ function App() {
 
           {/* New Bottom silent navigation bar - matching user requirements & mockup */}
           {!isFullyImmersive && (
-            <footer className={`w-full py-3.5 px-6 border-t flex justify-around items-center z-45 transition-all duration-500 ${
+            <footer className={`w-full py-3.5 px-6 border-t flex justify-around items-center z-45 backdrop-blur-md transition-all duration-500 ${
               isLightTheme && activeScreen === 'home'
-                ? 'bg-[#fdfbf6] border-stone-200/40' 
-                : 'bg-stone-950 border-stone-900'
+                ? 'bg-[#F4EFE6]/75 border-stone-200/55' 
+                : activeScreen === 'home'
+                  ? 'bg-[#0B1516]/75 border-stone-900/50'
+                  : 'bg-stone-950/90 border-stone-900'
             }`}>
               <button 
                 onClick={() => setActiveScreen('home')}
-                className={`flex flex-col items-center justify-center p-1 rounded-xl transition-all cursor-pointer ${
+                className={`flex flex-col items-center justify-center p-1.5 rounded-2xl transition-all cursor-pointer ${
                   activeScreen === 'home'
                     ? isLightTheme 
-                      ? 'text-[#3e5635] scale-105 font-bold' 
-                      : 'text-teal-400 scale-105 font-bold'
-                    : 'text-stone-550 hover:text-stone-300'
+                      ? 'text-[#3E5F35] scale-105 font-bold' 
+                      : 'text-[#82B98E] scale-105 font-bold'
+                    : 'text-stone-500 hover:text-stone-300'
                 }`}
                 title={lang === 'pt' ? 'Início' : 'Home'}
               >
@@ -570,12 +574,12 @@ function App() {
 
               <button 
                 onClick={() => setActiveScreen('profile')}
-                className={`flex flex-col items-center justify-center p-1 rounded-xl transition-all cursor-pointer ${
+                className={`flex flex-col items-center justify-center p-1.5 rounded-2xl transition-all cursor-pointer ${
                   activeScreen === 'profile'
-                    ? isLightTheme 
-                      ? 'text-[#3e5635] scale-105 font-bold' 
-                      : 'text-teal-400 scale-105 font-bold'
-                    : 'text-stone-550 hover:text-stone-300'
+                    ? isLightTheme && activeScreen === 'home'
+                      ? 'text-[#3E5F35] scale-105 font-bold' 
+                      : 'text-[#82B98E] scale-105 font-bold'
+                    : 'text-stone-500 hover:text-stone-300'
                 }`}
                 title={lang === 'pt' ? 'Jornada' : 'Journey'}
               >
@@ -587,12 +591,12 @@ function App() {
 
               <button 
                 onClick={() => setActiveScreen('settings')}
-                className={`flex flex-col items-center justify-center p-1 rounded-xl transition-all cursor-pointer ${
+                className={`flex flex-col items-center justify-center p-1.5 rounded-2xl transition-all cursor-pointer ${
                   activeScreen === 'settings'
-                    ? isLightTheme 
-                      ? 'text-[#3e5635] scale-105 font-bold' 
-                      : 'text-teal-400 scale-105 font-bold'
-                    : 'text-stone-550 hover:text-stone-300'
+                    ? isLightTheme && activeScreen === 'home'
+                      ? 'text-[#3E5F35] scale-105 font-bold' 
+                      : 'text-[#82B98E] scale-105 font-bold'
+                    : 'text-stone-500 hover:text-stone-300'
                 }`}
                 title={lang === 'pt' ? 'Ajustes' : 'Settings'}
               >
