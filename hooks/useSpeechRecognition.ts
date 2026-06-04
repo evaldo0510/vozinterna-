@@ -21,7 +21,12 @@ export const useSpeechRecognition = (onResult: (text: string) => void) => {
       recognitionRef.current.onstart = () => setIsListening(true);
       recognitionRef.current.onend = () => setIsListening(false);
       recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech Recognition Error", event.error);
+        const err = event.error;
+        if (err === 'no-speech' || err === 'aborted') {
+          console.info("Speech Recognition status:", err);
+        } else {
+          console.warn("Speech Recognition Warning:", err);
+        }
         setIsListening(false);
       };
       recognitionRef.current.onresult = (event: any) => {

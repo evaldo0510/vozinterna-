@@ -12,6 +12,8 @@ import {
   Bookmark, ShieldAlert, Award, Volume2, HelpCircle
 } from 'lucide-react';
 import { MoodConstellation } from './MoodConstellation';
+import { AdaptiveProfileCard } from './AdaptiveProfileCard';
+import { BreathingGuide } from './BreathingGuide';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { useMotorAdaptativo } from '../hooks/useMotorAdaptativo';
@@ -26,6 +28,8 @@ interface SessionManagerProps {
   onToggleMinimalMode?: () => void;
   impersonatedUser?: User | null;
   onClearImpersonation?: () => void;
+  isFullyImmersive?: boolean;
+  onToggleFullyImmersive?: () => void;
 }
 
 // Inline Icons
@@ -116,7 +120,9 @@ const SessionManager: React.FC<SessionManagerProps> = ({
   isMinimalMode = false,
   onToggleMinimalMode,
   impersonatedUser,
-  onClearImpersonation
+  onClearImpersonation,
+  isFullyImmersive = false,
+  onToggleFullyImmersive
 }) => {
   const [status, setStatus] = useState<SessionStatus>(SessionStatus.CONNECTING);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -1133,6 +1139,9 @@ Return a JSON object with:
       return;
     }
 
+    let lastError: string | null = null;
+    let restartTimeout: any = null;
+
     if (status === SessionStatus.CONNECTED && !isMicMuted) {
       try {
         if (!recognitionRef.current) {
@@ -1145,13 +1154,22 @@ Return a JSON object with:
             setIsSpeechRecognitionRunning(true);
             setSpeechTranscript('');
             setSpeechRecError(null); // Clear previous errors on successful start!
+            lastError = null;
             triggerVoiceAlert(lang === 'pt' ? 'Reconhecimento de Voz Ativo' : 'Voice Recognition Active');
           };
 
           rec.onerror = (event: any) => {
-            console.error('Speech recognition error in Session:', event.error);
-            if (event.error !== 'no-speech' && event.error !== 'aborted') {
-              setSpeechRecError(event.error);
+            const err = event.error;
+            lastError = err;
+            if (err === 'no-speech' || err === 'aborted') {
+              // Silence and aborted timeouts are standard; log as info instead of an error
+              console.info('Speech recognition system status:', err);
+            } else if (err === 'network') {
+              console.warn('Speech recognition transient network status:', err);
+              setSpeechRecError('network');
+            } else {
+              console.warn('Speech recognition warning status:', err);
+              setSpeechRecError(err);
             }
             setIsSpeechRecognitionRunning(false);
           };
@@ -1160,11 +1178,19 @@ Return a JSON object with:
             setIsSpeechRecognitionRunning(false);
             // Auto restart if still connected and unmuted
             if (activeSessionRef.current && !isMicMutedRef.current) {
-              try {
-                rec.start();
-              } catch (e) {
-                console.warn("SpeechRec auto-restart ignored", e);
-              }
+              if (restartTimeout) clearTimeout(restartTimeout);
+              
+              // If there was a network glitch, wait 5s to check connectivity; otherwise wait 800ms
+              const delay = lastError === 'network' ? 5000 : 800;
+              restartTimeout = setTimeout(() => {
+                if (activeSessionRef.current && !isMicMutedRef.current) {
+                  try {
+                    rec.start();
+                  } catch (e) {
+                    console.info("SpeechRec auto-restart postponed:", e);
+                  }
+                }
+              }, delay);
             }
           };
 
@@ -1220,6 +1246,7 @@ Return a JSON object with:
     }
 
     return () => {
+      if (restartTimeout) clearTimeout(restartTimeout);
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
@@ -1510,7 +1537,7 @@ Return a JSON object with:
     <div className={`relative flex flex-col items-center justify-between w-full h-full p-4 overflow-hidden transition-all duration-1000 ${themeBg} ${fontOverride}`}>
       
       {/* Upper Navigation & Neurodivergent Mode Capsule Selector */}
-      {!isMinimalMode && (
+      {!isMinimalMode && !isFullyImmersive && (
          <div className={`w-full flex flex-col md:flex-row justify-between items-center gap-3 z-30 pb-2 border-b border-stone-900/80 transition-opacity duration-[2000ms] ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
             <div className="flex items-center space-x-3 w-full md:w-auto">
                <Logo className="w-5 h-5 text-teal-400" />
@@ -1594,14 +1621,16 @@ Return a JSON object with:
       )}
 
       {/* Scrollable Adaptive Dashboard */}
-      <div className="flex-1 w-full max-w-4xl overflow-y-auto custom-scrollbar flex flex-col items-center justify-start space-y-6 py-4 px-2 my-2 z-10">
+      <div className="flex-1 w-full max-w-5xl overflow-y-auto custom-scrollbar flex flex-col items-center justify-start space-y-6 py-4 px-2 my-2 z-10">
         
         {/* Dynamic Mood Constellation Chart (Emotional Resonance Scoring Graph) */}
         {!isMinimalMode && (
-          <div className="w-full max-w-md space-y-6">
-            <MoodConstellation history={currentUser?.resonanceHistory || []} lang={lang} />
+          <div className="w-full max-w-md lg:max-w-none space-y-6 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-6 items-stretch">
+            <div className="lg:col-span-7 flex flex-col">
+              <MoodConstellation history={currentUser?.resonanceHistory || []} lang={lang} />
+            </div>
             
-            <div className="p-1 bg-stone-900/30 border border-stone-850/50 rounded-3xl backdrop-blur-md">
+            <div className="lg:col-span-5 p-1 bg-stone-900/30 border border-stone-850/50 rounded-3xl backdrop-blur-md flex flex-col">
               <div className="p-3 border-b border-stone-900/80 flex items-center justify-between">
                 <span className="text-[10px] uppercase font-bold tracking-widest text-teal-400 font-mono">
                   {lang === 'pt' ? '🖼️ Visual Imersivo PCH' : '🖼️ PCH Immersive Scenery'}
@@ -1634,8 +1663,48 @@ Return a JSON object with:
           </div>
         )}
 
+        {/* RESPONSIVE CLINICAL BENTO GRID LAYER */}
+        {!isMinimalMode ? (
+          <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-2">
+            
+            {/* LEFT COLUMN: Assistive Profile Card & Grounding (col-span-12 lg:col-span-7) */}
+            {!isFullyImmersive && (
+              <div className="col-span-1 lg:col-span-7 flex flex-col space-y-6 w-full items-center lg:items-stretch">
+               
+         <AdaptiveProfileCard
+           neuroMode={neuroMode}
+           lang={lang}
+           currentUser={currentUser}
+           autismTab={autismTab}
+           setAutismTab={setAutismTab}
+           childFeeling={childFeeling}
+           setChildFeeling={setChildFeeling}
+           burnoutEnergy={burnoutEnergy}
+           setBurnoutEnergy={setBurnoutEnergy}
+           griefRemembrance={griefRemembrance}
+           setGriefRemembrance={setGriefRemembrance}
+         />
+
+                     {(neuroMode === 'anxiety' || neuroMode === 'inclusive') && (
+
+           <BreathingGuide
+             lang={lang}
+             breathingScale={breathingScale}
+             breathingStep={breathingStep}
+             breathingText={breathingText}
+             accentBorder={accentBorder}
+           />
+         )}
+
+
+            </div>
+            )}
+
+            {/* RIGHT COLUMN: Active Controls, Telemetry & Feelings (col-span-12 lg:col-span-5) */}
+            <div className={`${isFullyImmersive ? "col-span-1 lg:col-span-12 max-w-2xl mx-auto" : "col-span-1 lg:col-span-5"} flex flex-col space-y-6 w-full items-center lg:items-stretch`}>
+               
         {/* Sabedoria do Dia Collapsible Section */}
-        {!isMinimalMode && showWisdom && (
+        {!isMinimalMode && showWisdom && !isFullyImmersive && (
           <div className={`w-full max-w-md p-4 rounded-2xl border text-center transition-all duration-[2000ms] relative bg-stone-900/20 backdrop-blur-md ${accentBorder} ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
              <button 
                 onClick={() => setShowWisdom(false)} 
@@ -1654,9 +1723,25 @@ Return a JSON object with:
           </div>
         )}
 
+
         {/* Visualizer Frame */}
         <div className={`w-full max-w-md p-6 rounded-[2rem] border flex flex-col items-center justify-center relative min-h-[160px] md:min-h-[200px] ${themeCard} ${accentBorder}`}>
            
+           {onToggleFullyImmersive && (
+             <button
+               onClick={onToggleFullyImmersive}
+               className={`absolute top-4 ${isRestMode ? 'right-20' : 'right-4'} flex items-center space-x-1 px-2.5 py-1 rounded-full border text-[8.5px] font-mono cursor-pointer transition-all hover:bg-stone-900/85 z-40 active:scale-95 ${
+                 isFullyImmersive 
+                   ? 'bg-teal-500/10 border-teal-500/40 text-teal-400' 
+                   : 'bg-stone-950/50 border-stone-850 text-stone-500 hover:text-stone-200'
+               }`}
+               title={lang === 'pt' ? 'Modo Imersão Total' : 'Full Immersion Mode'}
+             >
+               {isFullyImmersive ? <EyeOff className="w-3.5 h-3.5 animate-pulse" /> : <Eye className="w-3.5 h-3.5" />}
+               <span className="hidden sm:inline">{lang === 'pt' ? 'Imersão' : 'Immersion'}</span>
+             </button>
+           )}
+
            {isRestMode && (
              <div className="absolute top-3 right-4 flex space-x-1 items-center animate-pulse">
                 <Moon className="w-3 h-3 text-amber-300 fill-amber-300/20" />
@@ -1752,404 +1837,21 @@ Return a JSON object with:
                 MOTOR ADAPTATIVO PCH - MULTI-SENSORY CLINICAL DASHBOARDS
                 ========================================================= */}
            {neuroMode === 'adhd' && (
-             <div className="mt-4 p-2 bg-stone-950/60 border border-stone-800 rounded-xl text-center">
-               <span className="text-[10px] text-amber-400 uppercase tracking-widest font-black block mb-1">FOCO DE HOJE</span>
-                <div className="hidden">Deprecated ADHD text</div>
-               <p className="text-xs text-stone-300 leading-relaxed italic">"Deixe de lado o ruído externo. Apenas uma palavra por vez."</p>
-             </div>
-           )}
-        </div>
-
-        {/* Respirador Integrado (Grounding Breath Coach) - Displayed as top card in Anxiety Mode or togglable */}
-        {/* =========================================================
-              MOTOR ADAPTATIVO PCH - ACTIVE ACCESSIBILITY PORTFOLIO
-              ========================================================= */}
-         <div className="w-full max-w-md transition-all duration-1000 mt-4 mb-2">
-            {/* 1. NATURAL / STANDARD PROFILE */}
-            {neuroMode === 'natural' && (
-              <div className="w-full p-4 bg-stone-900/30 border border-stone-850/60 rounded-2xl flex flex-col items-center">
-                <div className="w-full flex justify-between items-center text-[10px] uppercase font-mono tracking-widest text-[#14b8a6] mb-1 animate-none">
-                  <span>Índice de Sintonia Interior (ISI)</span>
-                  <span className="font-bold text-[#14b8a6]">{(currentUser?.resonanceScore || 75) + 5}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-stone-950 rounded-full overflow-hidden mb-3 border border-stone-900 animate-none">
-                  <div 
-                    className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full transition-all duration-1000"
-                    style={{ width: `${Math.min(100, Math.max(30, (currentUser?.resonanceScore || 75) + 5))}%` }}
-                  />
-                </div>
-                <div className="flex items-center space-x-2 text-[9px] font-mono text-stone-400 self-start animate-none">
-                  <span>Metáfora Da Sincronia:</span>
-                  <span className="text-stone-300 font-bold">
-                    {((currentUser?.resonanceScore || 75) + 3) <= 20 ? '🌱 Semente' :
-                     ((currentUser?.resonanceScore || 75) + 3) <= 45 ? '🌿 Broto' :
-                     ((currentUser?.resonanceScore || 75) + 3) <= 70 ? '🌳 Árvore' :
-                     ((currentUser?.resonanceScore || 75) + 3) <= 90 ? '✨ Florescimento' : '🌌 Constelação Interior'}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* 2. ADHD / TDAH - MINIMALIST SINGLE FOCUS MISSION */}
-            {neuroMode === 'adhd' && (
-              <div className="w-full p-4 bg-stone-900/40 border border-stone-850 rounded-2xl text-left font-sans shadow-lg animate-none">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h5 className="text-[10px] text-amber-400 font-black tracking-widest uppercase flex items-center gap-1">⚡ {lang === 'pt' ? 'Missão Única do Dia' : 'Today\'s Single Focus'}</h5>
-                    <p className="text-[9px] text-stone-400 mt-0.5">{lang === 'pt' ? 'Mente ágil, voo suave.' : 'Swift mind, smooth landing.'}</p>
-                  </div>
-                  <div className="flex items-center space-x-1 text-[9px] font-mono text-amber-400 bg-amber-950/20 px-2 py-0.5 rounded border border-amber-900/10">
-                    <span>Sementes de Foco:</span>
-                    <span className="font-bold">✦ ✦ ✦ ✧ ✧ (+3)</span>
-                  </div>
-                </div>
-                <div className="my-2 p-3.5 bg-stone-950/80 border border-stone-850/80 rounded-xl">
-                  <span className="text-[7.5px] font-mono font-bold tracking-widest text-amber-500 uppercase block mb-1">★ FOCO PRINCIPAL</span>
-                  <p className="text-[11.5px] text-stone-100 italic leading-relaxed">
-                    {lang === 'pt' 
-                      ? '“Conclua apenas um foco consciente hoje. Deixe o ruído externo passar. Siga o balanço.”' 
-                      : '“Complete exactly one mindful action today. Let external clutter drift away. Flow with ease.”'}
-                  </p>
-                </div>
-                <div className="flex justify-between items-center text-[8px] font-mono text-stone-500 pt-1">
-                  <span>⚠️ Sem menus excessivos ou poluição mental</span>
-                  <span>1 Atividade por Vez</span>
-                </div>
-              </div>
-            )}
-
-            {/* 3. AUTISM / AUTISMO - PREDICTABLE INTERACTION CARD */}
-            {neuroMode === 'autism' && (
-              <div className="w-full p-4 bg-[#0a1122]/40 border border-blue-900/35 rounded-2xl font-mono text-left shadow-lg animate-none">
-                <div className="flex justify-between items-center mb-3 border-b border-blue-950/50 pb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm">🧩</span>
-                    <h5 className="text-[10px] text-blue-400 font-black tracking-widest uppercase">Estabilidade e Rotina</h5>
-                  </div>
-                  <span className="text-[8.5px] font-mono font-bold text-blue-400 bg-blue-950/40 px-2 py-0.5 rounded border border-blue-900/30">
-                    Constelação: ⭐️ ⭐️ ⭐️ ⭐️ ✧
-                  </span>
-                </div>
-                
-                {/* Fixed visual roadmap buttons */}
-                <div className="grid grid-cols-4 gap-1.5 mb-3">
-                  {(['talk', 'breath', 'register', 'rest'] as const).map(tab => {
-                    const isSelected = autismTab === tab;
-                    return (
-                      <button
-                        key={tab}
-                        onClick={() => setAutismTab(tab)}
-                        className="py-2 px-0.5 rounded-xl text-[9px] font-bold tracking-wider transition-all pointer-events-auto cursor-pointer text-center bg-stone-900/50 border border-stone-800 text-stone-400 hover:text-stone-200"
-                        style={{
-                          backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.25)' : '',
-                          borderColor: isSelected ? 'rgba(96, 165, 250, 0.5)' : '',
-                          color: isSelected ? '#dbeafe' : ''
-                        }}
-                      >
-                        {tab === 'talk' && (lang === 'pt' ? '🗣️ Conversar' : '🗣️ Talk')}
-                        {tab === 'breath' && (lang === 'pt' ? '🌬️ Respirar' : '🌬️ Breathe')}
-                        {tab === 'register' && (lang === 'pt' ? '📝 Diário' : '📝 Journal')}
-                        {tab === 'rest' && (lang === 'pt' ? '😴 Pausa' : '😴 Pause')}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="p-3 bg-stone-950/70 border border-blue-950/40 rounded-xl">
-                  <span className="text-[8px] font-mono font-semibold text-blue-500 uppercase tracking-widest block mb-1">
-                    {lang === 'pt' ? 'Instrução do Guardião' : 'Guardian Instructions'}
-                  </span>
-                  <p className="text-[10px] text-stone-300 leading-relaxed">
-                    {autismTab === 'talk' && (lang === 'pt' ? 'Fale ou digite no seu próprio ritmo. Sem pressões, sem surpresas de contexto.' : 'Speak or type at your own pace. Clean structure, no context jumps.')}
-                    {autismTab === 'breath' && (lang === 'pt' ? 'Acompanhe o respirador circular verde mais abaixo para se acalmar.' : 'Follow the green circular breathing coach below to align energy.')}
-                    {autismTab === 'register' && (lang === 'pt' ? 'Seus pensamentos estão salvos no Diário Interior de forma linear.' : 'Your inner thoughts are saved inside your Private Journal space.')}
-                    {autismTab === 'rest' && (lang === 'pt' ? 'Sessão estruturada segura concluída. Sinta a constelação amigável.' : 'Structured alignment completed. Rest key metrics inside.')}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* 4. ANXIETY / ANSIEDADE - EXPLICIT WELCOME SANCTUARY */}
-            {neuroMode === 'anxiety' && (
-              <div className="w-full p-4 bg-[#021d15]/50 border border-emerald-900/30 rounded-2xl text-left font-sans shadow-lg animate-none">
-                <div className="flex items-center space-x-2 text-emerald-400 mb-2">
-                  <span className="text-sm">🗼</span>
-                  <h5 className="text-[10px] text-emerald-400 font-extrabold tracking-widest uppercase">Faroleiro da Calmaria</h5>
-                </div>
-                
-                <div className="p-3.5 bg-emerald-950/30 border border-emerald-900/35 rounded-xl text-center shadow-inner mb-2">
-                  <p className="text-xs font-serif font-bold text-emerald-250 animate-pulse leading-relaxed">
-                    {lang === 'pt' ? '“Você está seguro, protegido e totalmente amparado neste exato momento.”' : '“You are completely safe, protected, and fully grounded at this very moment.”'}
-                  </p>
-                </div>
-
-                <div className="flex justify-between items-center text-[8.5px] font-mono text-emerald-500/80 animate-none">
-                  <span>📍 Porto Seguro: Alinhado</span>
-                  <span>Nível de Estresse: Reduzindo</span>
-                </div>
-              </div>
-            )}
-
-            {/* 5. SENIORS / IDOSO - LARGE TYPOGRAPHY CLICKS */}
-            {neuroMode === 'senior' && (
-              <div className="w-full p-5 bg-[#141414] border border-stone-800 rounded-2xl text-left space-y-3 font-serif shadow-lg animate-none">
-                <div className="flex justify-between items-center border-b border-stone-855 pb-2 font-sans">
-                  <span className="text-xs font-serif font-bold text-stone-100 flex items-center gap-1.5">👵 {lang === 'pt' ? 'Guardião das Memórias' : 'Memory Keeper'}</span>
-                  <span className="text-[9px] font-mono text-stone-400">{lang === 'pt' ? 'Livro de Memórias' : 'History Log'}</span>
-                </div>
-                <p className="text-xs text-stone-300 leading-relaxed font-serif animate-none">
-                  {lang === 'pt' 
-                    ? 'Querido guardião, suas recordações de hoje são pedras de ouro no seu legado de sabedoria. O que mais te trouxe alegria ou gratidão nas últimas horas?' 
-                    : 'Dear keeper, your memories are golden steps on your path of wisdom. What brought you peace or gentle joy in the past hours?'}
-                </p>
-                <div className="grid grid-cols-1 gap-2 pt-1 font-serif">
-                  <button 
-                    onClick={() => {
-                        const diaryTab = document.getElementById('diary-tab-trigger');
-                        if (diaryTab) diaryTab.click();
-                    }}
-                    className="w-full py-2.5 px-4 bg-stone-900 hover:bg-stone-850 border border-stone-800 rounded-xl text-xs text-stone-200 text-center transition-colors shadow cursor-pointer pointer-events-auto"
-                  >
-                     {lang === 'pt' ? '✍️ Registrar Minha História' : '✍️ Write My Story'}
-                  </button>
-                  <button 
-                    onClick={() => {
-                        const diaryTab = document.getElementById('diary-tab-trigger');
-                        if (diaryTab) diaryTab.click();
-                    }}
-                    className="w-full py-2.5 px-4 bg-stone-900 hover:bg-stone-855 border border-stone-800 rounded-xl text-xs text-stone-200 text-center transition-colors shadow cursor-pointer pointer-events-auto"
-                  >
-                     {lang === 'pt' ? '🕊️ Compartilhar Gratidão' : '🕊️ Share Thankfulness'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* 6. KIDS / INFANTIL - PASSARINHO FUN INTERACTIVE CHANGER */}
-            {neuroMode === 'child' && (
-              <div className="w-full p-4 bg-indigo-950/20 border border-indigo-900/35 rounded-2xl text-center space-y-3 font-sans shadow-lg animate-none">
-                <div className="flex justify-center items-center space-x-2">
-                  <span className="text-lg animate-none">🐥</span>
-                  <h5 className="text-[10px] text-indigo-400 font-extrabold tracking-widest uppercase">Passarinho PCH</h5>
-                </div>
-                <p className="text-[11px] text-indigo-200 font-medium font-sans">
-                  {lang === 'pt' ? 'Como você se sente hoje, amiguinho?' : 'How do you feel today, little friend?'}
-                </p>
-                
-                <div className="flex items-center justify-center space-x-1.5 animate-none">
-                  {[
-                    { e: '🐥', l: 'Feliz', h: 'Happy' },
-                    { e: '🧸', l: 'Cansado', h: 'Tired' },
-                    { e: '☁️', l: 'Sensível', h: 'Calm' },
-                    { e: '🌈', l: 'Mágico', h: 'Magic' }
-                  ].map((emo) => (
-                    <button
-                      key={emo.e}
-                      onClick={() => setChildFeeling(emo.e)}
-                      className="p-2 py-1 rounded-xl border text-base transition-all active:scale-95 flex flex-col items-center cursor-pointer pointer-events-auto"
-                      style={{
-                        backgroundColor: childFeeling === emo.e ? 'rgba(99, 102, 241, 0.25)' : 'rgba(28, 25, 23, 0.5)',
-                        borderColor: childFeeling === emo.e ? 'rgba(129, 140, 248, 0.4)' : 'rgba(44, 40, 36, 0.8)'
-                      }}
-                    >
-                      <span className="text-base">{emo.e}</span>
-                      <span className="text-[7.5px] mt-0.5 text-stone-400 font-mono">{lang === 'pt' ? emo.l : emo.h}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {childFeeling && (
-                  <div className="p-3 bg-stone-950/70 border border-indigo-955 rounded-xl text-left animate-fade-in text-[10px] text-stone-350 font-sans leading-relaxed">
-                    <span className="text-[8px] font-mono text-indigo-400 uppercase tracking-widest block mb-0.5">Voz do Amigo Passarinho</span>
-                    {lang === 'pt' 
-                      ? `O Passarinho PCH pousou pertinho de você porque viu que seu coração está ${childFeeling === '🐥' ? 'Feliz e Brilhante' : childFeeling === '🧸' ? 'um pouco Cansado' : childFeeling === '☁️' ? 'Calmo como uma Nuvem Suave' : 'Mágico e cheio de Imaginação'}. Ele canta uma poesia de carinho para você agora!`
-                      : `Our companion bird landed beside you because he saw you feel ${childFeeling === '🐥' ? 'Happy and Bright' : childFeeling === '🧸' ? 'Tired' : childFeeling === '☁️' ? 'Calm like a Soft Cloud' : 'Magical and full of Dreams'}. He whistles a sweet song of peace!`}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 7. DOWN / ASSISTIVE ARCO-IRIS VOICE CARD */}
-            {neuroMode === 'down' && (
-              <div className="w-full p-4 bg-teal-950/10 border border-teal-500/20 rounded-[2.5rem] text-center space-y-4 font-sans shadow-lg animate-none">
-                <div className="flex justify-center items-center space-x-2 text-teal-400 font-bold font-sans">
-                  <span className="text-xl animate-bounce">🌈</span>
-                  <span className="text-[11px] font-black tracking-widest uppercase text-teal-300">Amigo Arco-Íris</span>
-                </div>
-                
-                <h4 className="text-[12.5px] font-black text-stone-100 font-sans animate-none">
-                  {lang === 'pt' ? 'Clique no botão grande para me escutar dizer uma fofura!' : 'Click the big button to hear me talk directly to you!'}
-                </h4>
-
-                <div className="p-1 font-sans">
-                  <button 
-                    onClick={() => {
-                      const msg = lang === 'pt' 
-                        ? 'Você é uma pessoa maravilhosa e cheia de amor. Estou muito feliz que estamos conversando!' 
-                        : 'You are wonderful and full of love. I am so glad we are talking right now!';
-                      try {
-                        const utterance = new SpeechSynthesisUtterance(msg);
-                        utterance.lang = lang === 'pt' ? 'pt-BR' : 'en-US';
-                        window.speechSynthesis.speak(utterance);
-                      } catch (e) {
-                        console.error('Audio assist failure', e);
-                      }
-                    }}
-                    className="w-full py-4 bg-teal-500 hover:bg-teal-400 active:scale-95 text-stone-950 font-black text-xs uppercase tracking-widest rounded-full transition-all duration-300 pointer-events-auto cursor-pointer shadow-lg shadow-teal-500/25 border-b-2 border-teal-600"
-                  >
-                     🔊 {lang === 'pt' ? 'OUVIR MÚSICA DA VOZ' : 'LISTEN TO MY GUIDING VOICE'}
-                  </button>
-                </div>
-
-                <div className="flex justify-center space-x-1.5 text-[10px] font-bold text-teal-400/90 font-mono uppercase">
-                  <span>✦ Amigos virtuais: Ativo</span>
-                </div>
-              </div>
-            )}
-
-            {/* 8. DYSLEXIA / TRANSCRIPTS EASY PLAYER */}
-            {neuroMode === 'dyslexia' && (
-              <div className="w-full p-4 bg-stone-900/30 border border-stone-800 rounded-2xl text-left space-y-2 font-sans shadow-lg animate-none">
-                <div className="flex justify-between items-center text-amber-200 border-b border-stone-850 pb-1 flex-wrap gap-1">
-                  <span className="text-[10px] font-black uppercase tracking-[0.15em] flex items-center gap-1">📚 {lang === 'pt' ? 'Facilitador de Leitura' : 'Reader Assist'}</span>
-                  <button 
-                    onClick={() => {
-                      const activeText = selectedFeeling ? (lang === 'pt' ? `Sinto agora: ${selectedFeeling}. Respire suavemente no balanço da voz.` : `I feel like: ${selectedFeeling}. Relax and follow the calm wind structure.`) : (lang === 'pt' ? 'Santuário de luz da hipnose poética cognitiva.' : 'Cognitive poetics hypnosis safe sanctuary.');
-                      try {
-                        const utterance = new SpeechSynthesisUtterance(activeText);
-                        utterance.lang = lang === 'pt' ? 'pt-BR' : 'en-US';
-                        window.speechSynthesis.speak(utterance);
-                      } catch (e) {
-                        console.error('Speech utility issue', e);
-                      }
-                    }}
-                    className="py-1 px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[8.5px] uppercase tracking-widest text-[#d97706] rounded font-mono cursor-pointer transition-all pointer-events-auto"
-                  >
-                    🔊 {lang === 'pt' ? 'Ouvir Texto Falado' : 'Play text voice audio'}
-                  </button>
-                </div>
-                <p className="text-[10px] text-stone-400 leading-relaxed tracking-[0.14em] font-sans font-medium">
-                  {lang === 'pt' 
-                    ? 'Oferecemos fonte com alta legibilidade espacial, espaçamento aumentado e leitura automatizada para facilitar seu descanso cognitivo.' 
-                    : 'We provide heavy letter spacing, musical cadence indicators, and instant reader utilities to optimize reading comfort.'}
-                </p>
-              </div>
-            )}
-
-            {/* 9. GIFTED / ALTAS HABILIDADES - COSMIC CONCEPT MATRIX */}
-            {neuroMode === 'gifted' && (
-              <div className="w-full p-4 bg-violet-950/10 border border-violet-900/35 rounded-2xl text-left space-y-2 font-mono shadow-lg animate-none">
-                <div className="flex justify-between items-center border-b border-violet-950 pb-1.5 flex-wrap gap-1">
-                  <span className="text-[10px] font-black tracking-widest uppercase text-violet-400 flex items-center gap-1 font-mono">🌌 {lang === 'pt' ? 'Explorador Intelectual' : 'Intellectual Depth MAP'}</span>
-                  <span className="text-[8.5px] font-mono text-violet-400 uppercase">Profundidade Ativa</span>
-                </div>
-                <span className="text-[8px] font-mono text-stone-500 block uppercase">CONCEITO DO DIA</span>
-                <p className="text-[11px] text-stone-300 italic leading-relaxed font-serif">
-                  {lang === 'pt' 
-                    ? '“Se a mente humana é um sistema de conexões poéticas, até onde vai sua habilidade de expandir a realidade interna?”' 
-                    : '“If the human mind is mapped through poetic resonances, how deep goes your ability to project and expand inner reality?”'}
-                </p>
-                <div className="pt-1.5 flex items-center space-x-1 font-mono text-[9px] text-stone-500">
-                  <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse animate-none animate-none" />
-                  <span>Cognitive Thread: Active Connections V3</span>
-                </div>
-              </div>
-            )}
-
-            {/* 10. BURNOUT - SUAVE PROGRESS DECOMPRESSION CONTROLS */}
-            {neuroMode === 'burnout' && (
-              <div className="w-full p-4 bg-[#161211]/80 border border-stone-850 rounded-2xl text-left space-y-3.5 font-sans shadow-lg animate-none">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-orange-400 font-black tracking-widest uppercase flex items-center gap-1 animate-none">🔥 {lang === 'pt' ? 'Carga de Cobrança Interna' : 'Internal Pressure Release'}</span>
-                  <span className="text-[9px] font-mono text-stone-500">Decompress Core Active</span>
-                </div>
-                
-                <div className="space-y-1.5 font-sans animate-none">
-                  <div className="flex justify-between items-center text-[8.5px] font-mono text-stone-300 mb-0.5">
-                    <span>Nível de Auto-Cobrança:</span>
-                    <span className="text-orange-400 font-bold">{burnoutEnergy}%</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="10" 
-                    max="100" 
-                    value={burnoutEnergy}
-                    onChange={(e) => setBurnoutEnergy(parseInt(e.target.value))}
-                    className="w-full accent-orange-500 cursor-pointer h-1.5 bg-stone-950 rounded-lg appearance-none pointer-events-auto"
-                  />
-                  <p className="text-[8.5px] text-stone-400 font-mono">
-                    {lang === 'pt' ? 'Arraste para reduzir manualmente o nível de urgência interna de hoje.' : 'Slide to manually reduce your level of internal pressure now.'}
-                  </p>
-                </div>
-
-                <div className="flex justify-between items-center text-[8.5px] font-mono text-stone-500 border-t border-stone-900 pt-2 animate-none">
-                  <span>Esgotamento: Reduzindo Passo</span>
-                  <span>Fogueiras: Sincronizadas</span>
-                </div>
-              </div>
-            )}
-
-            {/* 11. GRIEF / LUTO - SAFE MEMORIAL ROSE GARDEN */}
-            {neuroMode === 'grief' && (
-              <div className="w-full p-4 bg-rose-950/10 border border-rose-900/30 rounded-2xl text-left space-y-3 font-serif shadow-lg animate-none animate-none">
-                <div className="flex justify-between items-center border-b border-rose-950/20 pb-1.5">
-                  <span className="text-[10px] text-[#fda4af] font-black tracking-widest uppercase flex items-center gap-1 font-sans">🌹 {lang === 'pt' ? 'Santuário de Lembranças' : 'Sanctuary of Grace'}</span>
-                  <span className="text-[8.5px] font-mono text-rose-450 uppercase animate-none">Espaço Reservado</span>
-                </div>
-                <p className="text-xs text-rose-200 leading-relaxed font-serif italic text-center animate-none">
-                  {lang === 'pt' 
-                    ? '“Tudo o que amamos profundamente torna-se parte de quem somos.”' 
-                    : '“What we once enjoyed and deeply loved we can never lose, for it becomes a secure lock of our heart.”'}
-                </p>
-
-                <div className="flex items-center space-x-3 bg-stone-950/50 p-2.5 rounded-xl border border-rose-950/20 animate-none">
-                  <button 
-                    onClick={() => setGriefRemembrance(!griefRemembrance)}
-                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-rose-550/5 hover:bg-rose-500/10 border border-rose-500/20 text-rose-450 shrink-0 text-lg cursor-pointer pointer-events-auto animate-none"
-                  >
-                    {griefRemembrance ? '🕯️' : '🌸'}
-                  </button>
-                  <p className="text-[9.5px] text-stone-400 leading-snug font-sans font-medium">
-                    {griefRemembrance 
-                      ? (lang === 'pt' ? 'Vela virtual acesa em memória e honra eterna. Respire fundo.' : 'Virtual candle lit in timeless honor. Take a long, gentle breath.')
-                      : (lang === 'pt' ? 'Clique no botão ao lado para acender uma vela virtual do amor.' : 'Click the icon to light a secure virtual memory candle.')}
-                  </p>
-                </div>
+              <div className="mt-4 p-2 bg-stone-950/60 border border-stone-800 rounded-xl text-center">
+                <span className="text-[10px] text-amber-400 uppercase tracking-widest font-black block mb-1">FOCO DE HOJE</span>
+                 <div className="hidden">Deprecated ADHD text</div>
+                <p className="text-xs text-stone-300 leading-relaxed italic">"Deixe de lado o ruído externo. Apenas uma palavra por vez."</p>
               </div>
             )}
          </div>
 
-         {(neuroMode === 'anxiety' || neuroMode === 'inclusive') && (
-          <div className={`w-full max-w-md p-6 rounded-[2rem] border text-center transition-all duration-1000 flex flex-col items-center relative overflow-hidden bg-gradient-to-br from-emerald-950/10 to-teal-950/10 ${accentBorder}`}>
-             <span className="text-[8px] text-emerald-400 uppercase tracking-[0.3em] font-black mb-3 select-none">Exercício Respiratório de Aterramento</span>
-             
-             {/* Animating Breathing Orb */}
-             <div 
-               className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-[4000ms] border shadow-2xl relative mb-4"
-               style={{ 
-                 transform: `scale(${breathingScale})`,
-                 backgroundColor: breathingStep === 'inhale' ? 'rgba(20, 184, 166, 0.25)' : breathingStep === 'hold-in' ? 'rgba(52, 211, 153, 0.3)' : breathingStep === 'exhale' ? 'rgba(74, 222, 128, 0.15)' : 'rgba(16, 185, 129, 0.05)',
-                 borderColor: breathingStep === 'hold-in' ? 'rgba(52,211,153,0.5)' : 'rgba(20, 184, 166, 0.3)'
-               }}
-             >
-                <div className="absolute inset-0 rounded-full blur-xl animate-pulse bg-teal-500/10" />
-                <Activity className="w-5 h-5 text-emerald-300 opacity-60" />
-             </div>
-
-             <h4 className="text-sm font-serif tracking-widest text-emerald-100 mb-1 transition-all">
-                {breathingText}
-             </h4>
-             <p className="text-[9px] text-emerald-500 uppercase tracking-widest">
-                {breathingStep === 'inhale' && (lang === 'pt' ? 'Inale em 4 segundos' : 'Inhale for 4s')}
-                {breathingStep === 'hold-in' && (lang === 'pt' ? 'Retenha em plenitude' : 'Hold deep')}
-                {breathingStep === 'exhale' && (lang === 'pt' ? 'Solte sem ruído' : 'Release slowly')}
-                {breathingStep === 'hold-out' && (lang === 'pt' ? 'Descanse em paz' : 'Rest silent')}
-             </p>
-          </div>
-        )}
+         {/* Respirador Integrado (Grounding Breath Coach) - Displayed as top card in Anxiety Mode or togglable */}
+        {/* =========================================================
+              MOTOR ADAPTATIVO PCH - ACTIVE ACCESSIBILITY PORTFOLIO
+              ========================================================= */}
 
         {/* Painel do Núcleo da Inteligência Principal (5-layer processing view & anchor selects) */}
-        {!isMinimalMode && (
+        {!isMinimalMode && !isFullyImmersive && (
           <div id="onboarding-intel" className="w-full max-w-xl bg-stone-900/40 border border-stone-850/60 rounded-3xl p-5 space-y-4 transition-all duration-500">
              <div className="flex justify-between items-center border-b border-stone-850/60 pb-2.5">
                 <div className="flex items-center space-x-2">
@@ -2249,8 +1951,9 @@ Return a JSON object with:
           </div>
         )}
 
+
         {/* Painel de Sentimentos (Feelings Dashboard) - Lowers cognitive load */}
-        {!isMinimalMode && (
+        {!isMinimalMode && !isFullyImmersive && (
           <div className={`w-full max-w-xl flex flex-col space-y-3 transition-opacity duration-[2000ms] ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
              <div className="text-center md:text-left">
                 <h4 className={`text-xs uppercase tracking-widest text-stone-400 font-bold ${textSpacing}`}>{text?.feelings?.title}</h4>
@@ -2282,8 +1985,9 @@ Return a JSON object with:
           </div>
         )}
 
+
         {/* Metaphors Panel - When words fail completely */}
-        {!isMinimalMode && (
+        {!isMinimalMode && !isFullyImmersive && (
           <div className={`w-full max-w-xl flex flex-col space-y-3 pt-2 transition-opacity duration-[2000ms] ${isRestMode ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
              <div className="text-center md:text-left flex items-center space-x-1.5 justify-center md:justify-start">
                 <Compass className="w-4 h-4 text-stone-500" />
@@ -2313,10 +2017,121 @@ Return a JSON object with:
              </div>
           </div>
         )}
+      </div>
+    </div>
+  ) : (
+          /* MINIMALIST MODE: Compact, centered primary vocal engine */
+          <div className="w-full max-w-md mx-auto flex flex-col items-center py-6">
+        {/* Visualizer Frame */}
+        <div className={`w-full max-w-md p-6 rounded-[2rem] border flex flex-col items-center justify-center relative min-h-[160px] md:min-h-[200px] ${themeCard} ${accentBorder}`}>
+           
+           {isRestMode && (
+             <div className="absolute top-3 right-4 flex space-x-1 items-center animate-pulse">
+                <Moon className="w-3 h-3 text-amber-300 fill-amber-300/20" />
+                <span className="text-[7px] font-mono text-amber-300 uppercase tracking-widest">{lang === 'pt' ? 'REPOUSO' : 'REST ACTIVE'}</span>
+             </div>
+           )}
 
+           <div className="absolute top-3 left-4 flex space-x-1.5 items-center">
+             <div className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-ping" />
+             <span className="text-[8px] font-mono tracking-widest text-teal-400 uppercase">
+               {isAiSpeaking ? (lang === 'pt' ? 'Dr. Evaldo falando' : 'Dr. Evaldo speaking') : (isUserSpeaking ? (lang === 'pt' ? 'Escutando você' : 'Listening to you') : (lang === 'pt' ? 'Sintonizado' : 'Aligned'))}
+             </span>
+           </div>
+
+           <AudioVisualizer volume={volume} isActive={isUserSpeaking || isAiSpeaking} color={isAiSpeaking ? "rgb(20, 184, 166)" : "rgb(168, 162, 158)"} />
+
+            {/* AI Speech Text display (Web Speech Synthesis transcription) */}
+            {aiSpeechText && (
+              <div id="ai-caption-bubble" className="mt-4 w-full max-w-sm px-4 py-3 bg-teal-950/30 backdrop-blur-md border border-teal-500/30 rounded-2xl text-center leading-relaxed shadow-lg animate-none z-20">
+                <div className="flex items-center justify-center space-x-1 mb-1 bg-teal-900/20 py-0.5 px-2 rounded-full w-fit mx-auto">
+                  <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-ping" />
+                  <span className="text-[8px] font-bold text-teal-400 uppercase tracking-widest font-mono">
+                    {lang === 'pt' ? 'Mente IA (Fórmula de Voz)' : 'Mind AI (Vocal Blueprint)'}
+                  </span>
+                </div>
+                <p className="text-[11.5px] text-stone-100 font-serif leading-relaxed italic">
+                  "{aiSpeechText}"
+                </p>
+              </div>
+            )}
+
+            {/* Interactive visual audio wave animation synced with speech input */}
+            {isSpeechRecognitionRunning && (
+              <div className="flex items-center justify-center space-x-1 w-full max-w-xs mt-4 h-10 px-4 bg-teal-900/10 border border-teal-950/20 rounded-full self-center z-20">
+                <span className="text-[8px] font-mono font-bold text-teal-400/80 uppercase tracking-widest mr-2">{lang === 'pt' ? 'Frequência:' : 'Frequency:'}</span>
+                {[...Array(15)].map((_, i) => {
+                  const centerDist = Math.abs(i - 7);
+                  const factor = Math.max(0.25, (8 - centerDist) / 8);
+                  const dynamicHeight = 4 + (volume * 70 * factor) + (Math.sin(elapsedSeconds * 4 + i) * 5 * (volume > 0.015 ? 1 : 0.25));
+                  return (
+                    <span
+                      key={i}
+                      className="w-1 rounded-full bg-gradient-to-t from-teal-500 via-emerald-400 to-teal-300 transition-all duration-75"
+                      style={{
+                        height: `${Math.min(36, dynamicHeight)}px`,
+                        opacity: volume > 0.015 ? 1.0 : 0.4,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+             {/* Supportive Speech Recognition Diagnostic Tip */}
+             {speechRecError && speechRecError !== 'aborted' && speechRecError !== 'no-speech' && (
+               <div className="mt-4 w-full max-w-sm px-4 py-3 bg-red-950/20 backdrop-blur-md border border-red-500/30 rounded-2xl text-center leading-relaxed shadow-lg z-20 animate-none">
+                 <div className="flex items-center justify-center space-x-1 mb-1.5 py-0.5 px-2 rounded-full w-fit mx-auto bg-red-900/10">
+                   <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                   <span className="text-[8px] font-bold text-red-400 uppercase tracking-widest font-mono">
+                     {lang === 'pt' ? 'Sinal de Voz Restrito' : 'Voice Signal Restrained'}
+                   </span>
+                 </div>
+                 <p className="text-[11px] text-stone-300 leading-relaxed font-sans">
+                   {speechRecError === 'not-allowed' ? (
+                     lang === 'pt' 
+                       ? 'O navegador suspendeu o reconhecimento de voz parcial. Certifique-se de liberar o microfone nos ajustes do site (clique no ícone de de cadeado).' 
+                       : 'The browser suspended partial speech recognition. Please check your mic permissions in site settings (click the lock icon).'
+                   ) : (
+                     lang === 'pt'
+                       ? `Não foi possível sintonizar a escuta de texto (${speechRecError}). O canal de voz principal com Dr. Evaldo continua ativo!`
+                       : `Voice transcription suspended (${speechRecError}). The main streaming voice channel with Dr. Evaldo is still fully active!`
+                   )}
+                 </p>
+               </div>
+             )}
+
+           {/* Custom Web Speech API Live Transcript Bubble */}
+           {speechTranscript && (
+             <div id="voice-transcript-bubble" className="mt-4 w-full max-w-sm px-4 py-3 bg-stone-950/80 backdrop-blur-md border border-teal-500/20 rounded-2xl text-center leading-relaxed font-sans shadow-lg shadow-teal-500/5 animate-none">
+               <div className="flex items-center justify-center space-x-1 mb-1">
+                 <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce" />
+                 <span className="text-[8px] font-bold text-teal-400 uppercase tracking-widest font-mono">
+                   {lang === 'pt' ? 'Mente Fala (Reconhecido)' : 'Mind Speak (Recognized)'}
+                 </span>
+               </div>
+               <p className="text-xs text-stone-200 font-medium font-sans">
+                 "{speechTranscript}"
+               </p>
+             </div>
+           )}
+           
+           {/* =========================================================
+                MOTOR ADAPTATIVO PCH - MULTI-SENSORY CLINICAL DASHBOARDS
+                ========================================================= */}
+           {neuroMode === 'adhd' && (
+              <div className="mt-4 p-2 bg-stone-950/60 border border-stone-800 rounded-xl text-center">
+                <span className="text-[10px] text-amber-400 uppercase tracking-widest font-black block mb-1">FOCO DE HOJE</span>
+                 <div className="hidden">Deprecated ADHD text</div>
+                <p className="text-xs text-stone-300 leading-relaxed italic">"Deixe de lado o ruído externo. Apenas uma palavra por vez."</p>
+              </div>
+            )}
+       </div>
+         </div>
+        )}
       </div>
 
-      {/* Supporting Modals (Inner Garden Panel / Professional supportive clinical networks) */}
+       {/* Supporting Modals (Inner Garden Panel / Professional supportive clinical networks) */}
       {showGarden && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 md:p-6" onClick={() => setShowGarden(false)}>
            <div className="bg-stone-950 border border-stone-800 w-full max-w-2xl p-6 rounded-[2.5rem] relative overflow-hidden shadow-2xl flex flex-col space-y-6" onClick={e=>e.stopPropagation()}>
@@ -2583,6 +2398,16 @@ Return a JSON object with:
                >
                   {isMinimalMode ? <EyeOff className="w-5 h-5 animate-pulse" /> : <Eye className="w-5 h-5" />}
                </button>
+
+               {onToggleFullyImmersive && (
+                 <button 
+                   onClick={onToggleFullyImmersive} 
+                   className={`p-3 transition-colors ${isFullyImmersive ? 'text-teal-400 hover:text-teal-300' : 'text-stone-400 hover:text-stone-200'}`} 
+                   title={isFullyImmersive ? (lang === 'pt' ? 'Sair da Imersão Total' : 'Exit Full Immersion') : (lang === 'pt' ? 'Imersão Total' : 'Full Immersion')}
+                 >
+                    {isFullyImmersive ? <EyeOff className="w-5 h-5 animate-pulse" /> : <Eye className="w-5 h-5" />}
+                 </button>
+               )}
             </div>
             
             {/* Main Central Mic Action */}

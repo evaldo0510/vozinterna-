@@ -49,6 +49,45 @@ function App() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isMinimalMode, setIsMinimalMode] = useState(false);
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
+  
+  // Immersive mode & mobile swipe gestures
+  const [isFullyImmersive, setIsFullyImmersive] = useState(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+    setTouchStartY(e.touches[0].clientY);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null || touchStartY === null) return;
+    
+    const diffX = e.changedTouches[0].clientX - touchStartX;
+    const diffY = e.changedTouches[0].clientY - touchStartY;
+    
+    // Only navigate if horizontal swipe is larger than vertical swipe & passes threshold
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
+      const screens: NavigationScreen[] = ['chat', 'profile', 'settings'];
+      const currentIndex = screens.indexOf(activeScreen as NavigationScreen);
+      
+      if (currentIndex !== -1) {
+        if (diffX < 0) {
+          // Swiped left -> Next page: Chat -> Profile -> Settings
+          if (currentIndex < screens.length - 1) {
+            setActiveScreen(screens[currentIndex + 1]);
+          }
+        } else {
+          // Swiped right -> Previous page: Settings -> Profile -> Chat
+          if (currentIndex > 0) {
+            setActiveScreen(screens[currentIndex - 1]);
+          }
+        }
+      }
+    }
+    setTouchStartX(null);
+    setTouchStartY(null);
+  };
 
   useEffect(() => {
     if (currentUser && currentUser.profileCompleted && currentUser.manifestoCompleted) {
@@ -293,7 +332,7 @@ function App() {
         <div className="h-full w-full flex flex-col justify-between">
           
           {/* Main App Header with live Level indicator and Tab Switchers */}
-          {!isMinimalMode && (
+          {!isMinimalMode && !isFullyImmersive && (
             <header className="w-full bg-stone-950 border-b border-stone-900 p-4 flex flex-row justify-between items-center z-50">
               <div className="flex items-center space-x-3" id="onboarding-level">
                 <Logo className="w-8 h-8 rotate-6 transition-all duration-700" emotionalState={currentUser.emotionalState} />
@@ -391,7 +430,11 @@ function App() {
           )}
 
           {/* Main App active page container */}
-          <main className="flex-1 overflow-y-auto w-full relative ResponsiveLayout">
+          <main 
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className="flex-1 overflow-y-auto w-full relative ResponsiveLayout"
+          >
             {activeScreen === 'chat' && (
               <SessionManager 
                 onDisconnect={handleSessionEnd} 
@@ -403,6 +446,8 @@ function App() {
                 onToggleMinimalMode={() => setIsMinimalMode(!isMinimalMode)}
                 impersonatedUser={impersonatedUser}
                 onClearImpersonation={() => setImpersonatedUser(null)}
+                isFullyImmersive={isFullyImmersive}
+                onToggleFullyImmersive={() => setIsFullyImmersive(!isFullyImmersive)}
               />
             )}
 

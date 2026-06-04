@@ -131,11 +131,19 @@ export const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, lan
       };
 
       recognition.onerror = (event: any) => {
-        console.error('Speech recognition error', event.error);
-        if (event.error === 'not-allowed') {
+        const err = event.error;
+        if (err === 'no-speech' || err === 'aborted') {
+          console.info('Speech recognition system status:', err);
+          setIsListening(false);
+          return;
+        }
+        console.warn('Speech recognition warning status:', err);
+        if (err === 'not-allowed') {
           setSpeechError(lang === 'pt' ? 'Acesso ao microfone negado.' : 'Microphone access denied.');
+        } else if (err === 'network') {
+          setSpeechError(lang === 'pt' ? 'Conexão instável com o reconhecimento de voz. Tente reiniciar.' : 'Unstable voice recognition connection. Please try again.');
         } else {
-          setSpeechError(event.error);
+          setSpeechError(err);
         }
         setIsListening(false);
       };

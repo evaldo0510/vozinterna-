@@ -682,154 +682,243 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
               {loadingUsers ? (
                 <div className="py-12 text-center text-xs text-stone-600 font-mono animate-pulse uppercase tracking-widest">Sintonizando Almas Cadastradas...</div>
               ) : (
-                <div className="overflow-x-auto text-[11px]">
-                  <table className="w-full text-left border-collapse font-mono">
-                    <thead className="select-none">
-                      <tr className="text-[9px] uppercase tracking-wider border-b border-stone-900 text-stone-600 font-semibold">
-                        <th className="py-3 px-2 w-8 text-center select-none">
-                          <input 
-                            type="checkbox" 
-                            checked={isAllChecked}
-                            onChange={handleSelectAllChange}
-                            ref={el => {
-                              if (el) {
-                                el.indeterminate = isSomeChecked;
-                              }
-                            }}
-                            className="h-3.5 w-3.5 rounded border-stone-850 bg-stone-950 text-teal-500 focus:ring-teal-500/40 focus:ring-offset-0 focus:outline-none accent-teal-500 cursor-pointer"
-                          />
-                        </th>
-                        <th 
-                          onClick={() => handleSort('name')}
-                          className="py-3 px-2 font-normal cursor-pointer hover:text-stone-300 transition-colors"
-                        >
-                          <div className="flex items-center space-x-1">
-                            <span>{lang === 'pt' ? 'Nome' : 'Name'}</span>
-                            {sortField === 'name' ? (
-                              sortDirection === 'asc' ? <ChevronUp className="w-3 h-3 text-teal-400" /> : <ChevronDown className="w-3 h-3 text-teal-400" />
-                            ) : (
-                              <ArrowUpDown className="w-2.5 h-2.5 text-stone-700 hover:text-stone-500" />
-                            )}
-                          </div>
-                        </th>
-                        <th 
-                          onClick={() => handleSort('email')}
-                          className="py-3 px-2 font-normal cursor-pointer hover:text-stone-300 transition-colors"
-                        >
-                          <div className="flex items-center space-x-1">
-                            <span>{lang === 'pt' ? 'E-mail' : 'Email'}</span>
-                            {sortField === 'email' ? (
-                              sortDirection === 'asc' ? <ChevronUp className="w-3 h-3 text-teal-400" /> : <ChevronDown className="w-3 h-3 text-teal-400" />
-                            ) : (
-                              <ArrowUpDown className="w-2.5 h-2.5 text-stone-700 hover:text-stone-500" />
-                            )}
-                          </div>
-                        </th>
-                        <th 
-                          onClick={() => handleSort('plan')}
-                          className="py-3 px-2 font-normal cursor-pointer hover:text-stone-300 transition-colors"
-                        >
-                          <div className="flex items-center space-x-1">
-                            <span>{lang === 'pt' ? 'Plano' : 'Plan'}</span>
-                            {sortField === 'plan' ? (
-                              sortDirection === 'asc' ? <ChevronUp className="w-3 h-3 text-teal-400" /> : <ChevronDown className="w-3 h-3 text-teal-400" />
-                            ) : (
-                              <ArrowUpDown className="w-2.5 h-2.5 text-stone-700 hover:text-stone-500" />
-                            )}
-                          </div>
-                        </th>
-                        <th className="py-3 px-2 font-normal">{lang === 'pt' ? 'Preferências' : 'Preferences'}</th>
-                        <th className="py-3 px-2 font-normal">{lang === 'pt' ? 'Adaptativo' : 'Adaptive'}</th>
-                        <th className="py-3 px-2 font-normal">{lang === 'pt' ? 'Pontuação' : 'Score'}</th>
-                        <th className="py-3 px-2 font-normal text-right">{lang === 'pt' ? 'Ações' : 'Actions'}</th>
-                      </tr>
-                    </thead>
-                    <motion.tbody 
-                      variants={containerVariants}
-                      initial="hidden"
-                      animate="visible"
-                      key={`${searchTerm}_${sortField}_${sortDirection}`}
-                      className="text-stone-300"
-                    >
-                      {sortedUsers.map((userObj) => (
-                        <motion.tr 
-                          key={userObj.id} 
-                          variants={itemVariants}
-                          className="border-b border-stone-900/60 hover:bg-stone-900/20 transition-all text-[11.5px]"
-                        >
-                          <td className="py-3 px-2 w-8 text-center select-none animate-fade-in">
-                            {userObj.id !== currentUser?.id ? (
+                <div className="space-y-4">
+                  {/* DESKTOP TABLE VIEW */}
+                  <div className="hidden md:block overflow-x-auto text-[11px]">
+                    <table className="w-full text-left border-collapse font-mono">
+                      <thead className="select-none">
+                        <tr className="text-[9px] uppercase tracking-wider border-b border-stone-900 text-stone-600 font-semibold">
+                          <th className="py-3 px-2 w-8 text-center select-none">
+                            <input 
+                              type="checkbox" 
+                              checked={isAllChecked}
+                              onChange={handleSelectAllChange}
+                              ref={el => {
+                                if (el) {
+                                  el.indeterminate = isSomeChecked;
+                                }
+                              }}
+                              className="h-3.5 w-3.5 rounded border-stone-850 bg-stone-950 text-teal-500 focus:ring-teal-500/40 focus:ring-offset-0 focus:outline-none accent-teal-500 cursor-pointer"
+                            />
+                          </th>
+                          <th 
+                            onClick={() => handleSort('name')}
+                            className="py-3 px-2 font-normal cursor-pointer hover:text-stone-300 transition-colors"
+                          >
+                            <div className="flex items-center space-x-1">
+                              <span>{lang === 'pt' ? 'Nome' : 'Name'}</span>
+                              {sortField === 'name' ? (
+                                sortDirection === 'asc' ? <ChevronUp className="w-3 h-3 text-teal-400" /> : <ChevronDown className="w-3 h-3 text-teal-400" />
+                              ) : (
+                                <ArrowUpDown className="w-2.5 h-2.5 text-stone-700 hover:text-stone-500" />
+                              )}
+                            </div>
+                          </th>
+                          <th 
+                            onClick={() => handleSort('email')}
+                            className="py-3 px-2 font-normal cursor-pointer hover:text-stone-300 transition-colors"
+                          >
+                            <div className="flex items-center space-x-1">
+                              <span>{lang === 'pt' ? 'E-mail' : 'Email'}</span>
+                              {sortField === 'email' ? (
+                                sortDirection === 'asc' ? <ChevronUp className="w-3 h-3 text-teal-400" /> : <ChevronDown className="w-3 h-3 text-teal-400" />
+                              ) : (
+                                <ArrowUpDown className="w-2.5 h-2.5 text-stone-700 hover:text-stone-500" />
+                              )}
+                            </div>
+                          </th>
+                          <th 
+                            onClick={() => handleSort('plan')}
+                            className="py-3 px-2 font-normal cursor-pointer hover:text-stone-300 transition-colors"
+                          >
+                            <div className="flex items-center space-x-1">
+                              <span>{lang === 'pt' ? 'Plano' : 'Plan'}</span>
+                              {sortField === 'plan' ? (
+                                sortDirection === 'asc' ? <ChevronUp className="w-3 h-3 text-teal-400" /> : <ChevronDown className="w-3 h-3 text-teal-400" />
+                              ) : (
+                                <ArrowUpDown className="w-2.5 h-2.5 text-stone-700 hover:text-stone-500" />
+                              )}
+                            </div>
+                          </th>
+                          <th className="py-3 px-2 font-normal">{lang === 'pt' ? 'Preferências' : 'Preferences'}</th>
+                          <th className="py-3 px-2 font-normal">{lang === 'pt' ? 'Adaptativo' : 'Adaptive'}</th>
+                          <th className="py-3 px-2 font-normal">{lang === 'pt' ? 'Pontuação' : 'Score'}</th>
+                          <th className="py-3 px-2 font-normal text-right">{lang === 'pt' ? 'Ações' : 'Actions'}</th>
+                        </tr>
+                      </thead>
+                      <motion.tbody 
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        key={`${searchTerm}_${sortField}_${sortDirection}`}
+                        className="text-stone-300"
+                      >
+                        {sortedUsers.map((userObj) => (
+                          <motion.tr 
+                            key={userObj.id} 
+                            variants={itemVariants}
+                            className="border-b border-stone-900/60 hover:bg-stone-900/20 transition-all text-[11.5px]"
+                          >
+                            <td className="py-3 px-2 w-8 text-center select-none animate-fade-in">
+                              {userObj.id !== currentUser?.id ? (
+                                <input 
+                                  type="checkbox"
+                                  checked={selectedUserIds.includes(userObj.id)}
+                                  onChange={() => handleSelectUser(userObj.id)}
+                                  className="h-3.5 w-3.5 rounded border-stone-850 bg-stone-950 text-teal-500 focus:ring-teal-500/40 focus:ring-offset-0 focus:outline-none accent-teal-500 cursor-pointer"
+                                />
+                              ) : (
+                                <div className="w-3.5 h-3.5 mx-auto" />
+                              )}
+                            </td>
+                            <td className="py-3 px-2 font-sans font-semibold text-stone-200">{userObj.name}</td>
+                            <td className="py-3 px-2 text-stone-500">{userObj.email}</td>
+                            <td className="py-3 px-2">
+                              <span className={`px-2 py-0.5 rounded text-[8px] uppercase tracking-widest font-extrabold ${
+                                userObj.plan === 'guardian' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
+                              }`}>
+                                {userObj.plan}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2 text-[10px] uppercase">
+                              {userObj.communicationPreference === 'voice' ? '🎙️ Voz' : userObj.communicationPreference === 'text' ? '✉️ Texto' : '🔄 Tudo'}
+                            </td>
+                            <td className="py-3 px-2">
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-stone-950 border border-stone-850/50 text-stone-400">
+                                {userObj.neuroMode || 'natural'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2 text-amber-500 font-bold">{userObj.points || 0} XP (Lvl {userObj.level || 1})</td>
+                            <td className="py-3 px-1 text-right">
+                              {userObj.id !== currentUser?.id ? (
+                                <div className="flex items-center justify-end space-x-1.5">
+                                  <button
+                                    onClick={() => {
+                                      if (onImpersonateUser) {
+                                        onImpersonateUser(userObj);
+                                      }
+                                    }}
+                                    className="p-1.5 px-2.5 rounded bg-teal-950/20 border border-teal-900/30 hover:bg-teal-950/80 hover:border-teal-900 text-teal-400 hover:text-teal-100 transition-all font-sans text-[9px] uppercase tracking-wider font-semibold cursor-pointer active:scale-95 inline-flex items-center space-x-1"
+                                    title={lang === 'pt' ? 'Ativar microfone e interagir com perfil' : 'Activate mic and interact'}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-3 h-3">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                                    </svg>
+                                    <span>{lang === 'pt' ? 'Interagir' : 'Interact'}</span>
+                                  </button>
+                                  <button
+                                    onClick={() => setUserToDelete(userObj)}
+                                    className="p-1.5 px-2.5 rounded bg-rose-950/20 border border-rose-900/30 hover:bg-rose-950/80 hover:border-rose-900 text-rose-400 hover:text-rose-100 transition-all font-sans text-[9px] uppercase tracking-wider font-semibold cursor-pointer active:scale-95 inline-flex items-center space-x-1"
+                                    title={lang === 'pt' ? 'Remover Praticante' : 'Delete User'}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    <span className="hidden md:inline">{lang === 'pt' ? 'Remover' : 'Delete'}</span>
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[9px] uppercase font-mono text-stone-600 italic px-2.5">
+                                  {lang === 'pt' ? 'Você' : 'You'}
+                                </span>
+                              )}
+                            </td>
+                          </motion.tr>
+                        ))}
+                        {sortedUsers.length === 0 && (
+                          <motion.tr variants={itemVariants}>
+                            <td colSpan={8} className="py-8 text-center text-stone-600 italic">
+                              {lang === 'pt' ? 'Nenhum praticante sintonizado com esse filtro.' : 'No practitioners match this filter.'}
+                            </td>
+                          </motion.tr>
+                        )}
+                      </motion.tbody>
+                    </table>
+                  </div>
+
+                  {/* MOBILE COMPACT CARDS VIEW */}
+                  <div className="md:hidden flex flex-col space-y-3.5 mt-2 animate-fade-in">
+                    {sortedUsers.map((userObj) => (
+                      <div 
+                        key={userObj.id} 
+                        className="bg-stone-950/60 p-4 rounded-2xl border border-stone-900 flex flex-col space-y-3 text-[11.5px] relative"
+                      >
+                        {/* Title Row */}
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex items-start space-x-2.5">
+                            {userObj.id !== currentUser?.id && (
                               <input 
                                 type="checkbox"
                                 checked={selectedUserIds.includes(userObj.id)}
                                 onChange={() => handleSelectUser(userObj.id)}
-                                className="h-3.5 w-3.5 rounded border-stone-850 bg-stone-950 text-teal-500 focus:ring-teal-500/40 focus:ring-offset-0 focus:outline-none accent-teal-500 cursor-pointer"
+                                className="h-3.5 w-3.5 rounded border-stone-850 bg-stone-950 text-teal-500 accent-teal-500 cursor-pointer focus:ring-0 mt-0.5 shrink-0"
                               />
-                            ) : (
-                              <div className="w-3.5 h-3.5 mx-auto" />
                             )}
-                          </td>
-                          <td className="py-3 px-2 font-sans font-semibold text-stone-200">{userObj.name}</td>
-                          <td className="py-3 px-2 text-stone-500">{userObj.email}</td>
-                          <td className="py-3 px-2">
-                            <span className={`px-2 py-0.5 rounded text-[8px] uppercase tracking-widest font-extrabold ${
-                              userObj.plan === 'guardian' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
-                            }`}>
-                              {userObj.plan}
-                            </span>
-                          </td>
-                          <td className="py-3 px-2 text-[10px] uppercase">
-                            {userObj.communicationPreference === 'voice' ? '🎙️ Voz' : userObj.communicationPreference === 'text' ? '✉️ Texto' : '🔄 Tudo'}
-                          </td>
-                          <td className="py-3 px-2">
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-stone-950 border border-stone-850/50 text-stone-400">
-                              {userObj.neuroMode || 'natural'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-2 text-amber-500 font-bold">{userObj.points || 0} XP (Lvl {userObj.level || 1})</td>
-                          <td className="py-3 px-1 text-right">
+                            <div className="flex flex-col">
+                              <span className="font-sans font-bold text-stone-200">{userObj.name}</span>
+                              <span className="text-[10px] text-stone-500 font-mono mt-0.5">{userObj.email}</span>
+                            </div>
+                          </div>
+                          
+                          <span className={`px-2 py-0.5 rounded text-[7.5px] uppercase tracking-widest font-extrabold shrink-0 ${
+                            userObj.plan === 'guardian' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/25' : 'bg-teal-500/10 text-teal-400 border border-teal-500/25'
+                          }`}>
+                            {userObj.plan}
+                          </span>
+                        </div>
+
+                        {/* Middle Specifications Row */}
+                        <div className="grid grid-cols-2 gap-2 text-[10px] bg-stone-900/30 p-2 rounded-xl font-mono text-stone-400">
+                          <div>
+                            <span className="text-stone-600 block text-[8px] uppercase tracking-wider mb-0.5">Preferências</span>
+                            <span>{userObj.communicationPreference === 'voice' ? '🎙️ Voz' : userObj.communicationPreference === 'text' ? '✉️ Texto' : '🔄 Tudo'}</span>
+                          </div>
+                          <div>
+                            <span className="text-stone-600 block text-[8px] uppercase tracking-wider mb-0.5">Adaptativo</span>
+                            <span className="capitalize">{userObj.neuroMode || 'natural'}</span>
+                          </div>
+                        </div>
+
+                        {/* Bottom Row & CTA */}
+                        <div className="flex justify-between items-center pt-2.5 border-t border-stone-900/40 text-[10.5px]">
+                          <span className="text-amber-500 font-bold font-mono">
+                            {userObj.points || 0} XP <span className="text-[9px] text-stone-500 font-normal">({lang === 'pt' ? 'Lvl' : 'Lvl'} {userObj.level || 1})</span>
+                          </span>
+
+                          <div className="flex items-center space-x-1.5">
                             {userObj.id !== currentUser?.id ? (
-                              <div className="flex items-center justify-end space-x-1.5">
+                              <>
                                 <button
                                   onClick={() => {
                                     if (onImpersonateUser) {
                                       onImpersonateUser(userObj);
                                     }
                                   }}
-                                  className="p-1.5 px-2.5 rounded bg-teal-950/20 border border-teal-900/30 hover:bg-teal-950/80 hover:border-teal-900 text-teal-400 hover:text-teal-100 transition-all font-sans text-[9px] uppercase tracking-wider font-semibold cursor-pointer active:scale-95 inline-flex items-center space-x-1"
-                                  title={lang === 'pt' ? 'Ativar microfone e interagir com perfil' : 'Activate mic and interact'}
+                                  className="p-1 px-2.5 rounded bg-teal-950/20 border border-teal-900/35 hover:bg-teal-950 text-teal-400 text-[9px] font-sans uppercase tracking-wider font-semibold cursor-pointer active:scale-95 inline-flex items-center space-x-1"
                                 >
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-3 h-3">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-                                  </svg>
                                   <span>{lang === 'pt' ? 'Interagir' : 'Interact'}</span>
                                 </button>
                                 <button
                                   onClick={() => setUserToDelete(userObj)}
-                                  className="p-1.5 px-2.5 rounded bg-rose-950/20 border border-rose-900/30 hover:bg-rose-950/80 hover:border-rose-900 text-rose-400 hover:text-rose-100 transition-all font-sans text-[9px] uppercase tracking-wider font-semibold cursor-pointer active:scale-95 inline-flex items-center space-x-1"
-                                  title={lang === 'pt' ? 'Remover Praticante' : 'Delete User'}
+                                  className="p-1 px-2 border border-rose-900/35 rounded bg-rose-950/20 hover:bg-rose-950 text-rose-450 text-[9px] cursor-pointer"
+                                  title={lang === 'pt' ? 'Remover' : 'Delete'}
                                 >
-                                  <Trash2 className="w-3 h-3" />
-                                  <span className="hidden md:inline">{lang === 'pt' ? 'Remover' : 'Delete'}</span>
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
-                              </div>
+                              </>
                             ) : (
-                              <span className="text-[9px] uppercase font-mono text-stone-600 italic px-2.5">
+                              <span className="text-[9px] uppercase font-mono text-stone-600 italic px-2 py-0.5 rounded bg-stone-900/50 select-none">
                                 {lang === 'pt' ? 'Você' : 'You'}
                               </span>
                             )}
-                          </td>
-                        </motion.tr>
-                      ))}
-                      {sortedUsers.length === 0 && (
-                        <motion.tr variants={itemVariants}>
-                          <td colSpan={8} className="py-8 text-center text-stone-600 italic">
-                            {lang === 'pt' ? 'Nenhum praticante sintonizado com esse filtro.' : 'No practitioners match this filter.'}
-                          </td>
-                        </motion.tr>
-                      )}
-                    </motion.tbody>
-                  </table>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {sortedUsers.length === 0 && (
+                      <div className="py-8 text-center text-stone-600 italic font-mono text-[10px]">
+                        {lang === 'pt' ? 'Nenhum praticante sintonizado com esse filtro.' : 'No practitioners match this filter.'}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
