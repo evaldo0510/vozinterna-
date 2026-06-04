@@ -62,7 +62,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
       onClose();
     } catch (err: any) {
       console.error(err);
-      setErrorText(lang === 'pt' ? 'Falha na autenticação do Google.' : 'Google Authentication failed.');
+      let errorMsg = lang === 'pt' ? 'Falha na autenticação do Google.' : 'Google Authentication failed.';
+      if (err?.code === 'auth/popup-blocked') {
+        errorMsg = lang === 'pt' 
+          ? 'Os popups foram bloqueados pelo seu navegador. Por favor, permita popups para este site ou abra o link em uma nova janela.' 
+          : 'Popups were blocked by your browser. Please allow popups for this site or open in a new tab.';
+      } else if (err?.code === 'auth/popup-closed-by-user') {
+        errorMsg = lang === 'pt' ? 'O popup de login foi fechado antes de concluir Auth.' : 'The sign in popup was closed before completion.';
+      } else if (err?.message) {
+        errorMsg += ` (${err.code || err.message})`;
+      }
+      setErrorText(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -100,7 +110,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
       onClose();
     } catch (err: any) {
       handleFirestoreError(err, OperationType.WRITE, `users/anonymous_registration`);
-      setErrorText(lang === 'pt' ? 'Erro ao salvar perfil.' : 'Failed saving profile.');
+      let errorMsg = lang === 'pt' ? 'Erro ao salvar perfil.' : 'Failed saving profile.';
+      if (err?.code === 'auth/operation-not-allowed') {
+        errorMsg = lang === 'pt' 
+          ? 'O provedor de login anônimo não está ativado no Firebase Console do seu projeto.' 
+          : 'Anonymous login is not enabled in Firebase Console.';
+      } else if (err?.message) {
+        errorMsg += ` (${err.code || err.message})`;
+      }
+      setErrorText(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -128,6 +146,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
                {lang === 'pt' ? 'Portal da Serenidade' : 'Portal of Serenity'}
              </p>
          </div>
+
+         {window.self !== window.top && (
+           <div className="mb-4 bg-teal-950/20 border border-teal-900/30 text-teal-300 rounded-xl p-3 text-[8px] uppercase tracking-wider text-center font-medium leading-relaxed">
+             {lang === 'pt' 
+               ? '💡 Celular: Use o botão de tela cheia (URL de compartilhamento principal) para que logins por Google funcionem livre de bloqueios do iframe.' 
+               : '💡 Mobile: Use full screen mode via the Share URL directly so Google logins work fully and browser limits are skipped.'}
+           </div>
+         )}
 
          {errorText && (
            <div className="mb-4 bg-rose-950/55 border border-rose-800 text-rose-300 rounded-xl p-3 text-[10px] uppercase tracking-wider text-center font-bold">

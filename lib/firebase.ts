@@ -1,11 +1,16 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); /* CRITICAL: The app will break without this line */
 export const auth = getAuth();
+
+// Explicitly set browser-local persistence to survive restarts or network state shifts on mobile browsers
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.error("Failed to set authentication persistence:", err);
+});
 
 export enum OperationType {
   CREATE = 'create',

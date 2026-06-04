@@ -995,8 +995,9 @@ Return a JSON object with:
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE_IDS[voice] } },
           },
-          systemInstruction: instruction,
-          outputAudioTranscription: {},
+          systemInstruction: {
+            parts: [{ text: instruction }]
+          },
         },
         callbacks: {
           onopen: () => {

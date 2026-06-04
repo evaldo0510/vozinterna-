@@ -57,7 +57,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onSetLang, onNavigat
       onSuccess();
     } catch (err: any) {
       console.error(err);
-      setErrorText(lang === 'pt' ? 'Falha na autenticação do Google.' : 'Google Authentication failed.');
+      let errorMsg = lang === 'pt' ? 'Falha na autenticação do Google.' : 'Google Authentication failed.';
+      if (err?.code === 'auth/popup-blocked') {
+        errorMsg = lang === 'pt' 
+          ? 'Os popups foram bloqueados pelo seu navegador. Por favor, permita popups para este site ou abra o link em uma nova janela.' 
+          : 'Popups were blocked by your browser. Please allow popups for this site or open in a new tab.';
+      } else if (err?.code === 'auth/popup-closed-by-user') {
+        errorMsg = lang === 'pt' ? 'O popup de login foi fechado antes de concluir Auth.' : 'The sign in popup was closed before completion.';
+      } else if (err?.message) {
+        errorMsg += ` (${err.code || err.message})`;
+      }
+      setErrorText(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -81,6 +91,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onSetLang, onNavigat
         errorMsg = lang === 'pt' ? 'Usuário não cadastrado.' : 'User is not signed up.';
       } else if (err?.code === 'auth/wrong-password') {
         errorMsg = lang === 'pt' ? 'Senha inválida.' : 'Incorrect password.';
+      } else if (err?.code === 'auth/operation-not-allowed') {
+        errorMsg = lang === 'pt' 
+          ? 'O provedor de e-mail/senha não está ativado no Firebase Console para o seu projeto.' 
+          : 'Email/password provider is not enabled in Firebase Console.';
+      } else if (err?.message) {
+        errorMsg += ` (${err.code || err.message})`;
       }
       setErrorText(errorMsg);
     } finally {
@@ -118,6 +134,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onSetLang, onNavigat
             {lang === 'pt' ? 'Harmonize com seu Santuário' : 'Harmonize with your Sanctuary'}
           </p>
         </div>
+
+        {window.self !== window.top && (
+          <div className="bg-teal-950/20 border border-teal-900/30 text-teal-300 rounded-xl p-3.5 text-[9px] uppercase tracking-wider text-center font-medium leading-relaxed">
+            {lang === 'pt' 
+              ? '💡 No celular? Abra o app em tela inteira (usando a URL de compartilhamento do AI Studio) para garantir que logins por Google ou e-mail funcionem sem bloqueios de segurança do frame.' 
+              : '💡 On mobile? Try launching in full screen (using the AI Studio shared URL directly) to prevent browser-specific popup blockades or cross-origin restrictions.'}
+          </div>
+        )}
 
         {errorText && (
           <div className="bg-rose-950/40 border border-rose-900/40 text-rose-300 rounded-xl p-3 text-[10px] uppercase tracking-wider text-center font-bold">

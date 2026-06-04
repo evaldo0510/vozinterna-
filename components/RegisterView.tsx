@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Language, User } from '../types';
 import Logo from './Logo';
 import { auth, db, OperationType, handleFirestoreError } from '../lib/firebase';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { ADMIN_EMAILS } from '../constants';
 
 interface RegisterViewProps {
@@ -19,6 +19,62 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
+
+  const handleGoogleRegister = async () => {
+    setLoading(true);
+    setErrorText('');
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      
+      const result = await signInWithPopup(auth, provider);
+      const authUser = result.user;
+      
+      const userDocRef = doc(db, 'users', authUser.uid);
+      const docSnap = await getDoc(userDocRef);
+      
+      const normalizedEmail = (authUser.email || '').toLowerCase().trim();
+      const isAdmin = ADMIN_EMAILS.includes(normalizedEmail);
+      
+      if (!docSnap.exists()) {
+        const userProfile: User = {
+          id: authUser.uid,
+          name: authUser.displayName || 'Praticante Zen',
+          email: normalizedEmail,
+          isAdmin,
+          plan: isAdmin ? 'guardian' : 'member',
+          registeredAt: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          resonanceScore: 0,
+          accessibilityMode: false,
+          points: 0,
+          level: 1,
+          manifestoStep: 1,
+          manifestoCompleted: false,
+          profileCompleted: false,
+          communicationPreference: 'hybrid',
+          neuroMode: 'natural'
+        };
+        await setDoc(userDocRef, userProfile);
+      }
+      onSuccess();
+    } catch (err: any) {
+      console.error(err);
+      let errorMsg = lang === 'pt' ? 'Falha no cadastro com Google.' : 'Google Registration failed.';
+      if (err?.code === 'auth/popup-blocked') {
+        errorMsg = lang === 'pt' 
+          ? 'Os popups foram bloqueados pelo seu navegador. Por favor, permita popups para este site ou abra o link em uma nova janela.' 
+          : 'Popups were blocked by your browser. Please allow popups for this site or open in a new tab.';
+      } else if (err?.code === 'auth/popup-closed-by-user') {
+        errorMsg = lang === 'pt' ? 'O popup foi fechado antes de concluir Auth.' : 'The popup was closed before completion.';
+      } else if (err?.message) {
+        errorMsg += ` (${err.code || err.message})`;
+      }
+      setErrorText(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +127,12 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
         errorMsg = lang === 'pt' ? 'Formato de e-mail inválido.' : 'Invalid email format.';
       } else if (err?.code === 'auth/weak-password') {
         errorMsg = lang === 'pt' ? 'Senha muito fraca!' : 'Password is too weak!';
+      } else if (err?.code === 'auth/operation-not-allowed') {
+        errorMsg = lang === 'pt' 
+          ? 'O provedor de e-mail/senha não está ativado no Firebase Console do seu projeto. Ative-o em Authentication > Sign-in method ou use o Google no login.' 
+          : 'Email/password authentication is not enabled in Firebase. Please enable it under Authentication > Sign-in method or sign in with Google.';
+      } else if (err?.message) {
+        errorMsg += ` (${err.code || err.message})`;
       }
       setErrorText(errorMsg);
     } finally {
@@ -108,6 +170,14 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
             {lang === 'pt' ? 'Abra as portas do autoconhecimento' : 'Open the gates of self-knowledge'}
           </p>
         </div>
+
+        {window.self !== window.top && (
+          <div className="bg-teal-950/20 border border-teal-900/30 text-teal-300 rounded-xl p-3.5 text-[9px] uppercase tracking-wider text-center font-medium leading-relaxed">
+            {lang === 'pt' 
+              ? '💡 No celular? Abra o app em tela inteira (usando a URL de compartilhamento do AI Studio) para evitar que o navegador bloqueie popups ou cookies de cadastro.' 
+              : '💡 On mobile? Try launching in full screen (using the AI Studio shared URL directly) to prevent browser-specific popup blockades or cross-origin restrictions.'}
+          </div>
+        )}
 
         {errorText && (
           <div className="bg-rose-950/40 border border-rose-900/40 text-rose-300 rounded-xl p-3 text-[10px] uppercase tracking-wider text-center font-bold">
@@ -169,6 +239,27 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
             {loading ? (lang === 'pt' ? 'Processando...' : 'Registering...') : (lang === 'pt' ? 'Confirmar Cadastro' : 'Confirm Registration')}
           </button>
         </form>
+
+        <div className="flex items-center my-2">
+          <div className="flex-1 h-[1px] bg-stone-800"></div>
+          <span className="text-[8px] font-mono mx-3 uppercase text-stone-600 tracking-widest">{lang === 'pt' ? 'Ou' : 'Or'}</span>
+          <div className="flex-1 h-[1px] bg-stone-800"></div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogleRegister}
+          disabled={loading}
+          className="w-full py-3.5 bg-white hover:bg-stone-100 disabled:bg-stone-800 text-stone-950 font-bold uppercase tracking-[0.15em] text-[10px] transition-all rounded-xl shadow-md flex items-center justify-center space-x-2.5 active:scale-[0.98] cursor-pointer"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24">
+            <path fill="#EA4335" d="M12 5.04c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.68 14.9 1 12 1 7.24 1 3.2 3.73 1.24 7.72l3.75 2.91C5.92 7.15 8.71 5.04 12 5.04z" />
+            <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.44-1.09 2.66-2.31 3.49l3.58 2.78c2.1-1.94 3.78-4.79 3.78-8.37z" />
+            <path fill="#FBBC05" d="M4.99 10.63c-.24-.72-.37-1.49-.37-2.29s.13-1.57.37-2.29L1.24 3.14C.45 4.73 0 6.52 0 8.35s.45 3.61 1.24 5.21l3.75-2.93z" />
+            <path fill="#34A853" d="M12 23c3.24 0 5.96-1.08 7.95-2.93l-3.58-2.78c-1 .67-2.28 1.07-4.37 1.07-3.29 0-6.08-2.11-7.07-5.59l-3.75 2.91C3.2 20.27 7.24 23 12 23z" />
+          </svg>
+          <span>{lang === 'pt' ? 'Cadastrar com Google' : 'Sign up with Google'}</span>
+        </button>
 
         <p className="text-center text-[10px] text-stone-500">
           {lang === 'pt' ? 'Já possui uma conta?' : 'Already have an account?'}{' '}
