@@ -17,6 +17,7 @@ import { BreathingGuide } from './BreathingGuide';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { useMotorAdaptativo } from '../hooks/useMotorAdaptativo';
+import { PainelDaVozAtivo } from './PainelDaVozAtivo';
 
 interface SessionManagerProps {
   onDisconnect: () => void;
@@ -125,6 +126,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({
   onToggleFullyImmersive
 }) => {
   const [status, setStatus] = useState<SessionStatus>(SessionStatus.CONNECTING);
+  const [showPainelVoz, setShowPainelVoz] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [speechRecError, setSpeechRecError] = useState<string | null>(null);
   const [volume, setVolume] = useState(0);
@@ -1002,6 +1004,7 @@ Return a JSON object with:
         callbacks: {
           onopen: () => {
             setStatus(SessionStatus.CONNECTED);
+            setShowPainelVoz(true);
             // Trigger customized greeting if a feeling or metaphor is pre-selected
             if (selectedFeeling || selectedMetaphor) {
               const greetStr = selectedFeeling 
@@ -2765,6 +2768,9 @@ Return a JSON object with:
                 onClick={() => {
                   const newState = !isMicMuted;
                   setIsMicMuted(newState);
+                  if (status === SessionStatus.CONNECTED) {
+                    setShowPainelVoz(true);
+                  }
                   if (typeof navigator !== 'undefined' && navigator.vibrate) {
                     navigator.vibrate(newState ? [30] : [50, 40, 50]);
                   }
@@ -3251,6 +3257,35 @@ Return a JSON object with:
           </motion.div>
         </div>
       )}
+
+      <AnimatePresence>
+        {showPainelVoz && status === SessionStatus.CONNECTED && (
+          <PainelDaVozAtivo
+            fecharPainel={() => setShowPainelVoz(false)}
+            lang={lang}
+            isMicMuted={isMicMuted}
+            onToggleMute={() => {
+              const newState = !isMicMuted;
+              setIsMicMuted(newState);
+              if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                navigator.vibrate(newState ? [30] : [50, 40, 50]);
+              }
+              if (!newState) {
+                triggerVoiceAlert(lang === 'pt' ? 'Microfone Ativado' : 'Microphone Activated');
+              } else {
+                triggerVoiceAlert(lang === 'pt' ? 'Microfone Mute / Silenciado' : 'Microphone Silenced');
+              }
+            }}
+            onDisconnect={handlePreDisconnect}
+            volume={volume}
+            isUserSpeaking={isUserSpeaking}
+            isAiSpeaking={isAiSpeaking}
+            speechTranscript={speechTranscript}
+            aiSpeechText={aiSpeechText}
+            elapsedSeconds={elapsedSeconds}
+          />
+        )}
+      </AnimatePresence>
 
     </div>
   );

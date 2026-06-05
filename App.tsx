@@ -4,6 +4,7 @@ import { TRANSLATIONS } from './constants';
 import { Language, UserPlan, User } from './types';
 import Logo from './components/Logo';
 import { JournalModal } from './components/JournalModal';
+import { TelaRefugio } from './components/TelaRefugio';
 import { LandingModal } from './components/LandingModal';
 import { DailyCheckInModal } from './components/DailyCheckInModal';
 
@@ -19,6 +20,7 @@ import { AdminDashboardView } from './components/AdminDashboardView';
 import { OnboardingGuide } from './components/OnboardingGuide';
 import { NotificationToast, Toast } from './components/NotificationToast';
 import { HomeView } from './components/HomeView';
+import { TuningPopover } from './components/TuningPopover';
 
 import { auth, db, OperationType, handleFirestoreError } from './lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -49,6 +51,7 @@ function App() {
   
   const [showJournal, setShowJournal] = useState(false);
   const [showConcept, setShowConcept] = useState(false);
+  const [showTuningPopover, setShowTuningPopover] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
   const [isMinimalMode, setIsMinimalMode] = useState(false);
@@ -275,7 +278,7 @@ function App() {
           setIsAuthInitialized(true);
           setLoadingProfile(false);
         }, (err) => {
-          handleFirestoreError(err, OperationType.GET, `users/${authUser.uid}`);
+          console.error("Firestore loading error:", err);
           setIsAuthInitialized(true);
           setLoadingProfile(false);
         });
@@ -350,11 +353,11 @@ function App() {
       )}
 
       {activeScreen === 'login' && (
-        <LoginView lang={lang} onSetLang={setLang} onNavigate={setActiveScreen} onSuccess={() => {}} />
+        <LoginView lang={lang} onSetLang={setLang} onNavigate={setActiveScreen} onSuccess={() => setActiveScreen('home')} />
       )}
 
       {activeScreen === 'register' && (
-        <RegisterView lang={lang} onSetLang={setLang} onNavigate={setActiveScreen} onSuccess={() => {}} />
+        <RegisterView lang={lang} onSetLang={setLang} onNavigate={setActiveScreen} onSuccess={() => setActiveScreen('profile_choice')} />
       )}
 
       {/* 2. ONBOARDING STAGES */}
@@ -378,7 +381,11 @@ function App() {
                 <div className="flex flex-col">
                   <span className="font-serif text-[11px] font-bold tracking-[0.2em] text-stone-100 uppercase flex items-center gap-2">
                     {lang === 'pt' ? 'VOZ INTERIOR' : 'INNER VOICE'}
-                    <span className={`px-1.5 py-0.5 rounded border text-[7px] font-mono tracking-wide flex items-center space-x-1 ${getStateMetadata(currentUser.emotionalState).color}`}>
+                    <span 
+                      onClick={() => setShowTuningPopover(true)}
+                      className={`px-1.5 py-0.5 rounded border text-[7px] font-mono tracking-wide flex items-center space-x-1 cursor-pointer hover:scale-105 active:scale-95 transition-all select-none ${getStateMetadata(currentUser.emotionalState).color}`}
+                      title={lang === 'pt' ? 'Ver mapa de sintonias' : 'View tuning spectrum'}
+                    >
                       <span className={`w-1 h-1 rounded-full animate-pulse ${getStateMetadata(currentUser.emotionalState).pulse}`} />
                       <span>{lang === 'pt' ? getStateMetadata(currentUser.emotionalState).pt : getStateMetadata(currentUser.emotionalState).en}</span>
                     </span>
@@ -485,6 +492,7 @@ function App() {
                 isLightTheme={isLightTheme}
                 onToggleTheme={() => setIsLightTheme(prev => !prev)}
                 onAddToast={addToast}
+                onOpenTuningPopover={() => setShowTuningPopover(true)}
               />
             )}
 
@@ -614,8 +622,22 @@ function App() {
       {/* Concept Guide information panel overlay */}
       <LandingModal isOpen={showConcept} onClose={() => setShowConcept(false)} lang={lang} />
 
+      {/* Tuning spectrum popover/tooltip overlay */}
+      <TuningPopover
+        isOpen={showTuningPopover}
+        onClose={() => setShowTuningPopover(false)}
+        lang={lang}
+        currentTuningId={currentUser?.emotionalState}
+        isLightTheme={isLightTheme}
+      />
+
       {/* Global Modals */}
-      <JournalModal isOpen={showJournal} onClose={() => setShowJournal(false)} lang={lang} />
+      {showJournal && (
+        <TelaRefugio 
+          onClose={() => setShowJournal(false)} 
+          lang={lang} 
+        />
+      )}
       {currentUser && (
         <DailyCheckInModal
           isOpen={showDailyCheckIn}

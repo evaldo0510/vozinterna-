@@ -26,6 +26,7 @@ interface HomeViewProps {
   isLightTheme: boolean;
   onToggleTheme: () => void;
   onAddToast: (toast: { type: string; title: string; description: string; actionLabel?: string }) => void;
+  onOpenTuningPopover: () => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -38,6 +39,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   isLightTheme,
   onToggleTheme,
   onAddToast,
+  onOpenTuningPopover,
 }) => {
   // Breathing animation states
   const [isBreathingActive, setIsBreathingActive] = useState(false);
@@ -230,15 +232,66 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <div className="max-w-4xl mx-auto px-6 py-8 md:py-12 space-y-8 select-none">
         
         {/* Welcome Block + Top Header Bar */}
-        <div className="flex flex-row justify-between items-center border-b pb-6 border-stone-200/50 dark:border-stone-850/60 transition-all">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center border-b pb-6 border-stone-200/50 dark:border-stone-850/60 transition-all gap-4">
           <div className="space-y-1.5">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl md:text-3.5xl font-serif font-semibold tracking-wide flex items-center gap-2">
                 <span>{getGreeting()}, {user.name}</span>
               </h1>
-              <div className="p-1 rounded-full bg-stone-100/50 dark:bg-stone-900/30 backdrop-blur-md">
+              <div className="p-1 rounded-full bg-stone-100/50 dark:bg-stone-900/30 backdrop-blur-md shrink-0">
                 {getGreetingIcon()}
               </div>
+
+              {/* Active tuning badge directly on Home screen header */}
+              <button
+                onClick={onOpenTuningPopover}
+                className={`px-2 py-0.5 rounded-full border text-[8px] font-mono tracking-wide flex items-center space-x-1 hover:scale-105 active:scale-95 transition-all select-none cursor-pointer ${
+                  user.emotionalState?.includes('confuso') || user.emotionalState?.includes('triste') || user.emotionalState?.includes('heavy')
+                    ? 'text-blue-400 border-blue-500/20 bg-blue-500/10'
+                    : user.emotionalState?.includes('ansioso') || user.emotionalState?.includes('irrit')
+                      ? 'text-orange-400 border-orange-500/20 bg-orange-500/10'
+                      : user.emotionalState?.includes('calmo') || user.emotionalState?.includes('seren')
+                        ? 'text-cyan-400 border-cyan-500/20 bg-cyan-500/10'
+                        : user.emotionalState?.includes('feliz')
+                          ? 'text-pink-400 border-pink-500/20 bg-pink-500/10'
+                          : 'text-teal-400 border-teal-500/20 bg-teal-500/10'
+                }`}
+                title={lang === 'pt' ? 'Ver conceito sintonias' : 'See tuning concept'}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                  user.emotionalState?.includes('confuso') || user.emotionalState?.includes('triste') || user.emotionalState?.includes('heavy')
+                    ? 'bg-blue-400'
+                    : user.emotionalState?.includes('ansioso') || user.emotionalState?.includes('irrit')
+                      ? 'bg-orange-400'
+                      : user.emotionalState?.includes('calmo') || user.emotionalState?.includes('seren')
+                        ? 'bg-cyan-400'
+                        : user.emotionalState?.includes('feliz')
+                          ? 'bg-pink-400'
+                          : 'bg-teal-400'
+                }`} />
+                <span>
+                  {lang === 'pt' 
+                    ? user.emotionalState?.includes('confuso') || user.emotionalState?.includes('triste') || user.emotionalState?.includes('heavy')
+                      ? 'Sintonia Lunar ❄️'
+                      : user.emotionalState?.includes('ansioso') || user.emotionalState?.includes('irrit')
+                        ? 'Sintonia de Calma ⚡'
+                        : user.emotionalState?.includes('calmo') || user.emotionalState?.includes('seren')
+                          ? 'Sintonia Oceânica 🌊'
+                          : user.emotionalState?.includes('feliz')
+                            ? 'Ress. Estelar ✨'
+                            : 'Sintonia Estável ⛰️'
+                    : user.emotionalState?.includes('confuso') || user.emotionalState?.includes('triste') || user.emotionalState?.includes('heavy')
+                      ? 'Lunar Tuning ❄️'
+                      : user.emotionalState?.includes('ansioso') || user.emotionalState?.includes('irrit')
+                        ? 'Calming Wave ⚡'
+                        : user.emotionalState?.includes('calmo') || user.emotionalState?.includes('seren')
+                          ? 'Oceanic Wave 🌊'
+                          : user.emotionalState?.includes('feliz')
+                            ? 'Stellar Ress. ✨'
+                            : 'Stable Grounding ⛰️'
+                  }
+                </span>
+              </button>
             </div>
             <p className={`text-xs md:text-sm ${isLightTheme ? 'text-stone-605' : 'text-[#8EA39A]'} font-light leading-relaxed tracking-wider`}>
               {lang === 'pt' 
