@@ -5,6 +5,7 @@ import { Language, UserPlan, User } from './types';
 import Logo from './components/Logo';
 import { JournalModal } from './components/JournalModal';
 import { TelaRefugio } from './components/TelaRefugio';
+import TelaJornada from './components/TelaJornada';
 import { LandingModal } from './components/LandingModal';
 import { DailyCheckInModal } from './components/DailyCheckInModal';
 
@@ -39,7 +40,8 @@ type NavigationScreen =
   | 'chat'
   | 'profile'
   | 'settings'
-  | 'admin';
+  | 'admin'
+  | 'jornada';
 
 function App() {
   const [lang, setLang] = useState<Language>('pt');
@@ -512,6 +514,16 @@ function App() {
               />
             )}
 
+            {activeScreen === 'jornada' && (
+              <div className="flex-1 w-full relative">
+                <TelaJornada 
+                  lang={lang}
+                  onBack={() => setActiveScreen('home')}
+                  onNavigateToProfile={() => setActiveScreen('profile')}
+                />
+              </div>
+            )}
+
             {activeScreen === 'profile' && (
               <div className="flex justify-center items-center min-h-full py-8">
                 <UserProfileView 
@@ -581,9 +593,9 @@ function App() {
               </button>
 
               <button 
-                onClick={() => setActiveScreen('profile')}
+                onClick={() => setActiveScreen('jornada')}
                 className={`flex flex-col items-center justify-center p-1.5 rounded-2xl transition-all cursor-pointer ${
-                  activeScreen === 'profile'
+                  activeScreen === 'jornada'
                     ? isLightTheme && activeScreen === 'home'
                       ? 'text-[#3E5F35] scale-105 font-bold' 
                       : 'text-[#82B98E] scale-105 font-bold'
