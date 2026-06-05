@@ -9,7 +9,8 @@ import { ImmersiveVisualEngine } from './ImmersiveVisualEngine';
 import { 
   Sprout, Heart, Droplet, Flower, AlertCircle, Compass, Sparkles, 
   Eye, EyeOff, Moon, Sun, Activity, Info, X, ChevronRight, CheckCircle2,
-  Bookmark, ShieldAlert, Award, Volume2, HelpCircle, Gauge, Shield, Brain
+  Bookmark, ShieldAlert, Award, Volume2, HelpCircle, Gauge, Shield, Brain,
+  HeartHandshake
 } from 'lucide-react';
 import { MoodConstellation } from './MoodConstellation';
 import { AdaptiveProfileCard } from './AdaptiveProfileCard';
@@ -1596,6 +1597,9 @@ Return a JSON object with:
     accentBorder = 'border-rose-900/40 text-rose-300';
   }
 
+  const isHumanBridgeActive = aiSpeechText && aiSpeechText.includes('[PONTE_HUMANA]');
+  const cleanAiSpeechText = aiSpeechText ? aiSpeechText.replace('[PONTE_HUMANA]', '').trim() : '';
+
   return (
     <div className={`relative flex flex-col items-center justify-between w-full h-full p-4 overflow-hidden transition-all duration-1000 ${themeBg} ${fontOverride}`}>
       
@@ -2176,7 +2180,7 @@ Return a JSON object with:
            <AudioVisualizer volume={volume} isActive={isUserSpeaking || isAiSpeaking} color={isAiSpeaking ? "rgb(20, 184, 166)" : "rgb(168, 162, 158)"} />
 
             {/* AI Speech Text display (Web Speech Synthesis transcription) */}
-            {aiSpeechText && (
+            {cleanAiSpeechText && (
               <div id="ai-caption-bubble" className="mt-4 w-full max-w-sm px-4 py-3 bg-teal-950/30 backdrop-blur-md border border-teal-500/30 rounded-2xl text-center leading-relaxed shadow-lg animate-none z-20">
                 <div className="flex items-center justify-center space-x-1 mb-1 bg-teal-900/20 py-0.5 px-2 rounded-full w-fit mx-auto">
                   <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-ping" />
@@ -2185,9 +2189,19 @@ Return a JSON object with:
                   </span>
                 </div>
                 <p className="text-[11.5px] text-stone-100 font-serif leading-relaxed italic">
-                  "{aiSpeechText}"
+                  "{cleanAiSpeechText}"
                 </p>
               </div>
+            )}
+
+            {isHumanBridgeActive && (
+              <button
+                onClick={() => setShowReferral(true)}
+                className="mt-3 w-full max-w-sm py-4 px-5 bg-orange-800 hover:bg-orange-700 active:scale-95 text-white rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 font-medium text-xs md:text-sm cursor-pointer border border-orange-700/20 font-sans z-30 shrink-0 animate-fade-in-up"
+              >
+                <HeartHandshake className="w-4 h-4 md:w-5 md:h-5 text-orange-200 animate-pulse" />
+                <span>{lang === 'pt' ? 'Conversar com alguém agora' : 'Connect with someone now'}</span>
+              </button>
             )}
 
             {/* Interactive visual audio wave animation synced with speech input */}
@@ -2265,7 +2279,7 @@ Return a JSON object with:
     </div>
   ) : (
           /* MINIMALIST MODE: Compact, centered primary vocal engine */
-          <div className="w-full max-w-md mx-auto flex flex-col items-center py-6">
+          <div id="minimalist-visualizer-container" className="w-full max-w-md mx-auto flex flex-col items-center py-6">
         {/* Visualizer Frame */}
         <div className={`w-full max-w-md p-6 rounded-[2rem] border flex flex-col items-center justify-center relative min-h-[160px] md:min-h-[200px] ${themeCard} ${accentBorder}`}>
            
@@ -2286,7 +2300,7 @@ Return a JSON object with:
            <AudioVisualizer volume={volume} isActive={isUserSpeaking || isAiSpeaking} color={isAiSpeaking ? "rgb(20, 184, 166)" : "rgb(168, 162, 158)"} />
 
             {/* AI Speech Text display (Web Speech Synthesis transcription) */}
-            {aiSpeechText && (
+            {cleanAiSpeechText && (
               <div id="ai-caption-bubble" className="mt-4 w-full max-w-sm px-4 py-3 bg-teal-950/30 backdrop-blur-md border border-teal-500/30 rounded-2xl text-center leading-relaxed shadow-lg animate-none z-20">
                 <div className="flex items-center justify-center space-x-1 mb-1 bg-teal-900/20 py-0.5 px-2 rounded-full w-fit mx-auto">
                   <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-ping" />
@@ -2295,9 +2309,19 @@ Return a JSON object with:
                   </span>
                 </div>
                 <p className="text-[11.5px] text-stone-100 font-serif leading-relaxed italic">
-                  "{aiSpeechText}"
+                  "{cleanAiSpeechText}"
                 </p>
               </div>
+            )}
+
+            {isHumanBridgeActive && (
+              <button
+                onClick={() => setShowReferral(true)}
+                className="mt-3 w-full max-w-sm py-4 px-5 bg-orange-800 hover:bg-orange-700 active:scale-95 text-white rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 font-medium text-xs md:text-sm cursor-pointer border border-orange-700/20 font-sans z-30 shrink-0 animate-fade-in-up"
+              >
+                <HeartHandshake className="w-4 h-4 md:w-5 md:h-5 text-orange-200 animate-pulse" />
+                <span>{lang === 'pt' ? 'Conversar com alguém agora' : 'Connect with someone now'}</span>
+              </button>
             )}
 
             {/* Interactive visual audio wave animation synced with speech input */}
@@ -2397,7 +2421,7 @@ Return a JSON object with:
          <AudioVisualizer volume={volume} isActive={isUserSpeaking || isAiSpeaking} color={isAiSpeaking ? "rgb(20, 184, 166)" : "rgb(168, 162, 158)"} />
 
           {/* AI Speech Text display (Web Speech Synthesis transcription) */}
-          {aiSpeechText && (
+          {cleanAiSpeechText && (
             <div id="ai-caption-bubble" className="mt-4 w-full max-w-sm px-4 py-3 bg-teal-950/30 backdrop-blur-md border border-teal-500/30 rounded-2xl text-center leading-relaxed shadow-lg animate-none z-20">
               <div className="flex items-center justify-center space-x-1 mb-1 bg-teal-900/20 py-0.5 px-2 rounded-full w-fit mx-auto">
                 <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-ping" />
@@ -2406,9 +2430,19 @@ Return a JSON object with:
                 </span>
               </div>
               <p className="text-[11.5px] text-stone-100 font-serif leading-relaxed italic">
-                "{aiSpeechText}"
+                "{cleanAiSpeechText}"
               </p>
             </div>
+          )}
+
+          {isHumanBridgeActive && (
+            <button
+              onClick={() => setShowReferral(true)}
+              className="mt-3 w-full max-w-sm py-4 px-5 bg-orange-800 hover:bg-orange-700 active:scale-95 text-white rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 font-medium text-xs md:text-sm cursor-pointer border border-orange-700/20 font-sans z-30 shrink-0"
+            >
+              <HeartHandshake className="w-4 h-4 md:w-5 md:h-5 text-orange-200 animate-pulse" />
+              <span>{lang === 'pt' ? 'Conversar com alguém agora' : 'Connect with someone now'}</span>
+            </button>
           )}
 
           {/* Interactive visual audio wave animation synced with speech input */}
@@ -3283,6 +3317,10 @@ Return a JSON object with:
             speechTranscript={speechTranscript}
             aiSpeechText={aiSpeechText}
             elapsedSeconds={elapsedSeconds}
+            onTriggerSupport={() => {
+              setShowPainelVoz(false);
+              setShowReferral(true);
+            }}
           />
         )}
       </AnimatePresence>

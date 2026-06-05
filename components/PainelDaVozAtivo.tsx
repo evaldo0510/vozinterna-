@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, Pause, Play, Square, SlidersHorizontal, ChevronDown, Check, Volume2 } from 'lucide-react';
+import { Mic, MicOff, Pause, Play, Square, SlidersHorizontal, ChevronDown, Check, Volume2, HeartHandshake } from 'lucide-react';
 import { Language } from '../types';
 
 interface PainelDaVozAtivoProps {
@@ -15,6 +15,7 @@ interface PainelDaVozAtivoProps {
   speechTranscript: string;
   aiSpeechText: string;
   elapsedSeconds: number;
+  onTriggerSupport?: () => void;
 }
 
 export const PainelDaVozAtivo: React.FC<PainelDaVozAtivoProps> = ({
@@ -29,6 +30,7 @@ export const PainelDaVozAtivo: React.FC<PainelDaVozAtivoProps> = ({
   speechTranscript,
   aiSpeechText,
   elapsedSeconds,
+  onTriggerSupport,
 }) => {
   const [escutando, setEscutando] = useState(!isMicMuted);
   const [textoCapturado, setTextoCapturado] = useState('');
@@ -42,7 +44,7 @@ export const PainelDaVozAtivo: React.FC<PainelDaVozAtivoProps> = ({
   useEffect(() => {
     // If AI is actively speaking, display the AI speech in the transcript area
     if (isAiSpeaking && aiSpeechText) {
-      setTextoCapturado(aiSpeechText);
+      setTextoCapturado(aiSpeechText.replace('[PONTE_HUMANA]', '').trim());
     } else if (speechTranscript) {
       setTextoCapturado(speechTranscript);
     } else {
@@ -257,7 +259,7 @@ export const PainelDaVozAtivo: React.FC<PainelDaVozAtivoProps> = ({
         </div>
 
         {/* A Transcrição em Tempo Real */}
-        <div className="w-full text-center px-4 my-2 flex-1 flex items-center justify-center min-h-[90px] max-h-[160px] overflow-y-auto custom-scrollbar">
+        <div className="w-full text-center px-4 my-2 flex-1 flex flex-col items-center justify-center min-h-[90px] max-h-[220px] overflow-y-auto custom-scrollbar">
           <p className={`text-sm md:text-base leading-relaxed tracking-wide font-serif transition-colors duration-500 ${
             isAiSpeaking 
               ? 'text-sky-700 dark:text-sky-400 font-medium'
@@ -267,6 +269,22 @@ export const PainelDaVozAtivo: React.FC<PainelDaVozAtivoProps> = ({
           }`}>
             {textoCapturado}
           </p>
+
+          {aiSpeechText && aiSpeechText.includes('[PONTE_HUMANA]') && (
+            <button
+              onClick={() => {
+                if (onTriggerSupport) {
+                  onTriggerSupport();
+                } else {
+                  window.open('https://www.cvv.org.br/', '_blank');
+                }
+              }}
+              className="mt-4 w-full max-w-xs py-3 px-5 bg-orange-850 hover:bg-orange-700 hover:scale-102 active:scale-98 text-white rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 font-medium text-xs font-sans cursor-pointer animate-fade-in-up border border-orange-700/20"
+            >
+              <HeartHandshake className="w-4 h-4 text-orange-200 animate-pulse" />
+              <span>{lang === 'pt' ? 'Conversar com alguém agora' : 'Connect with someone now'}</span>
+            </button>
+          )}
         </div>
 
         {/* Indicador Sonoro (se estiver falando) */}
