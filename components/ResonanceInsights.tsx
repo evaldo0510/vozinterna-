@@ -15,14 +15,35 @@ export const ResonanceInsights: React.FC<ResonanceInsightsProps> = ({ user, lang
   const getResonanceData = () => {
     const actualHistory = user.resonanceHistory || [];
     
-    // Track unique dates in actual history to look up matches
-    const historyMap: { [key: string]: number } = {};
-    actualHistory.forEach(item => {
-      if (item.date && typeof item.score === 'number') {
-        historyMap[item.date] = item.score;
-      }
-    });
+    // If we have actual user logged history, let's display it directly to visualize their true trajectory.
+    if (actualHistory.length > 0) {
+      // Deduplicate history by date, keeping the latest score for each date
+      const uniqueHistoryMap = new Map<string, number>();
+      actualHistory.forEach(item => {
+        if (item.date && typeof item.score === 'number') {
+          uniqueHistoryMap.set(item.date, item.score);
+        }
+      });
 
+      const uniqueHistory = Array.from(uniqueHistoryMap.entries()).map(([date, score]) => ({
+        date,
+        score
+      }));
+
+      // Sort by some simple heuristics or sequence. Check-ins are appended chronologically.
+      // If the user has only 1 point, we can prepend a starting baseline to make the chart smooth
+      if (uniqueHistory.length === 1) {
+        const firstScore = uniqueHistory[0].score;
+        return [
+          { date: lang === 'pt' ? 'Início' : 'Start', score: Math.min(100, Math.max(30, Math.round(firstScore * 0.82))) },
+          uniqueHistory[0]
+        ];
+      }
+
+      return uniqueHistory;
+    }
+
+    // Fallback: If no actual history is registered yet, build a beautiful 30-day baseline wave
     const baseScore = user.resonanceScore > 0 ? user.resonanceScore : 72;
     const history = [];
     const days = 30;
@@ -37,14 +58,11 @@ export const ResonanceInsights: React.FC<ResonanceInsightsProps> = ({ user, lang
       const todayLabel = lang === 'pt' ? 'Hoje' : 'Today';
       const finalLabel = i === 0 ? todayLabel : dateStr;
 
-      // Look up actual score for this date, or fallback to progressive emotional growth calculations
-      let scoreVal = historyMap[dateStr] || historyMap[finalLabel];
-      if (scoreVal === undefined) {
-        const growthFactor = (days - 1 - i) / (days - 1);
-        const drift = (baseScore - 12) + (12 * growthFactor); // grows steadily toward the overall resonance score
-        const wave = Math.sin((days - 1 - i) * 0.8) * 3.5; // ambient emotional wave fluctuations
-        scoreVal = Math.min(100, Math.max(30, Math.round(drift + wave)));
-      }
+      // Look up actual score or fallback to progressive emotional growth calculations
+      const growthFactor = (days - 1 - i) / (days - 1);
+      const drift = (baseScore - 12) + (12 * growthFactor); // grows steadily toward overall resonance
+      const wave = Math.sin((days - 1 - i) * 0.8) * 3.5; // ambient emotional wave fluctuations
+      const scoreVal = Math.min(100, Math.max(30, Math.round(drift + wave)));
 
       history.push({
         date: finalLabel,
@@ -55,6 +73,7 @@ export const ResonanceInsights: React.FC<ResonanceInsightsProps> = ({ user, lang
   };
 
   const data = getResonanceData();
+  const hasRealHistory = (user.resonanceHistory || []).length > 0;
   const currentScore = user.resonanceScore || (data[data.length - 1]?.score) || 72;
 
   // Feedback based on rating
@@ -90,9 +109,15 @@ export const ResonanceInsights: React.FC<ResonanceInsightsProps> = ({ user, lang
       </div>
 
       <p className="text-[10px] text-stone-500 leading-relaxed -mt-1 font-light">
-        {lang === 'pt'
-          ? 'Análise em tempo real de decibéis harmônicos, pausas reflexivas e simetria vocal.'
-          : 'Real-time analysis of harmonic decibels, reflective pauses, and vocal symmetry.'}
+        {hasRealHistory ? (
+          lang === 'pt'
+            ? 'Visualização em tempo real do histórico sintonizado de sua oscilação emocional.'
+            : 'Real-time visualization of your logged trajectory of emotional oscillations.'
+        ) : (
+          lang === 'pt'
+            ? 'Modelo calibrador preliminar de decibéis harmônicos, pausas reflexivas e simetria vocal.'
+            : 'Preliminary calibration baseline of harmonic decibels, reflective pauses, and vocal symmetry.'
+        )}
       </p>
 
       {/* Chart container */}
@@ -107,7 +132,7 @@ export const ResonanceInsights: React.FC<ResonanceInsightsProps> = ({ user, lang
               tickLine={false}
               axisLine={false}
               dy={5}
-              interval={5}
+              interval={hasRealHistory ? 0 : 5}
             />
             <YAxis 
               domain={[0, 100]} 

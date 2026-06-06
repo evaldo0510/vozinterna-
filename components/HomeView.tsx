@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { DailyAffirmation } from './DailyAffirmation';
 
 interface HomeViewProps {
   user: User;
@@ -292,6 +293,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
             />
           </div>
         </div>
+
+        {/* Brand New Predefined Daily Affirmation Card */}
+        <DailyAffirmation lang={lang} onAddToast={onAddToast} />
 
         {/* Dica Diária PCH Aphorism layout */}
         <div className="p-7 rounded-[2rem] bg-gradient-to-br from-[#ffffff] to-[#fcfaf7] border border-stone-200/40 shadow-[0_4px_20px_rgba(21,46,34,0.01)] space-y-5 animate-fade-in">
