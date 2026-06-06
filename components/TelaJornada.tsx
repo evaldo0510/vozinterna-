@@ -87,6 +87,109 @@ export default function TelaJornada({ lang, onBack, onNavigateToProfile }: TelaJ
           </p>
         </div>
 
+        {/* Visual progress bar of milestones of Hypnotic Cognitive Poetry */}
+        <div className="mb-12 p-6 md:p-8 rounded-[2rem] bg-gradient-to-tr from-[#fbfaf7] to-[#f5f0e6] border border-[#e6dfd3] shadow-[0_4px_24px_rgba(21,46,34,0.02)] space-y-6">
+          <div className="flex justify-between items-center bg-transparent">
+            <div className="space-y-1">
+              <span className="text-[9px] font-mono font-bold tracking-[0.25em] text-[#5c7c64] uppercase block">
+                {lang === 'pt' ? 'Marcos de Integração PCH' : 'PCH Integration Milestones'}
+              </span>
+              <h3 className="text-lg font-serif font-semibold text-stone-850">
+                {lang === 'pt' ? 'Evolução da Voz Interior' : 'Inner Voice Evolution'}
+              </h3>
+            </div>
+            <div className="px-3.5 py-1.5 rounded-full bg-[#5c7c64] text-white flex items-center gap-1.5 shadow-sm">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="text-[11px] font-mono font-bold">50% {lang === 'pt' ? 'Concluído' : 'Done'}</span>
+            </div>
+          </div>
+
+          {/* Visual Step Bar */}
+          <div className="relative w-full py-4">
+            <div className="absolute top-[31px] left-3 right-3 h-1 bg-stone-200/80 rounded-full z-0">
+              <div className="h-full bg-gradient-to-r from-[#5c7c64] to-[#82b98e] rounded-full transition-all duration-1000" style={{ width: '50%' }} />
+            </div>
+
+            <div className="relative z-10 flex justify-between items-center">
+              {/* Step 1: Completed */}
+              <div className="flex flex-col items-center space-y-2 group">
+                <div className="w-9 h-9 rounded-full bg-[#5c7c64] text-white flex items-center justify-center font-bold text-xs ring-4 ring-[#fbece2]/15 shadow-sm transition-transform group-hover:scale-105">
+                  ✓
+                </div>
+                <div className="text-center">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-600 block">
+                    {lang === 'pt' ? 'Sopro' : 'Breath'}
+                  </span>
+                  <span className="text-[8px] text-stone-400 block max-w-[70px] leading-tight select-none">
+                    {lang === 'pt' ? 'Âncora Coerente' : 'Anchor'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Step 2: Completed */}
+              <div className="flex flex-col items-center space-y-2 group">
+                <div className="w-9 h-9 rounded-full bg-[#5c7c64] text-white flex items-center justify-center font-bold text-xs ring-4 ring-[#fbece2]/15 shadow-sm transition-transform group-hover:scale-105">
+                  ✓
+                </div>
+                <div className="text-center">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-600 block">
+                    {lang === 'pt' ? 'Espelho' : 'Mirror'}
+                  </span>
+                  <span className="text-[8px] text-stone-400 block max-w-[70px] leading-tight select-none">
+                    {lang === 'pt' ? 'Climas Internos' : 'Inner Weather'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Step 3: Current Active */}
+              <div className="flex flex-col items-center space-y-2 group">
+                <div className="w-9 h-9 rounded-full bg-white border-2 border-[#5c7c64] text-[#5c7c64] flex items-center justify-center font-bold text-xs shadow-sm shadow-[#5c7c64]/10 transition-transform group-hover:scale-105 relative">
+                  <span className="absolute w-full h-full rounded-full bg-[#5c7c64]/12 animate-ping" />
+                  3
+                </div>
+                <div className="text-center">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#5c7c64] block">
+                    {lang === 'pt' ? 'Escuta' : 'Echo'}
+                  </span>
+                  <span className="text-[8px] text-stone-500 font-medium block max-w-[70px] leading-tight">
+                    {lang === 'pt' ? 'Voz Sintonizada' : 'Vocal Sync'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Step 4: Locked Future */}
+              <div className="flex flex-col items-center space-y-2 group">
+                <div className="w-9 h-9 rounded-full bg-white border border-stone-250 text-stone-400 flex items-center justify-center font-bold text-xs shadow-sm transition-transform group-hover:scale-105">
+                  ★
+                </div>
+                <div className="text-center">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-400 block">
+                    {lang === 'pt' ? 'Metáfora' : 'Metaphor'}
+                  </span>
+                  <span className="text-[8px] text-stone-400 block max-w-[70px] leading-tight select-none">
+                    {lang === 'pt' ? 'Integração PCH' : 'Full Poetry'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white/60 border border-[#efece1] text-xs space-y-1.5">
+            <div className="flex items-center gap-1.5 font-bold text-[#3e5f35] font-mono text-[10px] uppercase tracking-wider">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span>{lang === 'pt' ? 'Próximo Passo Recomendado' : 'Recommended Next Step'}</span>
+            </div>
+            <p className="text-stone-650 leading-relaxed font-light">
+              {lang === 'pt' 
+                ? 'Seu reflexo do clima diário está consolidado. Experimente a "Escuta" no menu inferior para registrar ou escutar o eco sussurrado das suas palavras e sintonizar sua voz profunda.' 
+                : 'Your daily weather reflection module is unlocked. Try "Echo" in the bottom menu to record or listen to the whispered reflection of your lyrics.'}
+            </p>
+          </div>
+        </div>
+
         {/* A Linha do Tempo (O Rio) */}
         <div className="relative border-l-2 border-stone-100 ml-6 pl-8 flex flex-col gap-10">
           

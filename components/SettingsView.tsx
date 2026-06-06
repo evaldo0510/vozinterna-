@@ -1,392 +1,612 @@
 import React, { useState, useEffect } from 'react';
-import { User, Language, NeurodivergentMode } from '../types';
-import { Sliders, Sun, Moon, Volume2, Globe, Sparkles, LogOut, Check, HelpCircle, Download } from 'lucide-react';
-import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
-import { doc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
+import { User, Language } from '../types';
+import { 
+  Smile, 
+  Type, 
+  Contrast, 
+  Bell, 
+  ArrowLeft, 
+  ShieldAlert, 
+  Sparkles, 
+  LogOut, 
+  Check, 
+  Plus,
+  Music,
+  Play,
+  Pause,
+  Volume2
+} from 'lucide-react';
+import { db, auth } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 interface SettingsViewProps {
   user: User | null;
   lang: Language;
   onSetLang: (lang: Language) => void;
   onLogout: () => void;
+  onBack: () => void;
+  // Dynamic settings hooks to update the client experience
+  textSize: 'small' | 'medium' | 'large';
+  onTextSizeChange: (size: 'small' | 'medium' | 'large') => void;
+  accessibilityMode: boolean;
+  onAccessibilityModeChange: (active: boolean) => void;
+  onToggleTheme: () => void;
+  isLightTheme: boolean;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ user, lang, onSetLang, onLogout }) => {
-  const [savingLoading, setSavingLoading] = useState(false);
-  const [bgSound, setBgSound] = useState(() => localStorage.getItem('pch_ambient_sound') || 'off');
-  const [journalEntries, setJournalEntries] = useState<any[]>([]);
+export const SettingsView: React.FC<SettingsViewProps> = ({ 
+  user, 
+  lang, 
+  onLogout, 
+  onBack,
+  textSize,
+  onTextSizeChange,
+  accessibilityMode,
+  onAccessibilityModeChange,
+  onToggleTheme,
+  isLightTheme
+}) => {
+  const [leituraAssistida, setLeituraAssistida] = useState<boolean>(true);
+  const [gestosSuaves, setGestosSuaves] = useState<boolean>(false);
+  const [silencioNoturno, setSilencioNoturno] = useState<boolean>(true);
+  const [contrasRef, setContrasRef] = useState<'natural' | 'sepia' | 'crepusculo'>('natural');
 
-  useEffect(() => {
-    let unsubscribe = () => {};
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      const colRef = collection(db, 'users', user.id, 'journals');
-      unsubscribe = onSnapshot(colRef, (snapshot) => {
-        const fetched: any[] = [];
-        snapshot.forEach((snapDoc) => {
-          const d = snapDoc.data();
-          fetched.push({
-            id: snapDoc.id,
-            date: d.date,
-            text: d.text,
-            moodTags: d.moodTags || [],
-            quickNote: d.quickNote || ''
-          });
-        });
-        fetched.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setJournalEntries(fetched);
-      }, (err) => {
-        console.error("Failed to sync journals for settings:", err);
-      });
-    } else {
-      // Offline fallback
-      try {
-        const stored = localStorage.getItem('pch_journal_entries');
-        if (stored) {
-          setJournalEntries(JSON.parse(stored));
-        }
-      } catch (e) {
-        console.error("Failed to load local journal entries", e);
-      }
+  // Web Audio ambient soundscape generator state
+  const audioCtxRef = React.useRef<AudioContext | null>(null);
+  const droneNodesRef = React.useRef<any[]>([]);
+  const [isPlayingSound, setIsPlayingSound] = useState<boolean>(false);
+  const [activeSoundtrack, setActiveSoundtrack] = useState<string>('silence');
+
+  const soundtracks = [
+    {
+      id: 'silence',
+      namePt: 'Ressonância Terrestre (Drone)',
+      nameEn: 'Earth Resonance (Drone)',
+      descPt: 'Frequências puras e profundas em 110Hz para alinhamento e relaxamento mental imediato.',
+      descEn: 'Deep and pure 110Hz frequencies for mental alignment and immediate physical calm.',
+    },
+    {
+      id: 'rain',
+      namePt: 'Chuva Tranquila',
+      nameEn: 'Tranquil Rain',
+      descPt: 'Modulações orgânicas que recordam uma chuva filtrante ao final da tarde.',
+      descEn: 'Organic modulations bringing back memories of soft rainfall on late autumn leaves.',
+    },
+    {
+      id: 'wind',
+      namePt: 'Sopro da Floresta',
+      nameEn: 'Forest Whispers',
+      descPt: 'Ondas oscilantes relaxantes mimetizando o vento passando pelas copas das árvores.',
+      descEn: 'Easing sweeps replicating high mountain breeze moving gently between the pine trees.',
     }
-    return () => unsubscribe();
-  }, [user.id]);
+  ];
 
-  const downloadJSON = () => {
-    const exportData = {
-      exportedAt: new Date().toISOString(),
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        points: user.points || 0,
-        level: user.level || 1,
-        resonanceScore: user.resonanceScore || 0
-      },
-      resonanceHistory: user.resonanceHistory || [],
-      journalEntries: journalEntries
+  const stopAmbient = () => {
+    droneNodesRef.current.forEach(node => {
+      try { node.stop(); } catch(e){}
+      try { node.disconnect(); } catch(e){}
+    });
+    droneNodesRef.current = [];
+    setIsPlayingSound(false);
+  };
+
+  const startAmbient = (soundId: string) => {
+    stopAmbient();
+    
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      if (soundId === 'silence') {
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        const lowpass = ctx.createBiquadFilter();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(110, ctx.currentTime);
+        
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(165.4, ctx.currentTime); // perfect fifth + a tiny detune
+
+        lowpass.type = 'lowpass';
+        lowpass.frequency.setValueAtTime(200, ctx.currentTime);
+
+        gainNode.gain.setValueAtTime(0.06, ctx.currentTime);
+
+        osc1.connect(lowpass);
+        osc2.connect(lowpass);
+        lowpass.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        osc1.start();
+        osc2.start();
+
+        droneNodesRef.current = [osc1, osc2, gainNode, lowpass];
+      } else if (soundId === 'rain') {
+        const bufferSize = 2 * ctx.sampleRate;
+        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        const whiteNoise = ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        whiteNoise.loop = true;
+
+        const filter1 = ctx.createBiquadFilter();
+        filter1.type = 'lowpass';
+        filter1.frequency.setValueAtTime(500, ctx.currentTime);
+
+        const filter2 = ctx.createBiquadFilter();
+        filter2.type = 'bandpass';
+        filter2.frequency.setValueAtTime(320, ctx.currentTime);
+        filter2.Q.setValueAtTime(1.2, ctx.currentTime);
+
+        const gainNode = ctx.createGain();
+        gainNode.gain.setValueAtTime(0.12, ctx.currentTime);
+
+        whiteNoise.connect(filter1);
+        filter1.connect(filter2);
+        filter2.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        whiteNoise.start();
+
+        // Slow modulation of depth to resemble changing wind/rain sweeps
+        const lfo = ctx.createOscillator();
+        lfo.frequency.setValueAtTime(0.15, ctx.currentTime);
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.setValueAtTime(150, ctx.currentTime);
+
+        lfo.connect(lfoGain);
+        lfoGain.connect(filter2.frequency);
+        lfo.start();
+
+        droneNodesRef.current = [whiteNoise, filter1, filter2, gainNode, lfo, lfoGain];
+      } else if (soundId === 'wind') {
+        const bufferSize = 2 * ctx.sampleRate;
+        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = noiseBuffer;
+        noise.loop = true;
+
+        const bandpass = ctx.createBiquadFilter();
+        bandpass.type = 'bandpass';
+        bandpass.frequency.setValueAtTime(250, ctx.currentTime);
+        bandpass.Q.setValueAtTime(2.2, ctx.currentTime);
+
+        const gainNode = ctx.createGain();
+        gainNode.gain.setValueAtTime(0.20, ctx.currentTime);
+
+        const lfo = ctx.createOscillator();
+        lfo.frequency.setValueAtTime(0.06, ctx.currentTime);
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.setValueAtTime(120, ctx.currentTime);
+
+        lfo.connect(lfoGain);
+        lfoGain.connect(bandpass.frequency);
+
+        noise.connect(bandpass);
+        bandpass.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        noise.start();
+        lfo.start();
+
+        droneNodesRef.current = [noise, bandpass, gainNode, lfo, lfoGain];
+      }
+
+      setIsPlayingSound(true);
+    } catch (err) {
+      console.warn("Web Audio Context blocked or faulty:", err);
+    }
+  };
+
+  const handleTogglePlay = () => {
+    if (isPlayingSound) {
+      stopAmbient();
+    } else {
+      startAmbient(activeSoundtrack);
+    }
+  };
+
+  const handleChangeSoundtrack = (id: string) => {
+    setActiveSoundtrack(id);
+    if (isPlayingSound) {
+      startAmbient(id);
+    }
+  };
+
+  // Clean ambient audio on leaving/unmonting
+  useEffect(() => {
+    return () => {
+      droneNodesRef.current.forEach(node => {
+        try { node.stop(); } catch(e){}
+        try { node.disconnect(); } catch(e){}
+      });
     };
+  }, []);
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `inner_voice_resonance_data_${user.id}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
-
-  const downloadCSV = () => {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Date,Type,Value/Score,Text/Notes,Mood Tags\r\n";
-
-    const rHistory = user.resonanceHistory || [];
-    rHistory.forEach(item => {
-      const escapedDate = `"${item.date.replace(/"/g, '""')}"`;
-      const escapedType = `"Resonance Score"`;
-      const escapedValue = `"${item.score}"`;
-      csvContent += `${escapedDate},${escapedType},${escapedValue},"",""\r\n`;
-    });
-
-    journalEntries.forEach(entry => {
-      const rawDate = entry.date ? new Date(entry.date).toISOString() : new Date().toISOString();
-      const escapedDate = `"${rawDate.replace(/"/g, '""')}"`;
-      const escapedType = `"Journal Entry"`;
-      const valuePlaceholder = `""`;
-      const escapedText = `"${(entry.quickNote || entry.text || "").replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
-      const escapedMoods = `"${(entry.moodTags || []).join('; ')}"`;
-      csvContent += `${escapedDate},${escapedType},${valuePlaceholder},${escapedText},${escapedMoods}\r\n`;
-    });
-
-    const encodedUri = encodeURI(csvContent);
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", encodedUri);
-    downloadAnchor.setAttribute("download", `inner_voice_resonance_data_${user.id}.csv`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
+  // Trigger state updates
+  useEffect(() => {
+    if (contrasRef === 'crepusculo' && isLightTheme) {
+      onToggleTheme();
+    } else if ((contrasRef === 'natural' || contrasRef === 'sepia') && !isLightTheme) {
+      onToggleTheme();
+    }
+  }, [contrasRef]);
 
   if (!user) return null;
 
-  const currentNeuroMode = user.neuroMode || 'natural';
-  const currentCommPreference = user.communicationPreference || 'hybrid';
-  const isHighContrast = user.accessibilityMode || false;
-
-  const handleUpdateNeuroMode = async (mode: NeurodivergentMode) => {
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) return;
-
-    setSavingLoading(true);
-    try {
-      const docRef = doc(db, 'users', firebaseUser.uid);
-      const enableAccessibility = ['autism', 'inclusive'].includes(mode);
-      await updateDoc(docRef, {
-        neuroMode: mode,
-        accessibilityMode: enableAccessibility,
-        lastActive: new Date().toISOString()
-      });
-    } catch (err) {
-      console.error(err);
-      handleFirestoreError(err, OperationType.UPDATE, `users/${firebaseUser.uid}`);
-    } finally {
-      setSavingLoading(false);
-    }
-  };
-
-  const handleUpdateComm = async (pref: 'voice' | 'text' | 'image' | 'hybrid') => {
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) return;
-
-    setSavingLoading(true);
-    try {
-      const docRef = doc(db, 'users', firebaseUser.uid);
-      await updateDoc(docRef, {
-        communicationPreference: pref,
-        lastActive: new Date().toISOString()
-      });
-    } catch (err) {
-      console.error(err);
-      handleFirestoreError(err, OperationType.UPDATE, `users/${firebaseUser.uid}`);
-    } finally {
-      setSavingLoading(false);
-    }
-  };
-
-  const toggleHighContrast = async () => {
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) return;
-
-    setSavingLoading(true);
-    try {
-      const docRef = doc(db, 'users', firebaseUser.uid);
-      await updateDoc(docRef, {
-        accessibilityMode: !isHighContrast,
-        lastActive: new Date().toISOString()
-      });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSavingLoading(false);
-    }
-  };
-
-  const handleResetOnboarding = async () => {
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) return;
-
-    setSavingLoading(true);
-    try {
-      const docRef = doc(db, 'users', firebaseUser.uid);
-      await updateDoc(docRef, {
-        hasSeenOnboarding: false,
-        lastActive: new Date().toISOString()
-      });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSavingLoading(false);
-    }
-  };
-
   return (
-    <div className="w-full max-w-md mx-auto space-y-6 animate-fade-in p-2 pb-12">
-      {/* Settings Module Title */}
-      <div className="flex items-center space-x-3 mb-2">
-        <Globe className="w-5 h-5 text-teal-400" />
-        <h3 className="font-serif text-lg text-stone-100 uppercase tracking-widest leading-relaxed">
-          {lang === 'pt' ? 'Ajustes de Sintonia' : 'Sanctuary Settings'}
-        </h3>
-      </div>
-
-      {/* Language Section Wrapper */}
-      <div className="bg-stone-900/40 border border-stone-850/60 p-5 rounded-3xl space-y-3 backdrop-blur-md">
-        <h4 className="text-[9px] uppercase text-stone-500 tracking-[0.2em] font-bold">
-          {lang === 'pt' ? 'Idioma do Templo' : 'Workspace Language'}
-        </h4>
-        <div className="grid grid-cols-2 gap-2">
-          <button 
-            onClick={() => onSetLang('pt')}
-            className={`py-2.5 rounded-2xl text-[10px] uppercase font-bold tracking-widest transition-all cursor-pointer flex items-center justify-center space-x-2 ${
-              lang === 'pt' ? 'bg-teal-500/10 border border-teal-500/30 text-teal-400 font-black' : 'bg-stone-950 border border-transparent text-stone-500 hover:text-stone-300'
-            }`}
-          >
-            {lang === 'pt' && <Check className="w-3.5 h-3.5" />}
-            <span>Português</span>
-          </button>
-          <button 
-            onClick={() => onSetLang('en')}
-            className={`py-2.5 rounded-2xl text-[10px] uppercase font-bold tracking-widest transition-all cursor-pointer flex items-center justify-center space-x-2 ${
-              lang === 'en' ? 'bg-teal-500/10 border border-teal-500/30 text-teal-400 font-black' : 'bg-stone-950 border border-transparent text-stone-500 hover:text-stone-300'
-            }`}
-          >
-            {lang === 'en' && <Check className="w-3.5 h-3.5" />}
-            <span>English</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Cognitive Adaptability Options */}
-      <div className="bg-stone-900/40 border border-stone-850/60 p-5 rounded-3xl space-y-4 backdrop-blur-md">
-        <h4 className="text-[9px] uppercase text-stone-500 tracking-[0.2em] font-bold">
-          {lang === 'pt' ? 'Modo de Consciência (PCH)' : 'State of Attention'}
-        </h4>
-        <div className="grid grid-cols-1 gap-2">
-          {([
-            { id: 'natural', label: lang === 'pt' ? 'Padrão (Natureza PCH)' : 'Natural (Standard)', desc: lang === 'pt' ? 'Poesia rítmica padrão' : 'Standard poetic cadence' },
-            { id: 'adhd', label: lang === 'pt' ? 'TDAH (Agilidade Relâmpago)' : 'ADHD Mode', desc: lang === 'pt' ? 'Mensagens simplificadas focadas' : 'Highly focused and linear micro-responses' },
-            { id: 'autism', label: lang === 'pt' ? 'Autismo (Predictibilidade)' : 'Autism Clarity Mode', desc: lang === 'pt' ? 'Comunicação direta sem figuras abstratas' : 'Extreme clarity, step-by-step predictability' },
-            { id: 'anxiety', label: lang === 'pt' ? 'Ansiedade (Acalento)' : 'Anxiety Comfort Mode', desc: lang === 'pt' ? 'Ritmo desacelerado e respiração síncrona' : 'Deeply soothing breath pacing support' }
-          ] as const).map((mode) => (
-            <button
-              key={mode.id}
-              onClick={() => handleUpdateNeuroMode(mode.id)}
-              disabled={savingLoading}
-              className={`p-3 text-left rounded-2xl border transition-all cursor-pointer ${
-                currentNeuroMode === mode.id 
-                  ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' 
-                  : 'bg-stone-950 border-stone-900/40 text-stone-400 hover:border-stone-800'
-              }`}
-            >
-              <p className="text-[11px] font-bold uppercase tracking-wider">{mode.label}</p>
-              <p className="text-[9px] text-stone-500 mt-1 leading-normal">{mode.desc}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* High Contrast Accessibility Toggle */}
-      <div className="bg-stone-900/40 border border-stone-850/60 p-5 rounded-3xl space-y-3 backdrop-blur-md">
-        <div className="flex justify-between items-center">
-          <div>
-            <h4 className="text-xs font-bold text-stone-200">
-              {lang === 'pt' ? 'Alto Contraste Estrito' : 'High Contrast Interface'}
-            </h4>
-            <p className="text-[9px] text-stone-500 leading-normal mt-0.5">
-              {lang === 'pt' ? 'Melhora a legibilidade visual para idosos e disléxicos' : 'Optimizes accessibility styles across views'}
-            </p>
-          </div>
-          <button 
-            onClick={toggleHighContrast}
-            disabled={savingLoading}
-            className={`w-12 h-6 rounded-full relative transition-[background-color] duration-300 flex items-center p-0.5 cursor-pointer ${
-              isHighContrast ? 'bg-teal-500' : 'bg-stone-850'
-            }`}
-          >
-            <div className={`w-5 h-5 rounded-full bg-stone-950 transition-all ${
-              isHighContrast ? 'translate-x-6' : 'translate-x-0'
-            }`} />
-          </button>
-        </div>
-      </div>
-
-      {/* Ambient Soundscapes Option */}
-      <div className="bg-stone-900/40 border border-stone-850/60 p-5 rounded-3xl space-y-4 backdrop-blur-md">
-        <div className="flex items-center space-x-2">
-          <Volume2 className="w-4 h-4 text-teal-400" />
-          <h4 className="text-[10px] uppercase text-stone-300 tracking-[0.2em] font-bold">
-            {lang === 'pt' ? 'Música de Fundo (Sintonia)' : 'Ambient Soundscape'}
-          </h4>
-        </div>
-        
-        <p className="text-[9px] text-stone-500 leading-normal -mt-1">
-          {lang === 'pt' 
-            ? 'Defina o som ambiente padrão que tocará suavemente em segundo plano durante suas sessões de chat.'
-            : 'Configure the default background audio that gently flows during your live chat sessions.'}
-        </p>
-
-        <div className="grid grid-cols-4 gap-1.5 p-1 bg-stone-950 border border-stone-900 rounded-lg">
-          {([
-            { id: 'off', label: lang === 'pt' ? 'Deslig.' : 'Off' },
-            { id: 'rain', label: lang === 'pt' ? 'Chuva' : 'Rain' },
-            { id: 'forest', label: lang === 'pt' ? 'Mata' : 'Forest' },
-            { id: 'deepspace', label: lang === 'pt' ? 'Espaço' : 'Space' }
-          ] as const).map((sound) => (
-            <button
-              key={sound.id}
-              onClick={() => {
-                localStorage.setItem('pch_ambient_sound', sound.id);
-                setBgSound(sound.id);
-              }}
-              className={`py-2 rounded text-[9px] font-mono uppercase tracking-widest transition-all cursor-pointer ${
-                bgSound === sound.id 
-                  ? 'bg-teal-500/15 text-teal-400 font-bold border border-teal-500/30' 
-                  : 'text-stone-500 hover:text-stone-300 border border-transparent'
-              }`}
-            >
-              {sound.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Data Portability / Export History */}
-      <div className="bg-stone-900/40 border border-stone-850/60 p-5 rounded-3xl space-y-4 backdrop-blur-md">
-        <h4 className="text-[9px] uppercase text-stone-500 tracking-[0.2em] font-bold">
-          {lang === 'pt' ? 'Exportar Dados & Portabilidade' : 'Data Portability & Export'}
-        </h4>
-        
-        <p className="text-[9px] text-stone-500 leading-normal -mt-1">
-          {lang === 'pt' 
-            ? 'Faça o download completo das suas métricas de ressonância e registros de diário para backup ou revisão externa.'
-            : 'Download a full summary of your resonance tuning scores and personal journal logs for records or backup.'}
-        </p>
-
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={downloadJSON}
-            className="py-2.5 px-3 bg-stone-950 hover:bg-teal-500/10 border border-stone-850/65 hover:border-teal-500/30 text-stone-400 hover:text-teal-400 text-[9px] font-mono uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center space-x-1.5 active:scale-[0.98]"
-            title={lang === 'pt' ? 'Exportar em JSON' : 'Export as JSON'}
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>JSON</span>
-          </button>
-          
-          <button
-            onClick={downloadCSV}
-            className="py-2.5 px-3 bg-stone-950 hover:bg-teal-500/10 border border-stone-850/65 hover:border-teal-500/30 text-stone-400 hover:text-teal-400 text-[9px] font-mono uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center space-x-1.5 active:scale-[0.98]"
-            title={lang === 'pt' ? 'Exportar em CSV' : 'Export as CSV'}
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>CSV</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Interactive Methodology Tour / Onboarding reset */}
-      <div className="bg-stone-900/40 border border-stone-850/60 p-5 rounded-3xl space-y-4 backdrop-blur-md">
-        <div className="flex justify-between items-center">
-          <div className="flex-1 pr-4">
-            <h4 className="text-xs font-bold text-stone-200 flex items-center gap-1.5">
-              <HelpCircle className="w-4 h-4 text-teal-400" />
-              <span>{lang === 'pt' ? 'Guia da Metodologia PCH' : 'PCH Methodology Hub'}</span>
-            </h4>
-            <p className="text-[9px] text-stone-500 leading-normal mt-1">
-              {lang === 'pt' 
-                ? 'Inicie a visita guiada imersiva de 2 minutos para rever as bases de atenção e o design do templo.' 
-                : 'Run the 2-minute step-by-step tour to re-explore our psychiatric cadence and visual navigation.'}
-            </p>
-          </div>
-          <button 
-            onClick={handleResetOnboarding}
-            className="px-3.5 py-2 hover:bg-teal-500/10 border border-stone-800 hover:border-teal-500/30 text-stone-400 hover:text-teal-400 text-[9px] font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer whitespace-nowrap active:scale-[0.98]"
-          >
-            {lang === 'pt' ? 'Iniciar Tour' : 'Start Tour'}
-          </button>
-        </div>
-      </div>
-
-      {/* Exit / Sign out button */}
-      <div className="pt-2">
+    <div className="min-h-full w-full bg-[#fcf9f4] text-[#1c2e24] flex flex-col font-sans pb-24 select-none">
+      
+      {/* Top micro Header */}
+      <div className="w-full max-w-4xl mx-auto px-6 py-4 flex justify-between items-center bg-transparent">
+        <button 
+          onClick={onBack}
+          className="flex items-center gap-2 text-stone-500 hover:text-stone-800 transition-colors group cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="text-xs uppercase tracking-wider font-mono font-medium">
+            {lang === 'pt' ? 'Voltar' : 'Back'}
+          </span>
+        </button>
+        <span className="text-[10px] tracking-[0.3em] font-bold font-mono text-stone-400 uppercase">
+          {lang === 'pt' ? 'O ESPAÇO' : 'THE SPACE'}
+        </span>
         <button
           onClick={onLogout}
-          className="w-full py-4 bg-rose-950/20 border border-rose-900/30 hover:bg-rose-900/20 text-rose-400 hover:text-rose-300 text-[10px] font-bold uppercase tracking-[0.2em] rounded-2xl transition-all cursor-pointer flex items-center justify-center space-x-2 active:scale-[0.98]"
+          className="p-1.5 rounded-full border border-stone-200 hover:bg-red-50 text-stone-450 hover:text-red-700 transition-all cursor-pointer"
+          title={lang === 'pt' ? 'Sair da sessão' : 'Logout'}
         >
           <LogOut className="w-4 h-4" />
-          <span>{lang === 'pt' ? 'Encerrar Sessão no Santuário' : 'Leave Sanctuary Portal'}</span>
         </button>
+      </div>
+
+      <div className="w-full max-w-xl mx-auto px-6 space-y-8 mt-4 animate-fade-in">
+        
+        {/* Core title and subtitle */}
+        <div className="space-y-2.5 max-w-md">
+          <h1 className="text-3xl font-serif text-[#1c2e24] tracking-wide font-normal">
+            {lang === 'pt' ? 'O Espaço' : 'The Space'}
+          </h1>
+          <p className="text-stone-500 text-xs md:text-sm leading-relaxed font-light">
+            {lang === 'pt' 
+              ? 'Sinta-se em casa. Ajuste as ferramentas deste refúgio digital para que sua jornada seja tão leve quanto um sopro.' 
+              : 'Feel at home. Adjust this digital sanctuary features so that your journey feels light as a soft breath.'}
+          </p>
+        </div>
+
+        {/* Section Blocks matches Screenshot 4 */}
+        <div className="space-y-6">
+          
+          {/* Card 1: Acessibilidade */}
+          <div className="p-6.5 rounded-[2rem] bg-white border border-stone-200/40 shadow-[0_3px_15px_rgba(21,46,34,0.01)] space-y-5">
+            <div className="flex gap-4.5 items-start">
+              <div className="p-3 bg-stone-50 rounded-full text-[#5c7c64]">
+                <Smile className="w-5 h-5 stroke-[1.8]" />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="text-base font-serif font-semibold text-stone-850">
+                  {lang === 'pt' ? 'Acessibilidade' : 'Accessibility'}
+                </h3>
+                <p className="text-xs text-stone-400 font-light leading-relaxed">
+                  {lang === 'pt' ? 'Recursos projetados para acolher diferentes formas de interagir.' : 'Features crafted to embrace different modes of connection.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Sub options with switches */}
+            <div className="space-y-4 pt-1">
+              {/* Leitura Assistida */}
+              <div className="flex justify-between items-center bg-stone-50/40 p-3.5 rounded-2xl border border-stone-100">
+                <span className="text-[13px] font-medium text-stone-750">
+                  {lang === 'pt' ? 'Leitura Assistida' : 'Voice Assisted Reading'}
+                </span>
+                <button
+                  onClick={() => {
+                    setLeituraAssistida(!leituraAssistida);
+                    onAccessibilityModeChange(!leituraAssistida);
+                  }}
+                  className={`w-10 h-6.5 rounded-full p-0.5 transition-colors duration-300 outline-none ${
+                    leituraAssistida ? 'bg-[#5c7c64]' : 'bg-stone-200'
+                  }`}
+                >
+                  <div className={`bg-white w-5.5 h-5.5 rounded-full shadow-sm transition-transform duration-300 ${
+                    leituraAssistida ? 'translate-x-3.5' : 'translate-x-0'
+                  }`} />
+                </button>
+              </div>
+
+              {/* Navegação por Gestos Suaves */}
+              <div className="flex justify-between items-center bg-stone-50/40 p-3.5 rounded-2xl border border-stone-100">
+                <span className="text-[13px] font-medium text-stone-750">
+                  {lang === 'pt' ? 'Navegação por Gestos Suaves' : 'Gentle Gesture Navigation'}
+                </span>
+                <button
+                  onClick={() => setGestosSuaves(!gestosSuaves)}
+                  className={`w-10 h-6.5 rounded-full p-0.5 transition-colors duration-300 outline-none ${
+                    gestosSuaves ? 'bg-[#5c7c64]' : 'bg-stone-200'
+                  }`}
+                >
+                  <div className={`bg-white w-5.5 h-5.5 rounded-full shadow-sm transition-transform duration-300 ${
+                    gestosSuaves ? 'translate-x-3.5' : 'translate-x-0'
+                  }`} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Tamanho do Texto */}
+          <div className="p-6.5 rounded-[2rem] bg-white border border-stone-200/40 shadow-[0_3px_15px_rgba(21,46,34,0.01)] space-y-5">
+            <div className="flex gap-4.5 items-start">
+              <div className="p-3 bg-stone-50 rounded-full text-[#5c7c64]">
+                <Type className="w-5 h-5 stroke-[1.8]" />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="text-base font-serif font-semibold text-stone-850">
+                  {lang === 'pt' ? 'Tamanho do Texto' : 'Text Size'}
+                </h3>
+                <p className="text-xs text-stone-400 font-light leading-relaxed">
+                  {lang === 'pt' ? 'Encontre a clareza ideal para o seu olhar.' : 'Locate the ideal layout reading zoom for your eyes.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Zoom slider markings layout from Screenshot 4 */}
+            <div className="pt-2.5 px-2 space-y-4">
+              <div className="relative w-full h-1.5 bg-stone-100 rounded-full">
+                {/* Active slider bar */}
+                <div 
+                  className="absolute h-full bg-[#5c7c64] rounded-full" 
+                  style={{ 
+                    width: textSize === 'small' ? '0%' : textSize === 'medium' ? '50%' : '100%' 
+                  }} 
+                />
+                {/* Visual selector node handles */}
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="3" 
+                  step="1"
+                  value={textSize === 'small' ? 1 : textSize === 'medium' ? 2 : 3}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value);
+                    if (v === 1) onTextSizeChange('small');
+                    else if (v === 2) onTextSizeChange('medium');
+                    else onTextSizeChange('large');
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                
+                {/* Marking dots */}
+                <div className="absolute w-full -top-1 px-1 flex justify-between pointer-events-none">
+                  <div className={`w-3.5 h-3.5 rounded-full border border-stone-200 ${textSize === 'small' ? 'bg-[#5c7c64] scale-110' : 'bg-white'}`} />
+                  <div className={`w-3.5 h-3.5 rounded-full border border-stone-200 ${textSize === 'medium' ? 'bg-[#5c7c64] scale-110' : 'bg-white'}`} style={{ marginLeft: '-1px' }} />
+                  <div className={`w-3.5 h-3.5 rounded-full border border-stone-200 ${textSize === 'large' ? 'bg-[#5c7c64] scale-110' : 'bg-white'}`} />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center text-[10px] font-mono tracking-widest text-[#5c7c64] font-bold">
+                <span>{lang === 'pt' ? 'PEQUENO' : 'SMALL'}</span>
+                <span>{lang === 'pt' ? 'EQUILIBRADO' : 'BALANCED'}</span>
+                <span>{lang === 'pt' ? 'AMPLO' : 'LARGE'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Contraste Suave */}
+          <div className="p-6.5 rounded-[2rem] bg-white border border-stone-200/40 shadow-[0_3px_15px_rgba(21,46,34,0.01)] space-y-5">
+            <div className="flex gap-4.5 items-start">
+              <div className="p-3 bg-stone-50 rounded-full text-[#5c7c64]">
+                <Contrast className="w-5 h-5 stroke-[1.8]" />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="text-base font-serif font-semibold text-stone-850">
+                  {lang === 'pt' ? 'Contraste Suave' : 'Soft Contrast'}
+                </h3>
+                <p className="text-xs text-stone-400 font-light leading-relaxed">
+                  {lang === 'pt' ? 'Reduza a fadiga visual com tons terrosos e orgânicos.' : 'Soothe eye strain with organic earth-based contrasts.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Bubble selection circles layout */}
+            <div className="flex gap-4.5 pt-2 select-none">
+              {/* Natural */}
+              <button 
+                onClick={() => setContrasRef('natural')}
+                className="flex-1 flex flex-col items-center gap-2 p-2 focus:outline-none"
+              >
+                <div className={`w-12 h-12 rounded-full bg-[#fcf9f4] border-2 transition-all flex items-center justify-center ${
+                  contrasRef === 'natural' ? 'border-[#5c7c64] scale-105 shadow-sm' : 'border-stone-200 hover:border-stone-400'
+                }`}>
+                  <div className="w-5 h-5 rounded-full bg-[#5c7c64]/20" />
+                </div>
+                <span className="text-[10px] uppercase font-mono tracking-wider text-stone-500">Natural</span>
+              </button>
+
+              {/* Sépia */}
+              <button
+                onClick={() => setContrasRef('sepia')}
+                className="flex-1 flex flex-col items-center gap-2 p-2 focus:outline-none"
+              >
+                <div className={`w-12 h-12 rounded-full bg-[#f4ebd0] border-2 transition-all flex items-center justify-center ${
+                  contrasRef === 'sepia' ? 'border-[#8c5d3a] scale-105 shadow-sm' : 'border-stone-200 hover:border-stone-400'
+                }`}>
+                  <div className="w-5 h-5 rounded-full bg-[#8c5d3a]/25" />
+                </div>
+                <span className="text-[10px] uppercase font-mono tracking-wider text-stone-500">Sépia</span>
+              </button>
+
+              {/* Crepúsculo */}
+              <button
+                onClick={() => setContrasRef('crepusculo')}
+                className="flex-1 flex flex-col items-center gap-2 p-2 focus:outline-none"
+              >
+                <div className={`w-12 h-12 rounded-full bg-[#1e2321] border-2 transition-all flex items-center justify-center ${
+                  contrasRef === 'crepusculo' ? 'border-teal-500 scale-105 shadow-sm' : 'border-stone-200 hover:border-stone-400'
+                }`}>
+                  <div className="w-5 h-5 rounded-full bg-teal-400/20" />
+                </div>
+                <span className="text-[10px] uppercase font-mono tracking-wider text-stone-500">Crepúsculo</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Card: Paysagens Sonoras / Trilha Sonora */}
+          <div className="p-6.5 rounded-[2rem] bg-white border border-stone-200/40 shadow-[0_3px_15px_rgba(21,46,34,0.01)] space-y-5">
+            <div className="flex justify-between items-start">
+              <div className="flex gap-4.5 items-start">
+                <div className="p-3 bg-stone-50 rounded-full text-[#5c7c64]">
+                  <Music className="w-5 h-5 stroke-[1.8]" />
+                </div>
+                <div className="space-y-0.5">
+                  <h3 className="text-base font-serif font-semibold text-stone-850">
+                    {lang === 'pt' ? 'Trilha Sonora Ambiente' : 'Ambient Soundscapes'}
+                  </h3>
+                  <p className="text-xs text-stone-400 font-light leading-relaxed">
+                    {lang === 'pt' ? 'Sintonize paisagens harmônicas de fundo para guiar seu foco.' : 'Tune into comforting background frequencies to guide your focus.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Master Play/Pause Controller in Card Header */}
+              <button
+                onClick={handleTogglePlay}
+                className={`p-3 rounded-full cursor-pointer transition-all duration-300 shadow-sm border ${
+                  isPlayingSound 
+                    ? 'bg-amber-100 border-amber-200 text-amber-700 font-bold scale-105' 
+                    : 'bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-600'
+                }`}
+                title={isPlayingSound ? 'Pausar Áudio' : 'Reproduzir Áudio'}
+              >
+                {isPlayingSound ? <Pause className="w-4.5 h-4.5 fill-amber-700" /> : <Play className="w-4.5 h-4.5 fill-stone-600 ml-0.5" />}
+              </button>
+            </div>
+
+            {/* Selector list */}
+            <div className="space-y-3 pt-1">
+              {soundtracks.map((track) => {
+                const isActive = activeSoundtrack === track.id;
+                return (
+                  <button
+                    key={track.id}
+                    onClick={() => handleChangeSoundtrack(track.id)}
+                    className={`w-full text-left p-4 rounded-2xl border transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-3 cursor-pointer ${
+                      isActive 
+                        ? 'bg-[#f4efe6] border-[#cfc0a9] text-[#1c2e24] font-medium shadow-[0_2px_8px_rgba(0,0,0,0.02)]' 
+                        : 'bg-white hover:bg-stone-50 border-stone-100 text-[#1c2e24]/90'
+                    }`}
+                  >
+                    <div className="space-y-1 max-w-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-serif font-bold">
+                          {lang === 'pt' ? track.namePt : track.nameEn}
+                        </span>
+                        {isActive && isPlayingSound && (
+                          <span className="flex items-center gap-0.5">
+                            <span className="w-1 h-3.5 bg-[#5c7c64] rounded-full animate-pulse inline-block" />
+                            <span className="w-1 h-2 bg-[#5c7c64] rounded-full animate-pulse inline-block [animation-delay:0.2s]" />
+                            <span className="w-1 h-3 bg-[#5c7c64] rounded-full animate-pulse inline-block [animation-delay:0.4s]" />
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-stone-550 font-normal leading-relaxed">
+                        {lang === 'pt' ? track.descPt : track.descEn}
+                      </p>
+                    </div>
+
+                    <div className="shrink-0 flex items-center md:self-center">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                        isActive ? 'border-[#5c7c64] bg-[#5c7c64]/10' : 'border-stone-300'
+                      }`}>
+                        {isActive && <div className="w-2.5 h-2.5 rounded-full bg-[#5c7c64]" />}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Card 4: Limites do Sistema */}
+          <div className="p-6.5 rounded-[2rem] bg-white border border-stone-200/40 shadow-[0_3px_15px_rgba(21,46,34,0.01)] space-y-5">
+            <div className="flex gap-4.5 items-start">
+              <div className="p-3 bg-stone-50 rounded-full text-[#5c7c64]">
+                <Bell className="w-5 h-5 stroke-[1.8]" />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="text-base font-serif font-semibold text-stone-850">
+                  {lang === 'pt' ? 'Limites do Sistema' : 'System Constraints'}
+                </h3>
+                <p className="text-xs text-stone-400 font-light leading-relaxed">
+                  {lang === 'pt' ? 'Proteja seu silêncio interior definindo períodos de quietude.' : 'Shield your inner quiet with scheduled periods of rest.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-1">
+              <div className="flex justify-between items-center bg-stone-50/40 p-3.5 rounded-2xl border border-stone-100">
+                <div className="text-left space-y-0.5">
+                  <span className="text-[13px] font-medium text-stone-750 block leading-tight">
+                    {lang === 'pt' ? 'Silêncio Noturno' : 'Night Quiet'}
+                  </span>
+                  <span className="text-[10px] font-mono text-stone-400 font-light block leading-none">
+                    22:00 — 07:00
+                  </span>
+                </div>
+                
+                <button
+                  onClick={() => setSilencioNoturno(!silencioNoturno)}
+                  className={`w-10 h-6.5 rounded-full p-0.5 transition-colors duration-300 outline-none ${
+                    silencioNoturno ? 'bg-[#5c7c64]' : 'bg-stone-200'
+                  }`}
+                >
+                  <div className={`bg-white w-5.5 h-5.5 rounded-full shadow-sm transition-transform duration-300 ${
+                    silencioNoturno ? 'translate-x-3.5' : 'translate-x-0'
+                  }`} />
+                </button>
+              </div>
+
+              {/* Add limit block */}
+              <button className="w-full py-3 border border-dashed border-stone-300 hover:border-stone-500 rounded-2xl text-[11px] font-mono font-bold uppercase tracking-widest text-[#5c7c64]/80 hover:text-[#5c7c64] flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>{lang === 'pt' ? 'Adicionar Novo Limite' : 'Add New Limit'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Panoramic Landscape Banner */}
+          <div className="relative w-full rounded-[2rem] overflow-hidden min-h-[165px] bg-[#223326] flex flex-col justify-end p-8 shadow-[0_3px_20px_rgba(21,46,34,0.06)] group">
+            {/* Elegant deep fog ambient CSS background mask */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#152e22]/95 via-transparent to-transparent z-10" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#1b3629]/20 to-[#2c4e3b]/30 z-0 animate-pulse pointer-events-none" />
+            
+            <p className="text-sm font-serif font-normal italic text-stone-100 leading-relaxed max-w-sm z-20">
+              {lang === 'pt'
+                ? '"Cuidar de si é um ato revolucionário. Sua configuração está salva em seu ritmo."'
+                : '"Caring for yourself is a revolutionary act. Setup registered inside your natural flow."'}
+            </p>
+          </div>
+
+        </div>
+
       </div>
     </div>
   );
 };
+export default SettingsView;

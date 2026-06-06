@@ -2277,6 +2277,7 @@ Return a JSON object with:
             )}
       </div>
     </div>
+  </div>
   ) : (
           /* MINIMALIST MODE: Compact, centered primary vocal engine */
           <div id="minimalist-visualizer-container" className="w-full max-w-md mx-auto flex flex-col items-center py-6">
@@ -2397,126 +2398,8 @@ Return a JSON object with:
             )}
           </div>
         </div>
-      </div>
-  ) : (
-    /* MINIMALIST MODE: Compact, centered primary vocal engine */
-    <div className="w-full max-w-md mx-auto flex flex-col items-center py-6">
-      {/* Visualizer Frame */}
-      <div className={`w-full max-w-md p-6 rounded-[2rem] border flex flex-col items-center justify-center relative min-h-[160px] md:min-h-[200px] ${themeCard} ${accentBorder}`}>
-         
-         {isRestMode && (
-           <div className="absolute top-3 right-4 flex space-x-1 items-center animate-pulse">
-              <Moon className="w-3 h-3 text-amber-300 fill-amber-300/20" />
-              <span className="text-[7px] font-mono text-amber-300 uppercase tracking-widest">{lang === 'pt' ? 'REPOUSO' : 'REST ACTIVE'}</span>
-           </div>
-         )}
-
-         <div className="absolute top-3 left-4 flex space-x-1.5 items-center">
-           <div className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-ping" />
-           <span className="text-[8px] font-mono tracking-widest text-teal-400 uppercase">
-             {isAiSpeaking ? (lang === 'pt' ? 'Dr. Evaldo falando' : 'Dr. Evaldo speaking') : (isUserSpeaking ? (lang === 'pt' ? 'Escutando você' : 'Listening to you') : (lang === 'pt' ? 'Sintonizado' : 'Aligned'))}
-           </span>
-         </div>
-
-         <AudioVisualizer volume={volume} isActive={isUserSpeaking || isAiSpeaking} color={isAiSpeaking ? "rgb(20, 184, 166)" : "rgb(168, 162, 158)"} />
-
-          {/* AI Speech Text display (Web Speech Synthesis transcription) */}
-          {cleanAiSpeechText && (
-            <div id="ai-caption-bubble" className="mt-4 w-full max-w-sm px-4 py-3 bg-teal-950/30 backdrop-blur-md border border-teal-500/30 rounded-2xl text-center leading-relaxed shadow-lg animate-none z-20">
-              <div className="flex items-center justify-center space-x-1 mb-1 bg-teal-900/20 py-0.5 px-2 rounded-full w-fit mx-auto">
-                <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-ping" />
-                <span className="text-[8px] font-bold text-teal-400 uppercase tracking-widest font-mono">
-                  {lang === 'pt' ? 'Mente IA (Fórmula de Voz)' : 'Mind AI (Vocal Blueprint)'}
-                </span>
-              </div>
-              <p className="text-[11.5px] text-stone-100 font-serif leading-relaxed italic">
-                "{cleanAiSpeechText}"
-              </p>
-            </div>
-          )}
-
-          {isHumanBridgeActive && (
-            <button
-              onClick={() => setShowReferral(true)}
-              className="mt-3 w-full max-w-sm py-4 px-5 bg-orange-800 hover:bg-orange-700 active:scale-95 text-white rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 font-medium text-xs md:text-sm cursor-pointer border border-orange-700/20 font-sans z-30 shrink-0"
-            >
-              <HeartHandshake className="w-4 h-4 md:w-5 md:h-5 text-orange-200 animate-pulse" />
-              <span>{lang === 'pt' ? 'Conversar com alguém agora' : 'Connect with someone now'}</span>
-            </button>
-          )}
-
-          {/* Interactive visual audio wave animation synced with speech input */}
-          {isSpeechRecognitionRunning && (
-            <div className="flex items-center justify-center space-x-1 w-full max-w-xs mt-4 h-10 px-4 bg-teal-900/10 border border-teal-950/20 rounded-full self-center z-20">
-              <span className="text-[8px] font-mono font-bold text-teal-400/80 uppercase tracking-widest mr-2">{lang === 'pt' ? 'Frequência:' : 'Frequency:'}</span>
-              {[...Array(15)].map((_, i) => {
-                const centerDist = Math.abs(i - 7);
-                const factor = Math.max(0.25, (8 - centerDist) / 8);
-                const dynamicHeight = 4 + (volume * 70 * factor) + (Math.sin(elapsedSeconds * 4 + i) * 5 * (volume > 0.015 ? 1 : 0.25));
-                return (
-                  <span
-                    key={i}
-                    className="w-1 rounded-full bg-gradient-to-t from-teal-500 via-emerald-400 to-teal-300 transition-all duration-75"
-                    style={{
-                      height: `${Math.min(36, dynamicHeight)}px`,
-                      opacity: volume > 0.015 ? 1.0 : 0.4,
-                    }}
-                  />
-                );
-              })}
-            </div>
-          )}
-
-           {/* Supportive Speech Recognition Diagnostic Tip */}
-           {speechRecError && speechRecError !== 'aborted' && speechRecError !== 'no-speech' && (
-             <div className="mt-4 w-full max-w-sm px-4 py-3 bg-red-950/20 backdrop-blur-md border border-red-500/30 rounded-2xl text-center leading-relaxed shadow-lg z-20 animate-none">
-               <div className="flex items-center justify-center space-x-1 mb-1.5 py-0.5 px-2 rounded-full w-fit mx-auto bg-red-900/10">
-                 <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
-                 <span className="text-[8px] font-bold text-red-400 uppercase tracking-widest font-mono">
-                   {lang === 'pt' ? 'Sinal de Voz Restrito' : 'Voice Signal Restrained'}
-                 </span>
-               </div>
-               <p className="text-[11px] text-stone-300 leading-relaxed font-sans">
-                 {speechRecError === 'not-allowed' ? (
-                   lang === 'pt' 
-                     ? 'O navegador suspendeu o reconhecimento de voz parcial. Certifique-se de liberar o microfone nos ajustes do site (clique no ícone de de cadeado).' 
-                     : 'The browser suspended partial speech recognition. Please check your mic permissions in site settings (click the lock icon).'
-                 ) : (
-                   lang === 'pt'
-                     ? `Não foi possível sintonizar a escuta de texto (${speechRecError}). O canal de voz principal com Dr. Evaldo continua ativo!`
-                     : `Voice transcription suspended (${speechRecError}). The main streaming voice channel with Dr. Evaldo is still fully active!`
-                 )}
-               </p>
-             </div>
-           )}
-
-         {/* Custom Web Speech API Live Transcript Bubble */}
-         {speechTranscript && (
-           <div id="voice-transcript-bubble" className="mt-4 w-full max-w-sm px-4 py-3 bg-stone-950/80 backdrop-blur-md border border-teal-500/20 rounded-2xl text-center leading-relaxed font-sans shadow-lg shadow-teal-500/5 animate-none">
-             <div className="flex items-center justify-center space-x-1 mb-1">
-               <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce" />
-               <span className="text-[8px] font-bold text-teal-400 uppercase tracking-widest font-mono">
-                 {lang === 'pt' ? 'Mente Fala (Reconhecido)' : 'Mind Speak (Recognized)'}
-               </span>
-             </div>
-             <p className="text-xs text-stone-200 font-medium font-sans">
-               "${speechTranscript}"
-             </p>
-           </div>
-         )}
-      </div>
-
-      {neuroMode === 'adhd' && (
-        <div className="mt-4 p-3 bg-stone-900/40 border border-stone-850/60 rounded-2xl text-center max-w-sm w-full mx-auto">
-          <span className="text-[9px] text-amber-400 uppercase tracking-widest font-bold block mb-1">🎯 FOCO DO DIA / FOCUS STATE</span>
-          <p className="text-[11px] text-stone-300 leading-relaxed italic">
-            {lang === 'pt' ? '"Deixe de lado o ruído externo. Apenas uma palavra por vez."' : '"Leave external noise behind. Just one mindful word at a time."'}
-          </p>
-        </div>
       )}
     </div>
-  )}
-</div>
 
 {/* Supporting Modals (Inner Garden Panel / Professional supportive clinical networks) */}
       {showGarden && (

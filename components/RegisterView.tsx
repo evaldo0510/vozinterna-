@@ -19,6 +19,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
+  const [showTroubleshoot, setShowTroubleshoot] = useState(false);
 
   const handleGoogleRegister = async () => {
     setLoading(true);
@@ -61,7 +62,16 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
     } catch (err: any) {
       console.error(err);
       let errorMsg = lang === 'pt' ? 'Falha no cadastro com Google.' : 'Google Registration failed.';
-      if (err?.code === 'auth/popup-blocked') {
+      if (err?.code === 'auth/unauthorized-domain') {
+        const domain = window.location.hostname;
+        errorMsg = lang === 'pt'
+          ? `Erro de Domínio Autorizado: Este domínio (${domain}) não está cadastrado como 'Domínio Autorizado' no console do seu Firebase. Adicione ele em Authentication > Configurações > Domínios Autorizados no Console Firebase.`
+          : `Unauthorized Domain Error: This domain (${domain}) is not authorized for Google authentication. Please add it to your Firebase Console under Authentication > Settings > Authorized Domains.`;
+      } else if (err?.code === 'auth/operation-not-allowed') {
+        errorMsg = lang === 'pt'
+          ? 'O login/cadastro por Google não está habilitado no Console do Firebase. Ative o provedor Google em Authentication > Sign-in method.'
+          : 'Google authentication is not enabled in your Firebase project. Please enable Google under Authentication > Sign-in method in your Firebase Console.';
+      } else if (err?.code === 'auth/popup-blocked') {
         errorMsg = lang === 'pt' 
           ? 'Os popups foram bloqueados pelo seu navegador. Por favor, permita popups para este site ou abra o link em uma nova janela.' 
           : 'Popups were blocked by your browser. Please allow popups for this site or open in a new tab.';
@@ -71,6 +81,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
         errorMsg += ` (${err.code || err.message})`;
       }
       setErrorText(errorMsg);
+      setShowTroubleshoot(true);
     } finally {
       setLoading(false);
     }
@@ -131,10 +142,16 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
         errorMsg = lang === 'pt' 
           ? 'O provedor de e-mail/senha não está ativado no Firebase Console do seu projeto. Ative-o em Authentication > Sign-in method ou use o Google no login.' 
           : 'Email/password authentication is not enabled in Firebase. Please enable it under Authentication > Sign-in method or sign in with Google.';
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        const domain = window.location.hostname;
+        errorMsg = lang === 'pt'
+          ? `Este domínio (${domain}) não está cadastrado como autorizado para efetuar cadastros no seu console do Firebase. Adicione-o em Authentication > Configurações > Domínios Autorizados.`
+          : `Unauthorized Domain (${domain}): Please authorize this domain in your Firebase Console under Authentication > Settings > Authorized Domains.`;
       } else if (err?.message) {
         errorMsg += ` (${err.code || err.message})`;
       }
       setErrorText(errorMsg);
+      setShowTroubleshoot(true);
     } finally {
       setLoading(false);
     }
@@ -179,18 +196,19 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
           </div>
         )}
 
-        {errorText && (
-          <div className="bg-rose-950/40 border border-rose-900/40 text-rose-300 rounded-xl p-3 text-[10px] uppercase tracking-wider text-center font-bold">
+         {errorText && (
+          <div id="register-error-alert" className="bg-rose-950/40 border border-rose-900/40 text-rose-300 rounded-xl p-3 text-[10px] uppercase tracking-wider text-center font-bold">
             {errorText}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="register-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
             <label className="text-[9px] text-stone-500 uppercase tracking-widest block px-1">
               {lang === 'pt' ? 'Seu Nome Completo' : 'Your Complete Name'}
             </label>
             <input 
+              id="register-name-input"
               type="text" 
               value={name}
               required
@@ -206,6 +224,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
               {lang === 'pt' ? 'Seu Melhor E-mail' : 'Your Best Email'}
             </label>
             <input 
+              id="register-email-input"
               type="email" 
               value={email}
               required
@@ -221,6 +240,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
               {lang === 'pt' ? 'Sua Senha Segura' : 'Your Secure Password'}
             </label>
             <input 
+              id="register-password-input"
               type="password" 
               value={password}
               required
@@ -232,11 +252,18 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
           </div>
 
           <button 
+            id="register-submit-btn"
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-teal-500 hover:bg-teal-400 text-stone-950 font-bold uppercase tracking-[0.2em] text-[10px] transition-all rounded-xl mt-3 active:scale-[0.98] cursor-pointer disabled:opacity-50"
+            className="w-full py-3.5 bg-teal-500 hover:bg-teal-400 disabled:bg-stone-800 disabled:text-stone-500 text-stone-950 font-bold uppercase tracking-[0.2em] text-[10px] transition-all rounded-xl mt-3 active:scale-[0.98] cursor-pointer disabled:opacity-50 flex items-center justify-center space-x-2"
           >
-            {loading ? (lang === 'pt' ? 'Processando...' : 'Registering...') : (lang === 'pt' ? 'Confirmar Cadastro' : 'Confirm Registration')}
+            {loading && (
+              <svg className="animate-spin h-3.5 w-3.5 text-stone-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            <span>{loading ? (lang === 'pt' ? 'Processando...' : 'Registering...') : (lang === 'pt' ? 'Confirmar Cadastro' : 'Confirm Registration')}</span>
           </button>
         </form>
 
@@ -247,19 +274,79 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ lang, onSetLang, onN
         </div>
 
         <button
+          id="register-google-btn"
           type="button"
           onClick={handleGoogleRegister}
           disabled={loading}
-          className="w-full py-3.5 bg-white hover:bg-stone-100 disabled:bg-stone-800 text-stone-950 font-bold uppercase tracking-[0.15em] text-[10px] transition-all rounded-xl shadow-md flex items-center justify-center space-x-2.5 active:scale-[0.98] cursor-pointer"
+          className="w-full py-3.5 bg-white hover:bg-stone-100 disabled:bg-stone-900 disabled:text-stone-600 disabled:border-stone-850 text-stone-950 font-bold uppercase tracking-[0.15em] text-[10px] transition-all rounded-xl shadow-md flex items-center justify-center space-x-2.5 active:scale-[0.98] cursor-pointer"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24">
-            <path fill="#EA4335" d="M12 5.04c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.68 14.9 1 12 1 7.24 1 3.2 3.73 1.24 7.72l3.75 2.91C5.92 7.15 8.71 5.04 12 5.04z" />
-            <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.44-1.09 2.66-2.31 3.49l3.58 2.78c2.1-1.94 3.78-4.79 3.78-8.37z" />
-            <path fill="#FBBC05" d="M4.99 10.63c-.24-.72-.37-1.49-.37-2.29s.13-1.57.37-2.29L1.24 3.14C.45 4.73 0 6.52 0 8.35s.45 3.61 1.24 5.21l3.75-2.93z" />
-            <path fill="#34A853" d="M12 23c3.24 0 5.96-1.08 7.95-2.93l-3.58-2.78c-1 .67-2.28 1.07-4.37 1.07-3.29 0-6.08-2.11-7.07-5.59l-3.75 2.91C3.2 20.27 7.24 23 12 23z" />
-          </svg>
+          {loading ? (
+            <svg className="animate-spin h-3.5 w-3.5 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : (
+            <svg className="w-4 h-4" viewBox="0 0 24 24">
+              <path fill="#EA4335" d="M12 5.04c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.68 14.9 1 12 1 7.24 1 3.2 3.73 1.24 7.72l3.75 2.91C5.92 7.15 8.71 5.04 12 5.04z" />
+              <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.44-1.09 2.66-2.31 3.49l3.58 2.78c2.1-1.94 3.78-4.79 3.78-8.37z" />
+              <path fill="#FBBC05" d="M4.99 10.63c-.24-.72-.37-1.49-.37-2.29s.13-1.57.37-2.29L1.24 3.14C.45 4.73 0 6.52 0 8.35s.45 3.61 1.24 5.21l3.75-2.93z" />
+              <path fill="#34A853" d="M12 23c3.24 0 5.96-1.08 7.95-2.93l-3.58-2.78c-1 .67-2.28 1.07-4.37 1.07-3.29 0-6.08-2.11-7.07-5.59l-3.75 2.91C3.2 20.27 7.24 23 12 23z" />
+            </svg>
+          )}
           <span>{lang === 'pt' ? 'Cadastrar com Google' : 'Sign up with Google'}</span>
         </button>
+
+        {/* Troubleshooting Guide Panel */}
+        <div className="border border-stone-800/60 bg-stone-900/20 rounded-xl p-3.5 overflow-hidden transition-all duration-300">
+          <button
+            type="button"
+            onClick={() => setShowTroubleshoot(prev => !prev)}
+            className="w-full flex items-center justify-between text-left text-xs text-stone-400 hover:text-stone-200 uppercase font-mono tracking-wider"
+          >
+            <span>🛠️ {lang === 'pt' ? 'Como Resolver Erros de Login?' : 'How to Fix Login Errors?'}</span>
+            <span className="text-[10px] font-sans font-bold">{showTroubleshoot ? '▲' : '▼'}</span>
+          </button>
+          
+          {showTroubleshoot && (
+            <div className="mt-3.5 space-y-4 text-[11px] leading-relaxed select-text border-t border-stone-900 pt-3 animate-fade-in text-stone-400">
+              <div className="space-y-1.5">
+                <p className="font-bold text-teal-400 text-[10px] uppercase tracking-wide">
+                  1. {lang === 'pt' ? 'Ativar Provedores de Login' : '1. Enable Sign-in Providers'}
+                </p>
+                <p>
+                  {lang === 'pt' 
+                    ? 'No console do Firebase, acesse Auth > Sign-in method e certifique-se de que "E-mail/Senha" e "Google" estão ativos.' 
+                    : 'In your Firebase Console, navigate to Auth > Sign-in method and make sure both "Email/Password" and "Google" are enabled.'}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="font-bold text-teal-400 text-[10px] uppercase tracking-wide">
+                  2. {lang === 'pt' ? 'Domínio Autorizado' : '2. Authorized Domain'}
+                </p>
+                <p>
+                  {lang === 'pt'
+                    ? `Como você está acessando num ambiente de testes, o domínio abaixo precisa estar autorizado para efetuar login/cadastro nas configurações do Firebase Authentication > Configurações > Domínios Autorizados:`
+                    : `Since you are in a preview/development sandbox, the following domain must be explicitly added to your Firebase Authentication > Settings > Authorized Domains:`}
+                </p>
+                <div className="bg-stone-900 p-2 rounded-lg font-mono text-[10px] text-teal-300 break-all select-all border border-stone-800 flex items-center justify-between">
+                  {window.location.hostname}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="font-bold text-teal-400 text-[10px] uppercase tracking-wide">
+                  3. {lang === 'pt' ? 'Popups Bloqueados (Iframe)' : '3. Blocked Popups (Iframe)'}
+                </p>
+                <p>
+                  {lang === 'pt'
+                    ? 'O visualizador do AI Studio renderiza o app dentro de um iframe, bloqueando cookies de terceiros e popups de redes de login de segurança do Google. Abra o aplicativo em uma aba externa cheia para as conexões funcionarem plenamente.'
+                    : 'The tool workspace viewport uses standard frames. Browser secure frameworks block cross-origin authentication scripts inside embeds. Copy the share URL and load it in a separate browser window.'}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
         <p className="text-center text-[10px] text-stone-500">
           {lang === 'pt' ? 'Já possui uma conta?' : 'Already have an account?'}{' '}

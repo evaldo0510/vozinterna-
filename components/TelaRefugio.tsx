@@ -26,6 +26,72 @@ export const TelaRefugio: React.FC<TelaRefugioProps> = ({ onClose, lang }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
+  // Feature 4: Visual Guided Breathing States (Box Breathing 4-4-4-4)
+  const [isBreathingExpanded, setIsBreathingExpanded] = useState(true);
+  const [isBreathingRunning, setIsBreathingRunning] = useState(false);
+  const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold' | 'exhale' | 'holdEmpty'>('inhale');
+  const [breathingElapsed, setBreathingElapsed] = useState(0);
+  const [breathingCycles, setBreathingCycles] = useState(0);
+
+  useEffect(() => {
+    if (!isBreathingRunning) {
+      setBreathingElapsed(0);
+      setBreathingPhase('inhale');
+      return;
+    }
+
+    const intervalMs = 50;
+    const timer = setInterval(() => {
+      setBreathingElapsed((prev) => {
+        const next = prev + intervalMs / 1000;
+        if (next >= 4) {
+          setBreathingPhase((currentPhase) => {
+            if (currentPhase === 'inhale') return 'hold';
+            if (currentPhase === 'hold') return 'exhale';
+            if (currentPhase === 'exhale') return 'holdEmpty';
+            setBreathingCycles((c) => c + 1);
+            return 'inhale';
+          });
+          return 0;
+        }
+        return next;
+      });
+    }, intervalMs);
+
+    return () => clearInterval(timer);
+  }, [isBreathingRunning]);
+
+  const getBreathingLabel = () => {
+    if (!isBreathingRunning) {
+      return lang === 'pt' 
+        ? 'Pronto para sintonizar?' 
+        : 'Ready to align your breath?';
+    }
+
+    switch (breathingPhase) {
+      case 'inhale':
+        return lang === 'pt' ? 'Inspire pelo nariz...' : 'Inhale through your nose...';
+      case 'hold':
+        return lang === 'pt' ? 'Segure o ar e sinta o silêncio...' : 'Hold your breath, feel the silence...';
+      case 'exhale':
+        return lang === 'pt' ? 'Solte o ar suavemente...' : 'Release breath slowly...';
+      case 'holdEmpty':
+        return lang === 'pt' ? 'Aguarde em quietude...' : 'Hold empty, reside in calm...';
+      default:
+        return '';
+    }
+  };
+
+  const breathingScale = !isBreathingRunning 
+    ? 1.0 
+    : breathingPhase === 'inhale'
+      ? 1.0 + (breathingElapsed / 4) * 0.8
+      : breathingPhase === 'hold'
+        ? 1.8
+        : breathingPhase === 'exhale'
+          ? 1.8 - (breathingElapsed / 4) * 0.8
+          : 1.0;
+
   // Determinando as âncoras (prompts) poéticas dependendo do idioma
   useEffect(() => {
     const templatesPt = [
@@ -367,6 +433,118 @@ export const TelaRefugio: React.FC<TelaRefugioProps> = ({ onClose, lang }) => {
               ? 'Respire. Não há pressa e não há erros aqui.' 
               : 'Breathe. There is no rush and there are countess errors accepted here.'}
           </p>
+        </div>
+
+        {/* Visual Guided Breathing (Círculo de Respiração Animado) */}
+        <div id="guias-respiracao" className="w-full bg-[#fbf9f4]/80 border border-stone-200/50 rounded-2xl p-5 mb-8 transition-all duration-300 animate-fade-in shadow-[0_4px_16px_rgba(139,92,26,0.02)]">
+          <div className="flex items-center justify-between mb-4 select-none">
+            <div className="flex items-center gap-2">
+              <div className={`p-1.5 rounded-lg bg-emerald-50 text-emerald-700 ${isBreathingRunning ? 'animate-pulse' : ''}`}>
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-serif text-xs font-semibold text-stone-700">
+                  {lang === 'pt' ? 'Guia de Respiração' : 'Guided Breathing'}
+                </h3>
+                <p className="text-[10px] text-stone-400">
+                  {lang === 'pt' ? 'Técnica 4-4-4-4 (Box Breathing) para acalmar e focar' : '4-4-4-4 Box Breathing to calm and stabilize focus'}
+                </p>
+              </div>
+            </div>
+            
+            <button
+              id="expand-breathing-btn"
+              onClick={() => setIsBreathingExpanded(!isBreathingExpanded)}
+              className="text-stone-450 hover:text-stone-700 text-[10px] font-mono py-1 px-2.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition-all cursor-pointer"
+            >
+              {isBreathingExpanded ? (lang === 'pt' ? 'Ocultar' : 'Hide') : (lang === 'pt' ? 'Ver Guia' : 'Show')}
+            </button>
+          </div>
+
+          {isBreathingExpanded && (
+            <div className="flex flex-col md:flex-row items-center gap-6 py-1 select-none animate-fade-in">
+              {/* Animating Breathing Circle */}
+              <div className="relative w-36 h-36 flex items-center justify-center bg-stone-50/40 rounded-full border border-stone-100 flex-shrink-0">
+                {/* Maximum dotted outline bound helper */}
+                <div className="absolute w-[100px] h-[100px] rounded-full border border-dashed border-emerald-500/25 animate-pulse" />
+                
+                {/* Core breathing balloon that scales smoothly */}
+                <div 
+                  className="absolute w-[54px] h-[54px] rounded-full bg-gradient-to-tr from-emerald-100/80 to-teal-100/80 border border-teal-200/40 shadow-inner flex items-center justify-center transition-all duration-[50ms] ease-linear"
+                  style={{ 
+                    transform: `scale(${breathingScale})`,
+                    boxShadow: isBreathingRunning ? '0 0 20px rgba(16, 185, 129, 0.25)' : 'none'
+                  }}
+                />
+
+                {/* Counter & helper text in the center */}
+                <div className="absolute flex flex-col items-center justify-center text-center">
+                  {isBreathingRunning ? (
+                    <>
+                      <span className="font-mono text-2xl font-semibold text-stone-700 tabular-nums">
+                        {Math.ceil(4 - breathingElapsed)}
+                      </span>
+                      <span className="text-[8px] font-mono uppercase tracking-widest text-emerald-800/80 font-bold">
+                        {breathingPhase === 'inhale' && (lang === 'pt' ? 'Inspirar' : 'Inhale')}
+                        {breathingPhase === 'hold' && (lang === 'pt' ? 'Segurar' : 'Hold')}
+                        {breathingPhase === 'exhale' && (lang === 'pt' ? 'Expirar' : 'Exhale')}
+                        {breathingPhase === 'holdEmpty' && (lang === 'pt' ? 'Vazio' : 'Hold Empty')}
+                      </span>
+                    </>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-emerald-600/10 text-emerald-700 flex items-center justify-center">
+                      <span className="text-xs font-serif italic">Zen</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Controls and guidance description */}
+              <div className="flex-1 flex flex-col justify-center text-center md:text-left space-y-3">
+                <div className="space-y-1">
+                  <p className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#0D9488]">
+                    {getBreathingLabel()}
+                  </p>
+                  <p className="text-xs font-serif italic text-stone-500 leading-relaxed min-h-[36px] flex items-center justify-center md:justify-start">
+                    {isBreathingRunning 
+                      ? (lang === 'pt' 
+                          ? 'Mantenha o olhar no fluxo silencioso da expansão. Sinta o peito expandir.' 
+                          : 'Focus your attention entirely on the slow, silent rhythm of expansion.')
+                      : (lang === 'pt'
+                          ? 'Inicie o ciclo guiado antes de colocar suas palavras no diário para clarear os pensamentos.'
+                          : 'Begin a gentle guided breathing cycle to ground your thoughts before journaling.')}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
+                  <button
+                    id="toggle-breathing-running-btn"
+                    onClick={() => {
+                      setIsBreathingRunning(!isBreathingRunning);
+                      if (isBreathingRunning) {
+                        setBreathingCycles(0);
+                      }
+                    }}
+                    className={`py-2 px-5 rounded-xl text-xs uppercase font-mono tracking-wider font-semibold transition-all cursor-pointer shadow-sm ${
+                      isBreathingRunning 
+                        ? 'bg-stone-800 text-white hover:bg-stone-700' 
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-98'
+                    }`}
+                  >
+                    {isBreathingRunning 
+                      ? (lang === 'pt' ? 'Pausar Exercício' : 'Pause Guide') 
+                      : (lang === 'pt' ? 'Iniciar Respiração' : 'Start Breathing')}
+                  </button>
+
+                  {isBreathingRunning && (
+                    <div className="text-[10px] font-mono font-medium text-stone-500 bg-stone-100 rounded-lg py-1 px-3 border border-stone-200/40">
+                      {lang === 'pt' ? `Ciclos Completados: ${breathingCycles}` : `Cycles Completed: ${breathingCycles}`}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* O Espaço em Branco (Textarea Autoresize) */}

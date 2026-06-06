@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Language, User, NeurodivergentMode } from '../types';
 import Logo from './Logo';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
+import { ADMIN_EMAILS } from '../constants';
 
 interface ProfileChoiceViewProps {
   lang: Language;
@@ -47,13 +48,38 @@ export const ProfileChoiceView: React.FC<ProfileChoiceViewProps> = ({ lang, curr
       const chosenNeuroMode = adaptationMode;
       const enableAccessibility = ['autism', 'down', 'senior'].includes(chosenNeuroMode);
 
-      await updateDoc(docRef, {
-        communicationPreference: commPreference,
-        neuroMode: chosenNeuroMode,
-        accessibilityMode: enableAccessibility,
-        profileCompleted: true,
-        lastActive: new Date().toISOString()
-      });
+      if (!currentUser) {
+        const normalizedEmail = (user.email || '').toLowerCase().trim();
+        const isAdminUser = ADMIN_EMAILS.includes(normalizedEmail);
+
+        const userObj: User = {
+          id: user.uid,
+          name: user.displayName || 'Praticante Zen',
+          email: normalizedEmail,
+          isAdmin: isAdminUser,
+          plan: isAdminUser ? 'guardian' : 'member',
+          registeredAt: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          resonanceScore: 0,
+          accessibilityMode: enableAccessibility,
+          points: 0,
+          level: 1,
+          manifestoStep: 1,
+          manifestoCompleted: false,
+          profileCompleted: true,
+          communicationPreference: commPreference,
+          neuroMode: chosenNeuroMode
+        };
+        await setDoc(docRef, userObj);
+      } else {
+        await updateDoc(docRef, {
+          communicationPreference: commPreference,
+          neuroMode: chosenNeuroMode,
+          accessibilityMode: enableAccessibility,
+          profileCompleted: true,
+          lastActive: new Date().toISOString()
+        });
+      }
 
       onSuccess();
     } catch (err) {
