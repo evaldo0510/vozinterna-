@@ -178,6 +178,46 @@
           "type": "string"
         }
       }
+    },
+    "UserNeuroProfile": {
+      "title": "User Neuroadaptation Profile",
+      "description": "Adaptive experience tracking, neuroType configuration, accessibility customization, and historic evolution logs.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User UID from Firebase Authentication."
+        },
+        "neuroType": {
+          "type": "string",
+          "enum": ["normal", "tdah", "autismo", "ansiedade", "burnout", "idoso", "adolescente", "luto", "cristao"],
+          "description": "The active neurotype profile."
+        },
+        "adaptations": {
+          "type": "object",
+          "description": "Dynamic layout adaptation keys (text sizing, voice speed, etc.)."
+        },
+        "preferredLanguage": {
+          "type": "string"
+        },
+        "accessibilityLevel": {
+          "type": "string"
+        },
+        "currentJourney": {
+          "type": "string"
+        },
+        "currentLevel": {
+          "type": "integer"
+        },
+        "lastInteraction": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "evolutionHistory": {
+          "type": "array"
+        }
+      },
+      "required": ["userId", "neuroType", "preferredLanguage", "accessibilityLevel", "currentJourney", "currentLevel", "lastInteraction", "evolutionHistory"]
     }
   },
   "firestore": {
@@ -192,6 +232,10 @@
     "/users/{userId}/plants/{plantId}": {
       "schema": "GardenPlant",
       "description": "Nested collection of Jardim Interior botanical elements grown by the user."
+    },
+    "/user_neuro_profile/{profileId}": {
+      "schema": "UserNeuroProfile",
+      "description": "User neuroadaptation parameters and adaptive path."
     },
     "/system_config/{configId}": {
       "schema": "SystemConfig",

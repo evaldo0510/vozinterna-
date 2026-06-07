@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import SessionManager from './components/SessionManager';
 import { TRANSLATIONS } from './constants';
 import { Language, UserPlan, User } from './types';
@@ -25,7 +26,7 @@ import { TuningPopover } from './components/TuningPopover';
 import { PortalView } from './components/PortalView';
 import { EspelhoView } from './components/EspelhoView';
 import { SoproBalloonView } from './components/SoproBalloonView';
-import { AdaptiveExperienceEngine } from './components/AdaptiveExperienceEngine';
+import { AdaptiveHome } from './components/AdaptiveHome';
 
 import { auth, db, OperationType, handleFirestoreError } from './lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -352,12 +353,10 @@ function App() {
 
   // Visual layout selection
   return (
-    <div className={`h-screen w-full transition-colors duration-705 flex flex-col relative font-sans overflow-hidden select-none ${
-      isLightTheme && activeScreen === 'home'
-        ? 'bg-[#F4EFE6] text-stone-800' 
-        : activeScreen === 'home'
-          ? 'bg-[#0B1516] text-[#E0E7E5]'
-          : 'bg-stone-950 text-stone-200'
+    <div className={`h-screen w-full transition-all duration-500 flex flex-col relative font-sans overflow-hidden select-none ${
+      isLightTheme
+        ? 'bg-[#FCFBF9] text-stone-800 theme-light' 
+        : 'bg-[#080B14] text-stone-100 theme-dark'
     }`}>
       
       {/* 1. OFF-SESSION / UNLOGGED CHANNELS */}
@@ -388,11 +387,17 @@ function App() {
           
           {/* Main App Header with live Level indicator and Tab Switchers */}
           {!isMinimalMode && !isFullyImmersive && activeScreen !== 'home' && (
-            <header className="w-full bg-stone-950 border-b border-stone-900 p-4 flex flex-row justify-between items-center z-50">
+            <header className={`w-full border-b p-4 flex flex-row justify-between items-center z-50 transition-all duration-300 ${
+              isLightTheme 
+                ? 'bg-[#FCFBF9]/90 border-stone-200/80 text-stone-800 backdrop-blur-md' 
+                : 'bg-[#080B14]/90 border-[#1B233A]/60 text-stone-100 backdrop-blur-md'
+            }`}>
               <div className="flex items-center space-x-3" id="onboarding-level">
                 <Logo className="w-8 h-8 rotate-6 transition-all duration-700" emotionalState={currentUser.emotionalState} />
                 <div className="flex flex-col">
-                  <span className="font-serif text-[11px] font-bold tracking-[0.2em] text-stone-100 uppercase flex items-center gap-2">
+                  <span className={`font-serif text-[11px] font-bold tracking-[0.2em] uppercase flex items-center gap-2 ${
+                    isLightTheme ? 'text-stone-800' : 'text-stone-100'
+                  }`}>
                     {lang === 'pt' ? 'VOZ INTERIOR' : 'INNER VOICE'}
                     <span 
                       onClick={() => setShowTuningPopover(true)}
@@ -494,136 +499,229 @@ function App() {
             onTouchEnd={handleTouchEnd}
             className="flex-1 overflow-y-auto w-full relative ResponsiveLayout"
           >
-            {activeScreen === 'portal' && (
-              <PortalView 
-                lang={lang} 
-                onEnterSanctuary={() => setActiveScreen('home')} 
-              />
-            )}
+            <AnimatePresence mode="wait">
+              {activeScreen === 'portal' && (
+                <motion.div
+                  key="portal"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
+                  className="w-full flex-1"
+                >
+                  <PortalView 
+                    lang={lang} 
+                    onEnterSanctuary={() => setActiveScreen('home')} 
+                    isLightTheme={isLightTheme}
+                  />
+                </motion.div>
+              )}
 
-            {activeScreen === 'home' && (
-              <AdaptiveExperienceEngine 
-                user={currentUser}
-                lang={lang}
-                onNavigateToScreen={(screen) => setActiveScreen(screen)}
-                isLightTheme={isLightTheme}
-                onToggleTheme={() => setIsLightTheme(prev => !prev)}
-                onAddToast={addToast}
-                onOpenTuningPopover={() => setShowTuningPopover(true)}
-                onTextSizeChange={setTextSize}
-                onAccessibilityModeChange={setAccessibilityActive}
-              />
-            )}
+              {activeScreen === 'home' && (
+                <motion.div
+                  key="home"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
+                  className="w-full flex-1"
+                >
+                  <AdaptiveHome 
+                    user={currentUser}
+                    lang={lang}
+                    onNavigateToScreen={(screen) => setActiveScreen(screen)}
+                    isLightTheme={isLightTheme}
+                    onToggleTheme={() => setIsLightTheme(prev => !prev)}
+                    onAddToast={addToast}
+                    onOpenTuningPopover={() => setShowTuningPopover(true)}
+                    onTextSizeChange={setTextSize}
+                    onAccessibilityModeChange={setAccessibilityActive}
+                  />
+                </motion.div>
+              )}
 
-            {activeScreen === 'chat' && (
-              <SessionManager 
-                onDisconnect={handleSessionEnd} 
-                lang={lang} 
-                userPlan={userPlan} 
-                onUpgrade={() => {}} 
-                currentUser={impersonatedUser || currentUser} 
-                isMinimalMode={isMinimalMode}
-                onToggleMinimalMode={() => setIsMinimalMode(!isMinimalMode)}
-                impersonatedUser={impersonatedUser}
-                onClearImpersonation={() => setImpersonatedUser(null)}
-                isFullyImmersive={isFullyImmersive}
-                onToggleFullyImmersive={() => setIsFullyImmersive(!isFullyImmersive)}
-              />
-            )}
+              {activeScreen === 'chat' && (
+                <motion.div
+                  key="chat"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
+                  className="w-full flex-1"
+                >
+                  <SessionManager 
+                    onDisconnect={handleSessionEnd} 
+                    lang={lang} 
+                    userPlan={userPlan} 
+                    onUpgrade={() => {}} 
+                    currentUser={impersonatedUser || currentUser} 
+                    isMinimalMode={isMinimalMode}
+                    onToggleMinimalMode={() => setIsMinimalMode(!isMinimalMode)}
+                    impersonatedUser={impersonatedUser}
+                    onClearImpersonation={() => setImpersonatedUser(null)}
+                    isFullyImmersive={isFullyImmersive}
+                    onToggleFullyImmersive={() => setIsFullyImmersive(!isFullyImmersive)}
+                  />
+                </motion.div>
+              )}
 
-            {activeScreen === 'jornada' && (
-              <div className="flex-1 w-full relative">
-                <TelaJornada 
-                  lang={lang}
-                  onBack={() => setActiveScreen('home')}
-                  onNavigateToProfile={() => setActiveScreen('profile')}
-                />
-              </div>
-            )}
+              {activeScreen === 'jornada' && (
+                <motion.div
+                  key="jornada"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
+                  className="flex-1 w-full relative"
+                >
+                  <TelaJornada 
+                    lang={lang}
+                    onBack={() => setActiveScreen('home')}
+                    onNavigateToProfile={() => setActiveScreen('profile')}
+                  />
+                </motion.div>
+              )}
 
-            {activeScreen === 'espelho' && (
-              <EspelhoView 
-                user={currentUser}
-                lang={lang}
-                onBack={() => setActiveScreen('home')}
-                onAddToast={addToast}
-              />
-            )}
+              {activeScreen === 'espelho' && (
+                <motion.div
+                  key="espelho"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
+                  className="w-full flex-1"
+                >
+                  <EspelhoView 
+                    user={currentUser}
+                    lang={lang}
+                    onBack={() => setActiveScreen('home')}
+                    onAddToast={addToast}
+                  />
+                </motion.div>
+              )}
 
-            {activeScreen === 'refugio' && (
-              <TelaRefugio 
-                onClose={() => setActiveScreen('home')} 
-                lang={lang} 
-              />
-            )}
+              {activeScreen === 'refugio' && (
+                <motion.div
+                  key="refugio"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
+                  className="w-full flex-1"
+                >
+                  <TelaRefugio 
+                    onClose={() => setActiveScreen('home')} 
+                    lang={lang} 
+                  />
+                </motion.div>
+              )}
 
-            {activeScreen === 'sopro' && (
-              <SoproBalloonView 
-                onClose={() => setActiveScreen('home')} 
-                lang={lang} 
-              />
-            )}
+              {activeScreen === 'sopro' && (
+                <motion.div
+                  key="sopro"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
+                  className="w-full flex-1"
+                >
+                  <SoproBalloonView 
+                    onClose={() => setActiveScreen('home')} 
+                    lang={lang} 
+                  />
+                </motion.div>
+              )}
 
-            {activeScreen === 'profile' && (
-              <div className="flex justify-center items-center min-h-full py-8">
-                <UserProfileView 
-                  user={currentUser} 
-                  lang={lang} 
-                  onNavigateToSettings={() => setActiveScreen('jornada')} 
-                />
-              </div>
-            )}
+              {activeScreen === 'profile' && (
+                <motion.div
+                  key="profile"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
+                  className="flex justify-center items-center min-h-full py-8 w-full"
+                >
+                  <UserProfileView 
+                    user={currentUser} 
+                    lang={lang} 
+                    onNavigateToSettings={() => setActiveScreen('jornada')} 
+                  />
+                </motion.div>
+              )}
 
-            {activeScreen === 'settings' && (
-              <div className="flex-1 w-full relative">
-                <SettingsView 
-                  user={currentUser} 
-                  lang={lang} 
-                  onSetLang={setLang} 
-                  onLogout={handleLogout} 
-                  onBack={() => setActiveScreen('home')}
-                  textSize={textSize}
-                  onTextSizeChange={setTextSize}
-                  accessibilityMode={accessibilityActive}
-                  onAccessibilityModeChange={setAccessibilityActive}
-                  onToggleTheme={() => setIsLightTheme(prev => !prev)}
-                  isLightTheme={isLightTheme}
-                />
-              </div>
-            )}
+              {activeScreen === 'settings' && (
+                <motion.div
+                  key="settings"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
+                  className="flex-1 w-full relative"
+                >
+                  <SettingsView 
+                    user={currentUser} 
+                    lang={lang} 
+                    onSetLang={setLang} 
+                    onLogout={handleLogout} 
+                    onBack={() => setActiveScreen('home')}
+                    textSize={textSize}
+                    onTextSizeChange={setTextSize}
+                    accessibilityMode={accessibilityActive}
+                    onAccessibilityModeChange={setAccessibilityActive}
+                    onToggleTheme={() => setIsLightTheme(prev => !prev)}
+                    isLightTheme={isLightTheme}
+                  />
+                </motion.div>
+              )}
 
-            {activeScreen === 'admin' && (
-              <div className="flex justify-center items-start min-h-full py-8">
-                <AdminDashboardView 
-                  currentUser={currentUser} 
-                  lang={lang} 
-                  onImpersonateUser={(user) => {
-                    setImpersonatedUser(user);
-                    setActiveScreen('chat');
-                    addToast({
-                      type: 'session',
-                      title: lang === 'pt' ? 'Perfil Sintonizado' : 'Profile Tuned',
-                      description: lang === 'pt' 
-                        ? `Conectando voz ao perfil de ${user?.name}`
-                        : `Connecting voice to ${user?.name}'s profile`
-                    });
-                  }}
-                />
-              </div>
-            )}
+              {activeScreen === 'admin' && (
+                <motion.div
+                  key="admin"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
+                  className="flex justify-center items-start min-h-full py-8 w-full"
+                >
+                  <AdminDashboardView 
+                    currentUser={currentUser} 
+                    lang={lang} 
+                    onImpersonateUser={(user) => {
+                      setImpersonatedUser(user);
+                      setActiveScreen('chat');
+                      addToast({
+                        type: 'session',
+                        title: lang === 'pt' ? 'Perfil Sintonizado' : 'Profile Tuned',
+                        description: lang === 'pt' 
+                          ? `Conectando voz ao perfil de ${user?.name}`
+                          : `Connecting voice to ${user?.name}'s profile`
+                      });
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </main>
 
           {/* New Bottom silent navigation bar - matching user requirements & mockup */}
           {!isFullyImmersive && (
-            <footer className="w-full py-4.5 px-6 border-t border-stone-200/50 bg-[#fcf9f4] flex justify-around items-center z-45 shadow-[0_-2px_12px_rgba(21,46,34,0.015)] select-none">
+            <footer className={`w-full py-4 px-6 border-t flex justify-around items-center z-45 transition-all duration-300 select-none ${
+              isLightTheme 
+                ? 'bg-[#FCFBF9]/95 border-stone-200/80 text-stone-700 shadow-[0_-4px_24px_rgba(0,0,0,0.015)] backdrop-blur-md' 
+                : 'bg-[#080B14]/95 border-stone-900 text-stone-300 shadow-[0_-4px_24px_rgba(0,0,0,0.4)] backdrop-blur-md'
+            }`}>
               
               {/* Tab 1: Portal */}
               <button 
                 onClick={() => setActiveScreen('portal')}
-                className={`transition-all cursor-pointer flex items-center justify-center ${
+                className={`transition-all duration-250 cursor-pointer flex items-center justify-center ${
                   activeScreen === 'portal'
-                    ? 'gap-1.5 px-4.5 py-2.5 rounded-full bg-[#ecf2ed] border border-[#dce8de] text-[#3e5f35] font-semibold scale-102 shadow-sm'
-                    : 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent border border-transparent rounded-full'
+                    ? isLightTheme
+                      ? 'gap-1.5 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-[#2B6140] font-semibold scale-102 shadow-sm'
+                      : 'gap-1.5 px-4 py-2 rounded-full bg-emerald-950/40 border border-emerald-900/40 text-[#4ade80] font-semibold scale-102 shadow-sm'
+                    : isLightTheme
+                      ? 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent rounded-full hover:bg-stone-100/40'
+                      : 'flex-col p-2 text-stone-500 hover:text-stone-200 bg-transparent rounded-full hover:bg-stone-900/20'
                 }`}
                 title={lang === 'pt' ? 'Portal' : 'Portal'}
               >
@@ -640,7 +738,7 @@ function App() {
                   })}
                 </svg>
                 {activeScreen === 'portal' && (
-                  <span className="text-[10px] font-mono tracking-[0.2em] uppercase leading-none font-bold">
+                  <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-bold">
                     {lang === 'pt' ? 'Portal' : 'Portal'}
                   </span>
                 )}
@@ -649,10 +747,14 @@ function App() {
               {/* Tab 2: Santuário */}
               <button 
                 onClick={() => setActiveScreen('home')}
-                className={`transition-all cursor-pointer flex items-center justify-center ${
+                className={`transition-all duration-250 cursor-pointer flex items-center justify-center ${
                   activeScreen === 'home'
-                    ? 'gap-1.5 px-4.5 py-2.5 rounded-full bg-[#ecf2ed] border border-[#dce8de] text-[#3e5f35] font-semibold scale-102 shadow-sm'
-                    : 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent border border-transparent rounded-full'
+                    ? isLightTheme
+                      ? 'gap-1.5 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-[#2B6140] font-semibold scale-102 shadow-sm'
+                      : 'gap-1.5 px-4 py-2 rounded-full bg-emerald-950/40 border border-emerald-900/40 text-[#4ade80] font-semibold scale-102 shadow-sm'
+                    : isLightTheme
+                      ? 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent rounded-full hover:bg-stone-100/40'
+                      : 'flex-col p-2 text-stone-500 hover:text-stone-200 bg-transparent rounded-full hover:bg-stone-900/20'
                 }`}
                 title={lang === 'pt' ? 'Santuário' : 'Sanctuary'}
               >
@@ -660,7 +762,7 @@ function App() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
                 </svg>
                 {activeScreen === 'home' && (
-                  <span className="text-[10px] font-mono tracking-[0.2em] uppercase leading-none font-bold">
+                  <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-bold">
                     {lang === 'pt' ? 'Santuário' : 'Sanctuary'}
                   </span>
                 )}
@@ -669,10 +771,14 @@ function App() {
               {/* Tab 3: Escuta */}
               <button 
                 onClick={() => setActiveScreen('chat')}
-                className={`transition-all cursor-pointer flex items-center justify-center ${
+                className={`transition-all duration-250 cursor-pointer flex items-center justify-center ${
                   activeScreen === 'chat'
-                    ? 'gap-1.5 px-4.5 py-2.5 rounded-full bg-[#ecf2ed] border border-[#dce8de] text-[#3e5f35] font-semibold scale-102 shadow-sm'
-                    : 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent border border-transparent rounded-full'
+                    ? isLightTheme
+                      ? 'gap-1.5 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-[#2B6140] font-semibold scale-102 shadow-sm'
+                      : 'gap-1.5 px-4 py-2 rounded-full bg-emerald-950/40 border border-emerald-900/40 text-[#4ade80] font-semibold scale-102 shadow-sm'
+                    : isLightTheme
+                      ? 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent rounded-full hover:bg-stone-100/40'
+                      : 'flex-col p-2 text-stone-500 hover:text-stone-200 bg-transparent rounded-full hover:bg-stone-900/20'
                 }`}
                 title={lang === 'pt' ? 'Escuta' : 'Echo'}
               >
@@ -680,7 +786,7 @@ function App() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
                 </svg>
                 {activeScreen === 'chat' && (
-                  <span className="text-[10px] font-mono tracking-[0.2em] uppercase leading-none font-bold">
+                  <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-bold">
                     {lang === 'pt' ? 'Escuta' : 'Listening'}
                   </span>
                 )}
@@ -689,10 +795,14 @@ function App() {
               {/* Tab 4: Jornada */}
               <button 
                 onClick={() => setActiveScreen('jornada')}
-                className={`transition-all cursor-pointer flex items-center justify-center ${
+                className={`transition-all duration-250 cursor-pointer flex items-center justify-center ${
                   activeScreen === 'jornada'
-                    ? 'gap-1.5 px-4.5 py-2.5 rounded-full bg-[#ecf2ed] border border-[#dce8de] text-[#3e5f35] font-semibold scale-102 shadow-sm'
-                    : 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent border border-transparent rounded-full'
+                    ? isLightTheme
+                      ? 'gap-1.5 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-[#2B6140] font-semibold scale-102 shadow-sm'
+                      : 'gap-1.5 px-4 py-2 rounded-full bg-emerald-950/40 border border-emerald-900/40 text-[#4ade80] font-semibold scale-102 shadow-sm'
+                    : isLightTheme
+                      ? 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent rounded-full hover:bg-stone-100/40'
+                      : 'flex-col p-2 text-stone-500 hover:text-stone-200 bg-transparent rounded-full hover:bg-stone-900/20'
                 }`}
                 title={lang === 'pt' ? 'Jornada' : 'Journey'}
               >
@@ -700,7 +810,7 @@ function App() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 21l-.813-5.096L3 15l5.096-.813L9 9l.813 5.096L15 15l-5.187.904ZM18 5.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm-3 3a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
                 </svg>
                 {activeScreen === 'jornada' && (
-                  <span className="text-[10px] font-mono tracking-[0.2em] uppercase leading-none font-bold">
+                  <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-bold">
                     {lang === 'pt' ? 'Jornada' : 'Journey'}
                   </span>
                 )}

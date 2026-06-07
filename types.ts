@@ -122,3 +122,31 @@ export interface AccessibilitySettings {
   inputMethod: 'voice' | 'text' | 'hybrid';
 }
 
+export type NeuroProfileType = 'normal' | 'tdah' | 'autismo' | 'ansiedade' | 'burnout' | 'idoso' | 'adolescente' | 'luto' | 'cristao';
+
+export interface UserNeuroProfile {
+  id?: string;
+  userId: string;
+  neuroType: NeuroProfileType;
+  adaptations: {
+    themeColor: string;
+    fontSize: string;
+    animationSpeed: 'normal' | 'slow' | 'none' | 'fast';
+    languageTone: string;
+    focusModePriority: boolean;
+  };
+  preferredLanguage: string;
+  accessibilityLevel: string;
+  currentJourney: string;
+  currentLevel: number;
+  lastInteraction: string; // ISO date-time
+  evolutionHistory: Array<{
+    date: string;
+    pointsGained: number;
+    activity: string;
+    moodState?: string;
+    alignmentPercent: number;
+  }>;
+}
+
+

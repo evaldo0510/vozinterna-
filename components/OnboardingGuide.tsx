@@ -289,13 +289,27 @@ export const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
             <div className="p-3 bg-stone-950 rounded-2xl border border-stone-850 shrink-0">
               {activeStep.icon}
             </div>
-            <div>
+            <div className="flex-1">
               <h4 className="text-sm font-serif font-bold uppercase tracking-widest text-stone-100 leading-tight">
                 {lang === 'pt' ? activeStep.titlePt : activeStep.titleEn}
               </h4>
               <p className="text-[9px] font-mono tracking-widest text-teal-500 uppercase mt-1">
                 {lang === 'pt' ? `PASSO ${currentStepIdx + 1} DE ${steps.length}` : `STEP ${currentStepIdx + 1} OF ${steps.length}`}
               </p>
+            </div>
+          </div>
+
+          {/* Setup Progress Bar and Remaining Steps Indicator */}
+          <div className="w-full space-y-1.5 pt-1">
+            <div className="w-full h-1.5 bg-stone-950 rounded-full overflow-hidden border border-stone-850/60">
+              <div 
+                className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 transition-all duration-300 rounded-full"
+                style={{ width: `${((currentStepIdx + 1) / steps.length) * 100}%` }}
+              />
+            </div>
+            <div className="flex justify-between items-center text-[8.5px] font-mono uppercase tracking-[0.12em] text-stone-500">
+              <span className="text-emerald-400">{lang === 'pt' ? `${currentStepIdx + 1} Concluídos` : `${currentStepIdx + 1} Completed`}</span>
+              <span className="text-stone-400">{lang === 'pt' ? `${steps.length - currentStepIdx - 1} Restantes` : `${steps.length - currentStepIdx - 1} Remaining`}</span>
             </div>
           </div>
 

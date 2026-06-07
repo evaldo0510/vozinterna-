@@ -57,15 +57,30 @@ service cloud.firestore {
         && data.type.size() <= 50
         && data.name is string 
         && data.name.size() <= 200 
-        && data.stage is number 
+        && (data.stage is int || data.stage is float)
         && data.color is string 
         && data.createdAt is string 
         && data.lastWatered is string;
     }
 
+    function isValidNeuroProfile(data) {
+      return data.userId is string 
+        && data.userId == request.auth.uid 
+        && data.neuroType is string 
+        && data.neuroType.size() <= 64
+        && (!('preferredLanguage' in data) || (data.preferredLanguage is string && data.preferredLanguage.size() <= 64))
+        && (!('accessibilityLevel' in data) || (data.accessibilityLevel is string && data.accessibilityLevel.size() <= 64))
+        && (!('currentJourney' in data) || (data.currentJourney is string && data.currentJourney.size() <= 256))
+        && (!('currentLevel' in data) || (data.currentLevel is int || data.currentLevel is float))
+        && (!('lastInteraction' in data) || (data.lastInteraction is string))
+        && (!('evolutionHistory' in data) || (data.evolutionHistory is list));
+    }
+
     // User Resource Rules
     match /users/{userId} {
-      allow get: if isOwner(userId) && isValidId(userId);
+      allow get: if (isOwner(userId) || isAdmin()) && isValidId(userId);
+      allow list: if isAdmin();
+      allow delete: if isAdmin();
       allow create: if isOwner(userId) && isValidId(userId) && isValidUser(request.resource.data) 
                     && request.resource.data.id == userId 
                     && (
@@ -109,6 +124,15 @@ service cloud.firestore {
                       && isValidGardenPlant(request.resource.data) 
                       && request.resource.data.id == resource.data.id;
       }
+    }
+
+    match /user_neuro_profile/{profileId} {
+      allow get, delete, list: if isOwner(profileId) || isAdmin();
+      allow create: if isOwner(profileId) 
+                    && isValidNeuroProfile(request.resource.data) 
+                    && request.resource.data.userId == request.auth.uid;
+      allow update: if (isOwner(profileId) || isAdmin()) 
+                    && isValidNeuroProfile(request.resource.data);
     }
 
     // System configurations read by users and managed by administrators

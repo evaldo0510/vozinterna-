@@ -50,14 +50,45 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #080b14;
-            color: #f8fafc;
             margin: 0;
             overflow-x: hidden;
+            transition: background-color 0.5s ease;
         }
         .font-serif {
             font-family: 'Playfair Display', serif;
         }
+        /* Unified Earth & Sky Ambient Background Overrides */
+        .theme-light {
+            background: radial-gradient(circle at 30% 20%, rgba(20, 184, 166, 0.05) 0%, rgba(16, 185, 129, 0.03) 40%, #FCFBF9 100%) !important;
+        }
+        .theme-dark {
+            background: radial-gradient(circle at 10% 10%, rgba(13, 148, 136, 0.07) 0%, rgba(4, 120, 87, 0.03) 45%, #05070D 100%) !important;
+        }
+        
+        /* Earth & Sky fluid responsive typography scales */
+        .fluid-h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.85rem, 4vw + 0.8rem, 3.25rem) !important;
+            line-height: 1.15 !important;
+            letter-spacing: -0.015em !important;
+        }
+        .fluid-h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.45rem, 3vw + 0.7rem, 2.5rem) !important;
+            line-height: 1.2 !important;
+            letter-spacing: -0.012em !important;
+        }
+        .fluid-h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.15rem, 2vw + 0.6rem, 1.85rem) !important;
+            line-height: 1.25 !important;
+        }
+        .fluid-h4 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.05rem, 1.5vw + 0.5rem, 1.45rem) !important;
+            line-height: 1.3 !important;
+        }
+
         ::-webkit-scrollbar {
             width: 4px;
         }
@@ -80,6 +111,25 @@
             transition: all 3s ease;
         }
 
+        /* Earth & Sky Sanctuary Theme Definitions */
+        .theme-light {
+            background-color: #FAF8F5 !important;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(224, 242, 254, 0.35) 0px, transparent 50%), /* Soft daylight blue sky */
+                radial-gradient(at 100% 100%, rgba(240, 253, 244, 0.45) 0px, transparent 50%), /* Soft warm earthy moss */
+                radial-gradient(at 50% 0%, rgba(254, 243, 199, 0.2) 0px, transparent 55%); /* Morning dawn yellow glow */
+            color: #2D323F !important;
+        }
+
+        .theme-dark {
+            background-color: #070B14 !important;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(20, 184, 166, 0.08) 0px, transparent 55%), /* Deep auroral teal */
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%), /* Soft forest starlight */
+                radial-gradient(at 50% 100%, rgba(7, 11, 20, 1) 0px, transparent 70%); /* Starless sky depths */
+            color: #F1F5F9 !important;
+        }
+
         /* ResponsiveLayout global mobile CSS abstractions */
         .ResponsiveLayout {
             width: 100%;
@@ -95,7 +145,37 @@
             box-sizing: border-box;
         }
 
-        /* Clean vertical flow adjustments, paddings and font scale optimizations for mobile devices */
+        /* Fluid Typography scale using CSS clamp() for fluid, responsive typography adjustments */
+        h1, .text-4.5xl, .text-4xl, .text-5xl {
+            font-size: clamp(1.65rem, 4.5vw + 0.5rem, 2.75rem) !important;
+            line-height: 1.2 !important;
+            letter-spacing: -0.02em !important;
+            font-family: 'Playfair Display', serif;
+        }
+        h2, .text-3xl {
+            font-size: clamp(1.35rem, 3vw + 0.4rem, 2.15rem) !important;
+            line-height: 1.25 !important;
+            letter-spacing: -0.015em !important;
+            font-family: 'Playfair Display', serif;
+        }
+        h3, .text-2xl, .text-xl {
+            font-size: clamp(1.15rem, 1.8vw + 0.4rem, 1.5rem) !important;
+            line-height: 1.35 !important;
+        }
+        h4, .text-lg {
+            font-size: clamp(1.0rem, 1vw + 0.4rem, 1.25rem) !important;
+            line-height: 1.4 !important;
+        }
+        p, .text-base, .text-sm {
+            font-size: clamp(0.85rem, 0.4vw + 0.72rem, 0.98rem) !important;
+            line-height: 1.55 !important;
+        }
+        span:not(.font-mono), .text-xs {
+            font-size: clamp(0.75rem, 0.25vw + 0.65rem, 0.85rem) !important;
+            line-height: 1.4 !important;
+        }
+
+        /* Responsive structural adjustments for small screens */
         @media (max-width: 640px) {
             .ResponsiveLayout {
                 padding-left: 0.75rem;
@@ -106,30 +186,6 @@
             }
             .mobile-m-density {
                 margin: 0.75rem 0 !important;
-            }
-            
-            /* Responsive global text overrides under ResponsiveLayout boundary */
-            .ResponsiveLayout h1 {
-                font-size: 1.75rem !important;
-                line-height: 2.25rem !important;
-                letter-spacing: -0.02em !important;
-            }
-            .ResponsiveLayout h2, .ResponsiveLayout .text-2xl, .ResponsiveLayout .text-3xl {
-                font-size: 1.35rem !important;
-                line-height: 1.85rem !important;
-                letter-spacing: -0.01em !important;
-            }
-            .ResponsiveLayout h3, .ResponsiveLayout .text-xl {
-                font-size: 1.15rem !important;
-                line-height: 1.6rem !important;
-            }
-            .ResponsiveLayout p, .ResponsiveLayout .text-base, .ResponsiveLayout .text-sm {
-                font-size: 0.85rem !important;
-                line-height: 1.35rem !important;
-            }
-            .ResponsiveLayout span:not(.font-mono), .ResponsiveLayout .text-xs {
-                font-size: 0.75rem !important;
-                line-height: 1.15rem !important;
             }
         }
 
@@ -152,6 +208,113 @@
         .active\:scale-95:active {
             transform: scale(0.95) !important;
             opacity: 0.9 !important;
+        }
+
+        /* Unified Theme Custom Utilities for Glassmorphism & Neumorphism */
+        
+        /* 1. Neumorphic Flat/Raised Cards */
+        .theme-light .neu-card {
+            background: rgba(254, 253, 251, 0.65);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 
+                6px 6px 20px rgba(165, 150, 135, 0.12), 
+                -6px -6px 20px rgba(255, 255, 255, 0.95);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .theme-dark .neu-card {
+            background: rgba(14, 20, 38, 0.45);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: 
+                8px 8px 28px rgba(0, 0, 0, 0.45), 
+                -8px -8px 28px rgba(255, 255, 255, 0.02);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Hover effect for interactive neu-cards */
+        .neu-card-interactive {
+            cursor: pointer;
+        }
+        .neu-card-interactive:hover {
+            transform: translateY(-2px);
+        }
+        .theme-light .neu-card-interactive:hover {
+            box-shadow: 
+                10px 10px 24px rgba(165, 150, 135, 0.18), 
+                -10px -10px 24px rgba(255, 255, 255, 1);
+        }
+        .theme-dark .neu-card-interactive:hover {
+            box-shadow: 
+                12px 12px 36px rgba(0, 0, 0, 0.55), 
+                -12px -12px 36px rgba(255, 255, 255, 0.04);
+        }
+
+        /* 2. Glassmorphism Pure Panels (Transparent Frost) */
+        .theme-light .glass-panel {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(165, 150, 135, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .theme-dark .glass-panel {
+            background: rgba(8, 11, 20, 0.55);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        /* 3. Neumorphic Inner/Pressed States (Perfect for subtle input styling or active buttons) */
+        .theme-light .neu-inset {
+            background: rgba(246, 243, 238, 0.5) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            padding: 1px;
+            box-shadow: 
+                inset 3px 3px 6px rgba(165, 150, 135, 0.15), 
+                inset -3px -3px 6px rgba(255, 255, 255, 0.85) !important;
+        }
+
+        .theme-dark .neu-inset {
+            background: rgba(5, 7, 13, 0.4) !important;
+            border: 1px solid rgba(255, 255, 255, 0.01) !important;
+            box-shadow: 
+                inset 4px 4px 8px rgba(0, 0, 0, 0.6), 
+                inset -4px -4px 8px rgba(255, 255, 255, 0.01) !important;
+        }
+
+        /* Soft physical keys/buttons with push feedback */
+        .theme-light .neu-btn-push {
+            background: rgba(252, 251, 249, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 
+                4px 4px 10px rgba(165, 150, 135, 0.12), 
+                -4px -4px 10px rgba(255, 255, 255, 0.95);
+        }
+        .theme-light .neu-btn-push:active {
+            box-shadow: 
+                inset 3px 3px 6px rgba(165, 150, 135, 0.15), 
+                inset -3px -3px 6px rgba(255, 255, 255, 0.85) !important;
+        }
+
+        .theme-dark .neu-btn-push {
+            background: rgba(14, 20, 38, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.02);
+            box-shadow: 
+                5px 5px 12px rgba(0, 0, 0, 0.45), 
+                -5px -5px 12px rgba(255, 255, 255, 0.01);
+        }
+        .theme-dark .neu-btn-push:active {
+            box-shadow: 
+                inset 4px 4px 8px rgba(0, 0, 0, 0.6), 
+                inset -4px -4px 8px rgba(255, 255, 255, 0.01) !important;
         }
     </style>
 </head>

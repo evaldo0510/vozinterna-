@@ -52,6 +52,14 @@ export const AdaptiveExperienceEngine: React.FC<AdaptiveExperienceEngineProps> =
       case 'senior':
       case 'idoso':
         return 'idoso';
+      case 'burnout':
+        return 'burnout';
+      case 'adolescente':
+        return 'adolescente';
+      case 'luto':
+        return 'luto';
+      case 'cristao':
+        return 'cristao';
       case 'dyslexia':
       case 'dislexia':
         return 'dislexia';
@@ -150,6 +158,50 @@ export const AdaptiveExperienceEngine: React.FC<AdaptiveExperienceEngineProps> =
           letter-spacing: 0.012em !important;
         }
       `;
+    } else if (currentMode === 'burnout') {
+      // Relaxed, slow visual weight layout to counter adrenal burnout fatigue
+      cssRules = `
+        * {
+          letter-spacing: 0.02em !important;
+          line-height: 1.75 !important;
+          font-weight: 400 !important;
+        }
+        .animate-bounce, .animate-spin {
+          animation-duration: 4s !important;
+        }
+      `;
+    } else if (currentMode === 'adolescente') {
+      // Highlight borders for focused engagement
+      cssRules = `
+        * {
+          letter-spacing: 0.015em !important;
+        }
+        input:focus, textarea:focus {
+          border-color: #8B5CF6 !important;
+          box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.25) !important;
+        }
+      `;
+    } else if (currentMode === 'luto') {
+      // Comforting, compassionate soft display
+      cssRules = `
+        * {
+          line-height: 1.8 !important;
+          letter-spacing: 0.025em !important;
+        }
+        h1, h2, h3 {
+          font-family: serif !important;
+          font-weight: 600 !important;
+        }
+      `;
+    } else if (currentMode === 'cristao') {
+      // Spiritual serene cathedral-style serif highlights
+      cssRules = `
+        h1, h2, h3, h4, .font-serif {
+          font-family: Georgia, Cambria, serif !important;
+          color: #F59E0B !important;
+          letter-spacing: 0.03em !important;
+        }
+      `;
     }
 
     styleEl.innerHTML = cssRules;
@@ -171,7 +223,7 @@ export const AdaptiveExperienceEngine: React.FC<AdaptiveExperienceEngineProps> =
       if (onAccessibilityModeChange) onAccessibilityModeChange(true);
     } else if (currentMode === 'dislexia') {
       if (onTextSizeChange) onTextSizeChange('medium');
-    } else if (currentMode === 'normal') {
+    } else if (currentMode === 'normal' || currentMode === 'burnout' || currentMode === 'luto') {
       if (onTextSizeChange) onTextSizeChange('medium');
     }
     
@@ -184,6 +236,10 @@ export const AdaptiveExperienceEngine: React.FC<AdaptiveExperienceEngineProps> =
       idoso: lang === 'pt' ? 'Letras Grandes e Contraste Sênior Ativos 👵👴' : 'Enlarged Accessibility Display Active 👵👴',
       dislexia: lang === 'pt' ? 'Compensador de Fonte Dislexia Carregado 📚' : 'Compensated Type Spacing Engaged 📚',
       tea_tdah: lang === 'pt' ? 'Sinergia PCH Dual TEA+TDAH Consolidada 🧩⚡' : 'ASD + ADHD Dual Symphony Configured 🧩⚡',
+      burnout: lang === 'pt' ? 'Recuperação Adrenal de Burnout Centrada 🌌' : 'Adrenal Exhaustion Haven Engaged 🌌',
+      adolescente: lang === 'pt' ? 'Cyber Expressão Jovem Expandida 🪐' : 'Young Cyber Expression Enabled 🪐',
+      luto: lang === 'pt' ? 'Acolhimento de Luto Compassivo Ativo 🌹' : 'Grief Solace Shield Engaged 🌹',
+      cristao: lang === 'pt' ? 'Santuário de Fé Contemplativa Conectado ⛪' : 'Faith-Centered Devotional Mode Connected ⛪',
     };
 
     onAddToast({
@@ -267,6 +323,10 @@ export const AdaptiveExperienceEngine: React.FC<AdaptiveExperienceEngineProps> =
           onOpenTuningPopover={onOpenTuningPopover}
         />
       );
+    case 'burnout':
+    case 'adolescente':
+    case 'luto':
+    case 'cristao':
     case 'normal':
     default:
       return (

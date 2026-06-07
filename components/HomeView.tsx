@@ -399,7 +399,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* =============================================================
             SECTION 1: 🌱 JARDIM INTERIOR (Fases de Crescimento)
             ============================================================= */}
-        <div className="p-7 rounded-[2rem] bg-[#0d1324]/80 border border-[#1e2a4a]/85 shadow-xl relative overflow-hidden group">
+        <div className="p-7 rounded-[2rem] glass-panel relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-[240px] h-[240px] bg-[#10b981]/4 rounded-full blur-[80px] pointer-events-none" />
           
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-2 border-b border-[#1c2742]/50 pb-5">
@@ -416,7 +416,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 items-center">
             
             {/* Column A: Living Vector Gardening Illustration */}
-            <div className="flex flex-col items-center justify-center p-6 bg-[#080c18] border border-[#16213c] rounded-[2rem] min-h-[220px] shadow-inner relative overflow-hidden">
+            <div className="flex flex-col items-center justify-center p-6 neu-inset rounded-[2rem] min-h-[220px] relative overflow-hidden">
               
               {/* Watering wave animation overlay */}
               <AnimatePresence>
@@ -618,7 +618,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {/* Card: 📖 DIÁRIO (Mapeado com Lilás Suave #8B5CF6) */}
           <div 
             onClick={() => onNavigateToScreen('refugio')}
-            className="p-7 rounded-[2rem] bg-[#0d1324] border border-[#1e2a4a] hover:border-[#8B5CF6]/50 transition-all duration-500 flex flex-col justify-between min-h-[175px] shadow-lg cursor-pointer group"
+            className="p-7 rounded-[2rem] neu-card neu-card-interactive flex flex-col justify-between min-h-[175px] cursor-pointer group"
           >
             <div className="flex justify-between items-start">
               <span className="text-[10px] font-mono font-bold uppercase tracking-[0.25em] text-[#8B5CF6]">
@@ -649,7 +649,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {/* Card: 🎤 CONVERSAR (Mapeado com Turquesa Terapêutico #14B8A6) */}
           <div 
             onClick={() => onNavigateToScreen('chat')}
-            className="p-7 rounded-[2rem] bg-[#0d1324] border border-[#1e2a4a] hover:border-[#14B8A6]/50 transition-all duration-500 flex flex-col justify-between min-h-[175px] shadow-lg cursor-pointer group"
+            className="p-7 rounded-[2rem] glass-panel neu-card-interactive flex flex-col justify-between min-h-[175px] cursor-pointer group"
           >
             <div className="flex justify-between items-start">
               <span className="text-[10px] font-mono font-bold uppercase tracking-[0.25em] text-[#14B8A6]">
@@ -686,7 +686,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* =============================================================
             SECTION 4: 🎯 MISSÃO DO DIA (Interactive Alignment Checklist with XP rewards)
             ============================================================= */}
-        <div className="p-7 rounded-[2rem] bg-[#0d1324]/60 border border-[#1e2a4a]/70 shadow-xl space-y-6 relative">
+        <div className="p-7 rounded-[2rem] neu-card space-y-6 relative">
           <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-[#A5F3FC]/2 via-transparent to-transparent pointer-events-none" />
           
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -767,7 +767,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* =============================================================
             SECTION 5: 🏆 CONQUISTAS (Interactive Stellar Constellation SVG)
             ============================================================= */}
-        <div className="p-7 rounded-[2rem] bg-[#0d1324] border border-[#1e2a4a] shadow-xl space-y-6 relative">
+        <div className="p-7 rounded-[2rem] glass-panel space-y-6 relative">
           <div className="absolute inset-0 bg-[#8B5CF6]/2 rounded-[2rem] pointer-events-none" />
           
           <div className="space-y-0.5 text-left">
@@ -875,7 +875,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* =============================================================
             SECTION 6: 📊 EVOLUÇÃO (Smooth, non-clinical wavy graph)
             ============================================================= */}
-        <div className="p-7 rounded-[2rem] bg-[#0d1324]/50 border border-[#1e2a4a]/75 shadow-xl space-y-6 relative">
+        <div className="p-7 rounded-[2rem] neu-card space-y-6 relative">
           <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-[#14b8a6]/2 rounded-full blur-[80px] pointer-events-none" />
           
           <div className="space-y-0.5 text-left">
@@ -960,7 +960,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* =============================================================
             SECTION 7: 🤝 APOIO (Illuminated Bridge & Instant Contacts)
             ============================================================= */}
-        <div className="p-7 rounded-[2rem] bg-[#0d1324] border border-[#1e2a4a] shadow-xl space-y-6 relative overflow-hidden group">
+        <div className="p-7 rounded-[2rem] glass-panel space-y-6 relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-[240px] h-[240px] bg-amber-500/3 rounded-full blur-[80px] pointer-events-none" />
           
           <div className="space-y-0.5 text-left">

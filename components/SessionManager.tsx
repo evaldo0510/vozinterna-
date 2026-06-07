@@ -987,10 +987,63 @@ Return a JSON object with:
           - Adopt a considerably slowed-down, steady, and highly comforting pace. Make the transitions between ideas fully spatial and peaceful.`;
       }
 
+      // ----------------------------------------------------------------------
+      // REAL-TIME RESONANCE PERSONALIZATION LAYER (AURORA PCH TUNING)
+      // ----------------------------------------------------------------------
+      const resHistory = currentUser?.resonanceHistory || [];
+      let avgResonance = 60; // default baseline standard
+      let trend = 'stable';
+      
+      if (resHistory.length > 0) {
+        const scores = resHistory.map(item => item.score || 0);
+        avgResonance = Math.round(scores.reduce((sum, val) => sum + val, 0) / scores.length);
+        
+        if (scores.length >= 2) {
+          const last = scores[scores.length - 1];
+          const prev = scores[scores.length - 2];
+          if (last > prev + 5) trend = 'ascending';
+          else if (last < prev - 5) trend = 'descending';
+        }
+      }
+
+      // Customize Poetic Complexity and Tone based on calculated Profile
+      let poeticSystemInstruction = '';
+      if (avgResonance < 50 || trend === 'descending') {
+        poeticSystemInstruction = lang === 'pt'
+          ? `\n\n**PROPRIEDADE DE RESSONÂNCIA (PERFIL DE ALTA VULNERABILIDADE / RECENTE RESSONÂNCIA BAIXA):**
+          Seu histórico de desabafos e ressonância recente (${avgResonance}%) indica um estado de maior cansaço, agitação ou vulnerabilidade emocional.
+          - Ajuste seu tom para: **Apoio direto, acolhimento compassivo, amor incondicional**.
+          - Complexidade poética: **Baixa**. Evite metáforas difíceis, sobrecarga lírica profunda ou desafios intelectuais. Fale de forma simples, clara, pragmática e reconfortante. Fale como se estivesse segurando a mão de alguém querido que está cansado.`
+          : `\n\n**RESONANCE PROFILE (HIGH VULNERABILITY / LOW COHERENCE):**
+          The user's recent resonance score (${avgResonance}%) suggests they are currently feeling fatigued, agitated, or emotionally vulnerable.
+          - Tone adjustment: **Immediate emotional solace, soothing support, unconditional warm regard**.
+          - Poetic Complexity: **Low/Gentle**. Avoid complex or abstract philosophical structures. Keep your language simple, grounded, highly direct, and comforting. Speak as if you were quietly holding the hand of someone who is deeply tired.`;
+      } else if (avgResonance >= 75 || trend === 'ascending') {
+        poeticSystemInstruction = lang === 'pt'
+          ? `\n\n**PROPRIEDADE DE RESSONÂNCIA (PERFIL DE EXPANSÃO / ALTA RECEPTIVIDADE DE COERÊNCIA):**
+          Seu histórico de desabafos e ressonância recente (${avgResonance}%) indica uma mente altamente integrada, estável e receptiva.
+          - Ajuste seu tom para: **Desafiador poético, sabedoria lírica profunda, expansão interior**.
+          - Complexidade poética: **Alta**. Sinta-se livre para usar metáforas ricas, paradoxos poéticos profundos e conceitos líricos sofisticados da PCH para estimular o autoconhecimento profundo e novas sinapses emocionais.`
+          : `\n\n**RESONANCE PROFILE (COHERENT EXPANSION / HIGH RESONANCE):**
+          The user's recent resonance score (${avgResonance}%) indicates a highly stable, integrated, and receptive mental state.
+          - Tone adjustment: **Philosophical, highly poetic, transformative, mindfully expansive**.
+          - Poetic Complexity: **High**. You are encouraged to utilize rich poetic metaphors, cognitive-hypnotic paradoxes, and deep lyrical layers of PCH to stimulate profound self-reflection and expansion.`;
+      } else {
+        poeticSystemInstruction = lang === 'pt'
+          ? `\n\n**PROPRIEDADE DE RESSONÂNCIA (PERFIL EQUILIBRADO):**
+          Seu histórico de desabafos recente (${avgResonance}%) está em um patamar estável e equilibrado.
+          - Ajuste seu tom para: **Gentil, reflexivo e sintonizado de forma amigável**.
+          - Complexidade poética: **Moderada**. Combine metáforas curtas e tocantes com refrações cognitivas simples e fáceis de sintonizar.`
+          : `\n\n**RESONANCE PROFILE (BALANCED RESONANCE):**
+          The user's recent resonance score (${avgResonance}%) is stable and balanced.
+          - Tone adjustment: **Empathetic, reflective, companionable**.
+          - Poetic Complexity: **Balanced**. Blend short, moving poetic imagery with actionable cognitive reframing.`;
+      }
+
       // Get instruction combining base, accessibility, and the target neurodiversity instructions
       const lastContext = selectedFeeling ? `${lang === 'pt' ? 'Me sinto assim: ' : 'I feel like: '}${selectedFeeling}` : undefined;
       const baseInstruction = customSystemPrompt || getSystemInstruction(lang, currentTime, accMode, neuroMode, lastContext);
-      const instruction = baseInstruction + voiceInstruction + autonomicCoRegulationPrompt;
+      const instruction = baseInstruction + voiceInstruction + autonomicCoRegulationPrompt + poeticSystemInstruction;
 
       const sessionPromise = ai.live.connect({
         model: MODEL_NAME,
@@ -1544,7 +1597,7 @@ Return a JSON object with:
   } else if (visualAnchor === 'neutral') {
     themeBg = 'bg-stone-950';
   }
-  let themeCard = 'border-stone-800 bg-stone-900/40';
+  let themeCard = 'border-stone-800/20 bg-stone-900/40 neu-card';
   let accentBorder = 'border-stone-700/50';
   let textSpacing = 'tracking-normal';
   let lineSpacing = 'leading-normal font-sans';
@@ -1552,49 +1605,49 @@ Return a JSON object with:
 
   if (neuroMode === 'anxiety') {
     themeBg = 'bg-[#031c16] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-950/20 via-stone-950 to-stone-950';
-    themeCard = 'border-emerald-900/35 bg-emerald-950/15 backdrop-blur-2xl';
+    themeCard = 'border-emerald-900/35 bg-emerald-950/15 backdrop-blur-2xl neu-card';
     accentBorder = 'border-emerald-800/40 text-emerald-400';
   } else if (neuroMode === 'dyslexia') {
     textSpacing = 'tracking-[0.15em]';
     lineSpacing = 'leading-[1.95] font-sans font-medium';
     fontOverride = 'font-sans';
     themeBg = 'bg-[#151311]';
-    themeCard = 'border-stone-800 bg-[#221e1b]/80';
+    themeCard = 'border-stone-800/30 bg-[#221e1b]/80 neu-card';
     accentBorder = 'border-stone-750 text-amber-200';
   } else if (neuroMode === 'adhd') {
     themeBg = 'bg-stone-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-950/10 via-stone-950 to-stone-950';
-    themeCard = 'border-amber-950/25 bg-stone-900/50';
+    themeCard = 'border-amber-950/25 bg-stone-900/50 neu-card';
     accentBorder = 'border-amber-950/30 text-amber-400';
   } else if (neuroMode === 'autism') {
     themeBg = 'bg-[#090e1d]';
-    themeCard = 'border-blue-950 bg-[#101931]/60';
+    themeCard = 'border-blue-950/40 bg-[#101931]/60 neu-card';
     accentBorder = 'border-blue-900/30 text-blue-400 font-bold';
   } else if (neuroMode === 'senior') {
     themeBg = 'bg-[#0a0a0a]';
-    themeCard = 'border-stone-850 bg-[#161616]';
+    themeCard = 'border-stone-850 bg-[#161616] neu-card';
     accentBorder = 'border-stone-800 text-stone-200';
     fontOverride = 'font-serif';
     lineSpacing = 'leading-relaxed text-[13px] font-medium';
   } else if (neuroMode === 'child') {
     themeBg = 'bg-[#0f0a20] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#1d123e]/20 to-[#0f0a20]';
-    themeCard = 'border-indigo-950 bg-[#1a1435]/65';
+    themeCard = 'border-indigo-950/30 bg-[#1a1435]/65 neu-card';
     accentBorder = 'border-indigo-900/40 text-indigo-400';
   } else if (neuroMode === 'down') {
     themeBg = 'bg-[#0e1211]';
-    themeCard = 'border-teal-500/25 bg-[#141b18]';
+    themeCard = 'border-teal-500/25 bg-[#141b18] neu-card';
     accentBorder = 'border-teal-400/40 text-teal-300 font-extrabold';
     lineSpacing = 'leading-relaxed text-[12.5px] font-extrabold';
   } else if (neuroMode === 'gifted') {
     themeBg = 'bg-[#02010c] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#180d3b]/20 via-[#02010c] to-[#02010c]';
-    themeCard = 'border-indigo-950/60 bg-[#070529]/65';
+    themeCard = 'border-indigo-950/60 bg-[#070529]/65 neu-card';
     accentBorder = 'border-indigo-900/40 text-violet-300';
   } else if (neuroMode === 'burnout') {
     themeBg = 'bg-[#0f0c0b]';
-    themeCard = 'border-stone-850 bg-[#1a1412]/50';
+    themeCard = 'border-stone-850/45 bg-[#1a1412]/50 neu-card';
     accentBorder = 'border-stone-850 text-orange-300';
   } else if (neuroMode === 'grief') {
     themeBg = 'bg-[#100808]';
-    themeCard = 'border-rose-950/30 bg-[#1e1010]/50';
+    themeCard = 'border-rose-950/30 bg-[#1e1010]/50 neu-card';
     accentBorder = 'border-rose-900/40 text-rose-300';
   }
 

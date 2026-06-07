@@ -8,6 +8,94 @@ import { ResonanceInsights } from './ResonanceInsights';
 import { InnerHarmonyChart } from './InnerHarmonyChart';
 import { MOOD_TAGS } from './JournalModal';
 
+interface JourneyMedal {
+  id: string;
+  titlePt: string;
+  titleEn: string;
+  descPt: string;
+  descEn: string;
+  requirementPt: string;
+  requirementEn: string;
+  color: string;
+  icon: string;
+  checkUnlocked: (userPoints: number, entriesCount: number, badgesList: string[]) => boolean;
+}
+
+const JOURNEY_MEDALS: JourneyMedal[] = [
+  {
+    id: 'explorer',
+    titlePt: 'Explorador da Alma',
+    titleEn: 'Soul Explorer',
+    descPt: 'Manifesto PCH concluído e sintonizado com o santuário.',
+    descEn: 'PCH manifesto completed and custom sanctuary tuned.',
+    requirementPt: 'Registo e perfil de adaptação completo.',
+    requirementEn: 'Registered and completed adaptive preferences.',
+    color: 'from-teal-500/10 to-teal-400/10 text-teal-400 border-teal-500/20 shadow-teal-500/5',
+    icon: '🍃',
+    checkUnlocked: () => true
+  },
+  {
+    id: 'breath',
+    titlePt: 'Sopro Cósmico',
+    titleEn: 'Cosmic Breath',
+    descPt: 'Foco síncrono e controle respiratório harmonioso.',
+    descEn: 'Mindful rhythmic breathing done in safe, focused sessions.',
+    requirementPt: 'Alcançar 100 pontos de experiência (XP).',
+    requirementEn: 'Reach 100 Experience points (XP).',
+    color: 'from-amber-500/10 to-amber-400/10 text-amber-400 border-amber-500/20 shadow-amber-500/5',
+    icon: '🌬️',
+    checkUnlocked: (pts, entries, badges) => pts >= 100 || badges.includes('Sopro Cósmico') || badges.includes('Cosmic Breath')
+  },
+  {
+    id: 'gardener',
+    titlePt: 'Cultivador do Éden',
+    titleEn: 'Eden Gardener',
+    descPt: 'Dedicação diária e germinação das sementes botânicas.',
+    descEn: 'Cultivated emotional flowers inside your inner sanctuary.',
+    requirementPt: 'Alcançar 200 pontos de experiência (XP).',
+    requirementEn: 'Reach 200 Experience points (XP).',
+    color: 'from-emerald-500/10 to-emerald-400/10 text-emerald-400 border-emerald-500/20 shadow-emerald-500/5',
+    icon: '🌱',
+    checkUnlocked: (pts, entries, badges) => pts >= 200 || badges.includes('Semeador do Éden') || badges.includes('Eden Seeds')
+  },
+  {
+    id: 'diary',
+    titlePt: 'Confissão Íntima',
+    titleEn: 'Written Confession',
+    descPt: 'Reflexões profundas com sentimentos sintonizados no diário.',
+    descEn: 'Shared deep feelings in your confidential diary.',
+    requirementPt: 'Ter pelo menos 3 diários guardados.',
+    requirementEn: 'Have at least 3 journal entries recorded.',
+    color: 'from-purple-500/10 to-purple-400/10 text-purple-400 border-purple-500/20 shadow-purple-500/5',
+    icon: '📓',
+    checkUnlocked: (pts, entries, badges) => entries >= 3 || pts >= 300 || badges.includes('Verdade Escrita') || badges.includes('Written Truth')
+  },
+  {
+    id: 'resonance',
+    titlePt: 'Sinfonia Mental',
+    titleEn: 'Mental Symphony',
+    descPt: 'Sinergia cognitiva e alinhamento de ressonância profunda.',
+    descEn: 'Achieved high harmonic alignment across categories.',
+    requirementPt: 'Alcançar 400 pontos de experiência (XP).',
+    requirementEn: 'Reach 400 Experience points (XP).',
+    color: 'from-pink-500/10 to-rose-450/10 text-pink-400 border-pink-500/20 shadow-pink-500/5',
+    icon: '✨',
+    checkUnlocked: (pts, entries, badges) => pts >= 400 || badges.includes('Voz da Alma') || badges.includes('Soul Voice')
+  },
+  {
+    id: 'light',
+    titlePt: 'Guardião de Luz',
+    titleEn: 'Beacon of Light',
+    descPt: 'Acesso pleno ao autoconhecimento e decompressão de burnout.',
+    descEn: 'Accessed the peak of mindfulness and emotional wisdom.',
+    requirementPt: 'Alcançar 500 pontos de experiência (XP).',
+    requirementEn: 'Reach 500 Experience points (XP).',
+    color: 'from-fuchsia-500/10 to-violet-500/10 text-fuchsia-400 border-fuchsia-500/20 shadow-fuchsia-500/5',
+    icon: '👑',
+    checkUnlocked: (pts, entries, badges) => pts >= 500 || badges.includes('Guardião da Luz') || badges.includes('Beacon of Light')
+  }
+];
+
 interface UserProfileViewProps {
   user: User | null;
   lang: Language;
@@ -75,18 +163,23 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
 
   const translateNeuro = (mode: string | undefined) => {
     switch(mode) {
-      case 'adhd': return lang === 'pt' ? 'PCH adaptada para TDAH ⚡' : 'PCH adapted for ADHD ⚡';
-      case 'autism': return lang === 'pt' ? 'Acessibilidade para Autismo 🧩' : 'Accessibility for Autism 🧩';
-      case 'dyslexia': return lang === 'pt' ? 'Leitura para Dislexia 📚' : 'Reading for Dyslexia 📚';
-      case 'anxiety': return lang === 'pt' ? 'Exercícios para Ansiedade 🌬️' : 'Comfort for Anxiety 🌬️';
-      case 'senior': return lang === 'pt' ? 'Idosos: Conexão & Legado 👵' : 'Seniors: Grace & Memories 👵';
-      case 'child': return lang === 'pt' ? 'Infantil: Abordagem Lúdica 👶' : 'Children: Playful Stories 👶';
-      case 'down': return lang === 'pt' ? 'Acessibilidade Síndrome de Down ❤️' : 'Down Syndrome Visual Companion ❤️';
-      case 'gifted': return lang === 'pt' ? 'Altas Habilidades & Desafios 🌌' : 'Gifted & Conceptual Depth 🌌';
-      case 'burnout': return lang === 'pt' ? 'Decompressão suave de Burnout 🔥' : 'Soft Decompression for Burnout 🔥';
-      case 'grief': return lang === 'pt' ? 'Acolhimento ao Luto & Memória 🌹' : 'Space for Grief & Remembrance 🌹';
-      case 'inclusive': return lang === 'pt' ? 'Modo de Consciência Adaptado' : 'Adaptive Inclusive Mode';
-      default: return lang === 'pt' ? 'Método PCH Tradicional 🍃' : 'Traditional PCH Standard 🍃';
+      case 'adhd':
+      case 'tdah': return lang === 'pt' ? 'Foco Blindado TDAH ⚡' : 'ADHD Laser Focus ⚡';
+      case 'autism':
+      case 'autismo': return lang === 'pt' ? 'Roteiro Previsível Autismo 🧩' : 'Predictable Autism Route 🧩';
+      case 'dyslexia':
+      case 'dislexia': return lang === 'pt' ? 'Leitura de Dislexia Compensada 📚' : 'Compensated Dyslexia Reading 📚';
+      case 'anxiety':
+      case 'ansiedade': return lang === 'pt' ? 'Calma de Ansiedade 💕' : 'Anxiety Calming Haven 💕';
+      case 'senior':
+      case 'idoso': return lang === 'pt' ? 'Acessibilidade Idoso 👵👴' : 'Enlarged Senior Display 👵👴';
+      case 'burnout': return lang === 'pt' ? 'Descompressão de Burnout 🌌' : 'Burnout Adrenal Recovery 🌌';
+      case 'adolescente': return lang === 'pt' ? 'Expressão Jovem 🪐' : 'Young Expression Cyber 🪐';
+      case 'grief':
+      case 'luto': return lang === 'pt' ? 'Acolhimento ao Luto 🌹' : 'Grief Solace Remembrance 🌹';
+      case 'cristao': return lang === 'pt' ? 'Fé Contemplativa ⛪' : 'Faith Devotional Contemplation ⛪';
+      case 'tea_tdah': return lang === 'pt' ? 'TEA + TDAH Sinergia' : 'ASD + ADHD Dual Symphony';
+      default: return lang === 'pt' ? 'Mente Plena Natural 🍃' : 'Standard Natural Sanctuary 🍃';
     }
   };
 
@@ -311,7 +404,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
   return (
     <div className="w-full max-w-md mx-auto space-y-6 animate-fade-in p-2">
       {/* Visual Identity Profile Card */}
-      <div className="bg-stone-900/40 border border-stone-850/60 rounded-3xl p-6 relative overflow-hidden backdrop-blur-md">
+      <div className="neu-card rounded-3xl p-6 relative overflow-hidden">
         {/* Abstract background elements */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-full blur-2xl"></div>
         <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl"></div>
@@ -357,7 +450,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
       </button>
 
       {/* Gamification Level Status Card */}
-      <div className="bg-stone-900/20 border border-stone-850/50 p-6 rounded-3xl space-y-4 backdrop-blur-md">
+      <div className="glass-panel p-6 rounded-3xl space-y-4">
         <div className="flex justify-between items-center text-xs">
           <span className="text-[10px] uppercase tracking-widest text-stone-500 font-mono">Nível {level}</span>
           <span className="text-[10px] text-amber-400 font-mono">{points} XP</span>
@@ -385,7 +478,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
       <InnerHarmonyChart user={user} lang={lang} />
 
       {/* Linha do Tempo de Sentimentos */}
-      <div className="bg-stone-900/30 border border-stone-850/50 rounded-3xl p-5 space-y-4 backdrop-blur-md">
+      <div className="neu-card rounded-3xl p-5 space-y-4">
         <div className="flex items-center space-x-2 border-b border-stone-950 pb-2.5">
           <Heart className="w-4 h-4 text-pink-400" />
           <h4 className="text-[9px] uppercase text-stone-300 tracking-[0.2em] font-bold">
@@ -464,7 +557,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
       </div>
 
       {/* Visual Progress bars for each 'resonance' category */}
-      <div className="bg-stone-900/35 border border-stone-850/50 p-5 rounded-3xl space-y-4 backdrop-blur-md">
+      <div className="glass-panel p-5 rounded-3xl space-y-4">
         <h4 className="text-[9px] uppercase text-stone-500 tracking-[0.2em] font-bold border-b border-stone-900 pb-2">
           {lang === 'pt' ? 'Ressonância & Crescimento' : 'Resonance Categories'}
         </h4>
@@ -526,7 +619,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
       </div>
 
       {/* Custom adaptive preferences active visual lines */}
-      <div className="bg-stone-900/30 border border-stone-850/50 rounded-3xl p-5 space-y-4">
+      <div className="neu-card rounded-3xl p-5 space-y-4">
         <h4 className="text-[9px] uppercase text-stone-500 tracking-[0.2em] font-bold border-b border-stone-900 pb-2">
           {lang === 'pt' ? 'Preferências Adaptativas' : 'Active Adapted Setup'}
         </h4>
@@ -558,28 +651,71 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
         </div>
       </div>
 
-      {/* Badges / Achievements catalog */}
-      <div className="bg-stone-900/30 border border-stone-850/50 rounded-3xl p-5 space-y-4">
-        <h4 className="text-[9px] uppercase text-stone-500 tracking-[0.2em] font-bold border-b border-stone-900 pb-2">
-          {lang === 'pt' ? 'Conquistas & Medalhas' : 'Unlocked Badges'}
-        </h4>
+      {/* Badges / Achievements catalog (Medalhas de Jornada) */}
+      <div className="glass-panel rounded-3xl p-5 space-y-4">
+        <div className="flex justify-between items-center border-b border-stone-900 pb-2.5">
+          <h4 className="text-[9px] uppercase text-stone-300 tracking-[0.2em] font-bold">
+            {lang === 'pt' ? 'Medalhas de Jornada 🏆' : 'Journey Medals 🏆'}
+          </h4>
+          <span className="text-[9px] font-mono text-stone-500 uppercase">
+            {lang === 'pt' 
+              ? `${JOURNEY_MEDALS.filter(m => m.checkUnlocked(points, journalEntries.length, userBadges)).length} de ${JOURNEY_MEDALS.length} Conquistadas` 
+              : `${JOURNEY_MEDALS.filter(m => m.checkUnlocked(points, journalEntries.length, userBadges)).length} of ${JOURNEY_MEDALS.length} Earned`}
+          </span>
+        </div>
 
-        <div className="grid grid-cols-1 gap-2">
-          {userBadges.map((badge: string, i: number) => (
-            <div key={i} className="flex items-center space-x-4 bg-stone-950/40 p-3 rounded-2xl border border-stone-900/80">
-              <div className="p-2 bg-yellow-500/10 rounded-xl text-yellow-500 shrink-0">
-                <Award className="w-5 h-5" />
+        <div className="grid grid-cols-2 gap-3">
+          {JOURNEY_MEDALS.map((medal) => {
+            const isUnlocked = medal.checkUnlocked(points, journalEntries.length, userBadges);
+            return (
+              <div 
+                key={medal.id}
+                className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between h-[155px] relative overflow-hidden transition-all duration-350 select-none ${
+                  isUnlocked
+                    ? `bg-gradient-to-br ${medal.color} hover:scale-[1.05] hover:-translate-y-1 cursor-pointer hover:shadow-[0_8px_20px_rgba(20,184,166,0.12)]`
+                    : 'bg-stone-950/20 border-stone-900/50 grayscale opacity-30 cursor-not-allowed hover:grayscale-0 hover:opacity-55 hover:scale-[1.02]'
+                }`}
+              >
+                {/* Background glow for unlocked badges */}
+                {isUnlocked && (
+                  <div className="absolute -top-10 -right-10 w-20 h-20 bg-teal-500/5 rounded-full blur-xl pointer-events-none"></div>
+                )}
+
+                <div className="space-y-1.5 z-10">
+                  {/* Badge Icon */}
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-sm border ${
+                    isUnlocked 
+                      ? 'bg-stone-950/65 border-stone-800/60' 
+                      : 'bg-stone-950/40 border-stone-950'
+                  }`}>
+                    {medal.icon}
+                  </div>
+
+                  <div>
+                    {/* Badge Title */}
+                    <h5 className="text-[11px] font-semibold tracking-wide text-stone-100 leading-tight">
+                      {lang === 'pt' ? medal.titlePt : medal.titleEn}
+                    </h5>
+                    {/* Badge Short Desc */}
+                    <p className="text-[8.5px] leading-tight text-stone-450 mt-0.5 font-light line-clamp-2">
+                      {lang === 'pt' ? medal.descPt : medal.descEn}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Lock Status / Subtext */}
+                <div className="text-[8px] font-mono leading-none pt-1 z-10 border-t border-stone-900/40 flex items-center justify-between">
+                  {isUnlocked ? (
+                    <span className="text-emerald-400 font-bold uppercase tracking-widest">{lang === 'pt' ? '✓ Conquistado' : '✓ Earned'}</span>
+                  ) : (
+                    <span className="text-stone-500 tracking-wider truncate" title={lang === 'pt' ? medal.requirementPt : medal.requirementEn}>
+                      {lang === 'pt' ? medal.requirementPt : medal.requirementEn}
+                    </span>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="text-[11px] font-bold text-stone-200">
-                  {badge === 'Explorador Interior' && lang === 'pt' ? 'Explorador Interior' : 'Inner Explorer'}
-                </p>
-                <p className="text-[9px] text-stone-500 mt-0.5">
-                  {lang === 'pt' ? 'Concluiu com sucesso o manifesto fundador' : 'Completed the foundational PCH manifesto setup'}
-                </p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

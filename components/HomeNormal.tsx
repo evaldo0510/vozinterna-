@@ -274,6 +274,14 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
     }
   ];
 
+  const containerBg = 'neu-card';
+
+  const secondaryBg = 'glass-panel';
+
+  const textPrimary = isLightTheme ? 'text-stone-850 text-stone-800' : 'text-stone-100';
+  const textSecondary = isLightTheme ? 'text-stone-600' : 'text-stone-300';
+  const textMuted = isLightTheme ? 'text-stone-400' : 'text-slate-400';
+
   return (
     <div className="space-y-10">
       {/* GREETING */}
@@ -282,10 +290,10 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
           <Anchor className="w-3.5 h-3.5" />
           <span>{lang === 'pt' ? 'Conexão Restaurada' : 'Connection Restored'}</span>
         </div>
-        <h2 className="text-3xl md:text-4.5xl font-serif text-stone-100 tracking-tight leading-tight">
+        <h2 className={`text-3xl md:text-4.5xl font-serif tracking-tight leading-tight ${textPrimary}`}>
           {getGreeting()}
         </h2>
-        <p className="text-slate-400 text-xs md:text-sm font-light leading-relaxed tracking-wide">
+        <p className={`text-xs md:text-sm font-light leading-relaxed tracking-wide ${textSecondary}`}>
           {lang === 'pt' 
             ? 'Este é o seu santuário digital vivo, livre de pressões sociais ou métricas vazias. Escolha seu tempo para florescer.' 
             : 'This is your living digital sanctuary, free from social anxiety or performance demands. Cultivate your mind at your own pace.'}
@@ -293,22 +301,26 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
       </div>
 
       {/* JARDIM */}
-      <div className="p-7 rounded-[2rem] bg-[#0d1324]/80 border border-[#1e2a4a]/85 shadow-xl relative overflow-hidden group">
+      <div className={`p-7 rounded-[2rem] border relative overflow-hidden group transition-all duration-300 ${containerBg}`}>
         <div className="absolute top-0 right-0 w-[240px] h-[240px] bg-[#10b981]/4 rounded-full blur-[80px] pointer-events-none" />
         
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-5 border-b border-[#1c2742]/50">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-5 border-b border-stone-200/20">
           <div className="space-y-1">
             <span className="text-[10px] font-mono tracking-[0.25em] font-bold text-[#10B981] uppercase block">Seção 01 • JARDIM METAFÓRICO</span>
-            <h3 className="text-xl font-serif font-black text-stone-100">🌱 {lang === 'pt' ? 'Cultivar o Jardim Interior' : 'Garden of the Soul'}</h3>
-            <p className="text-xs text-stone-400 font-light">{lang === 'pt' ? 'O reflexo orgânico da sua co-regulação mental.' : 'The organic mirror of your emotional co-regulation.'}</p>
+            <h3 className={`text-xl font-serif font-black ${textPrimary}`}>🌱 {lang === 'pt' ? 'Cultivar o Jardim Interior' : 'Garden of the Soul'}</h3>
+            <p className={`text-xs ${textSecondary}`}>{lang === 'pt' ? 'O reflexo orgânico da sua co-regulação mental.' : 'The organic mirror of your emotional co-regulation.'}</p>
           </div>
-          <div className="px-4 py-2 bg-[#090b14] border border-[#1d2744] hover:bg-[#111624] text-[#10B981] rounded-2xl text-xs font-mono font-bold tracking-wider shadow-inner">
+          <div className={`px-4 py-2 rounded-2xl text-xs font-mono font-bold tracking-wider shadow-inner transition-colors duration-300 ${
+            isLightTheme 
+              ? 'bg-emerald-50 border border-emerald-100 text-emerald-850 text-emerald-800' 
+              : 'bg-[#090b14] border border-[#1d2744] hover:bg-[#111624] text-[#10B981]'
+          }`}>
             {lang === 'pt' ? gardenInfo.namePt : gardenInfo.nameEn}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 items-center">
-          <div className="flex flex-col items-center justify-center p-6 bg-[#080c18] border border-[#16213c] rounded-[2rem] min-h-[220px] shadow-inner relative overflow-hidden">
+          <div className={`flex flex-col items-center justify-center p-6 border rounded-[2rem] min-h-[220px] shadow-inner relative overflow-hidden transition-all duration-300 ${secondaryBg}`}>
             <AnimatePresence>
               {isWatering && (
                 <motion.div 
@@ -427,16 +439,18 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
 
           <div className="space-y-4">
             <span className="text-[10px] font-mono tracking-widest text-[#10B981] uppercase block">STATUS DO ECOSSISTEMA</span>
-            <p className="text-[#fafafa] font-serif italic text-sm md:text-base leading-relaxed">
+            <p className={`font-serif italic text-sm md:text-base leading-relaxed ${textPrimary}`}>
               "{lang === 'pt' ? gardenInfo.descPt : gardenInfo.descEn}"
             </p>
             
             <div className="space-y-2">
-              <div className="flex justify-between items-center text-[9px] font-mono text-slate-400">
+              <div className={`flex justify-between items-center text-[9px] font-mono ${textMuted}`}>
                 <span>{lang === 'pt' ? 'Próxima Fase' : 'Next Growth Threshold'}</span>
-                <span className="text-stone-300 font-bold">{points} XP</span>
+                <span className={`font-bold ${textPrimary}`}>{points} XP</span>
               </div>
-              <div className="w-full h-1.5 bg-[#0a0d17] border border-[#1b2641]/55 rounded-full overflow-hidden">
+              <div className={`w-full h-1.5 rounded-full overflow-hidden border ${
+                isLightTheme ? 'bg-stone-100 border-stone-200' : 'bg-[#0a0d17] border-[#1b2641]/55'
+              }`}>
                 <div 
                   className="h-full bg-gradient-to-r from-[#10B981] via-[#14B8A6] to-[#8B5CF6] rounded-full transition-all duration-[1200ms] ease-out"
                   style={{ width: `${Math.min(100, (points / 800) * 100)}%` }}
@@ -451,7 +465,7 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
                 className={`w-full py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2.5 font-mono text-xs uppercase tracking-widest font-bold transition-all duration-300 cursor-pointer border ${
                   isWatering
                     ? 'bg-[#10B981]/10 border-[#10B981]/30 text-[#10B981]/50'
-                    : 'bg-[#10B981] hover:bg-[#0da070] text-[#080b14] border-transparent shadow-[#10b981]/15 active:scale-98'
+                    : 'bg-[#10B981] hover:bg-[#0da070] text-stone-900 border-transparent shadow-[#10b981]/15 active:scale-98 shadow-md'
                 }`}
               >
                 <Droplet className={`w-4 h-4 ${isWatering ? 'animate-bounce' : ''}`} />
@@ -467,17 +481,17 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
       </div>
 
       {/* SECTION 5: 🏆 CONQUISTAS (Interactive Stellar Constellation SVG) */}
-      <div className="p-7 rounded-[2rem] bg-[#0d1324] border border-[#1e2a4a] shadow-xl space-y-6 relative">
+      <div className={`p-7 rounded-[2rem] border shadow-xl space-y-6 relative transition-all duration-300 ${containerBg}`}>
         <div className="absolute inset-0 bg-[#8B5CF6]/2 rounded-[2rem] pointer-events-none" />
         
         <div className="space-y-0.5 text-left">
-          <span className="text-[10px] font-mono tracking-[0.25em] font-bold text-teal-400 uppercase block">Seção 02 • MAPA DE REALIZAÇÕES</span>
-          <h3 className="text-xl font-serif font-black text-stone-100">🏆 {lang === 'pt' ? 'Constelação de Conquistas' : 'Constellation of Progress'}</h3>
-          <p className="text-xs text-slate-400">{lang === 'pt' ? 'Toque nas estrelas cósmicas para ler as revelações do seu progresso.' : 'Tap any stellar coordinate to read achievements details.'}</p>
+          <span className="text-[10px] font-mono tracking-[0.25em] font-bold text-teal-500 uppercase block">Seção 02 • MAPA DE REALIZAÇÕES</span>
+          <h3 className={`text-xl font-serif font-black ${textPrimary}`}>🏆 {lang === 'pt' ? 'Constelação de Conquistas' : 'Constellation of Progress'}</h3>
+          <p className={`text-xs ${textSecondary}`}>{lang === 'pt' ? 'Toque nas estrelas cósmicas para ler as revelações do seu progresso.' : 'Tap any stellar coordinate to read achievements details.'}</p>
         </div>
 
         {/* Connected SVG Night Sky Constellation Grid */}
-        <div className="relative w-full h-[180px] bg-[#070b14] border border-[#16213c] rounded-[2rem] overflow-hidden flex flex-col justify-between p-4 shadow-inner">
+        <div className={`relative w-full h-[180px] border rounded-[2rem] overflow-hidden flex flex-col justify-between p-4 shadow-inner transition-all duration-305 ${secondaryBg}`}>
           
           {/* Ambient Star-sky particles */}
           <div className="absolute inset-0 pointer-events-none">
@@ -523,7 +537,9 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
                   className="absolute pointer-events-auto cursor-pointer flex flex-col items-center"
                   style={{ left: `${Math.round((star.cx / 380) * 88) + 4}%`, top: `${Math.round((star.cy / 120) * 65) + 10}%` }}
                 >
-                  <span className="text-[7.5px] font-mono tracking-wide text-slate-500 hover:text-teal-400 mt-3 block">
+                  <span className={`text-[7.5px] font-mono tracking-wide mt-3 block font-bold transition-colors ${
+                    isLightTheme ? 'text-stone-700 hover:text-emerald-750' : 'text-slate-400 hover:text-teal-400'
+                  }`}>
                     {lang === 'pt' ? star.titlePt.replace('⭐️ ','').replace('⭐ ','') : star.titleEn.replace('⭐️ ','').replace('⭐ ','')}
                   </span>
                 </button>
@@ -534,31 +550,31 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
         </div>
 
         {/* Interactive Descriptive Info-Card */}
-        <div className="bg-[#080d19] border border-[#16213c] p-5 rounded-2xl text-left select-none">
+        <div className={`p-5 rounded-2xl text-left select-none border transition-all duration-300 ${secondaryBg}`}>
           {selectedStar ? (() => {
             const starDetail = achievementsList.find(s => s.id === selectedStar);
             const isActivated = points >= (starDetail?.xp || 0);
             return (
               <div className="space-y-2 animate-fade-in">
                 <div className="flex justify-between items-center">
-                  <span className="font-serif text-[#F59E0B] font-bold text-sm">
+                  <span className={`font-serif font-bold text-sm ${isLightTheme ? 'text-stone-850 text-stone-800' : 'text-[#F59E0B]'}`}>
                     {lang === 'pt' ? starDetail?.titlePt : starDetail?.titleEn}
                   </span>
                   <span className={`text-[8.5px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
                     isActivated 
                       ? 'bg-[#10B981]/10 border-[#10B981]/30 text-[#10B981] uppercase' 
-                      : 'bg-stone-900 border-stone-800 text-stone-500 uppercase'
+                      : 'bg-stone-500/10 border-stone-200 text-stone-500 uppercase'
                   }`}>
                     {isActivated ? (lang === 'pt' ? 'ATIVADA' : 'UNLOCKED') : (lang === 'pt' ? `Bloqueada • Requer ${starDetail?.xp} XP` : `Locked • Needs ${starDetail?.xp} XP`)}
                   </span>
                 </div>
-                <p className="text-[11.5px] text-stone-300 leading-relaxed font-serif italic">
+                <p className={`text-[12px] leading-relaxed font-serif italic ${textPrimary}`}>
                   {lang === 'pt' ? starDetail?.poemPt : starDetail?.poemEn}
                 </p>
               </div>
             );
           })() : (
-            <div className="flex items-center space-x-3 text-slate-400">
+            <div className={`flex items-center space-x-3 ${textSecondary}`}>
               <Info className="w-4 h-4 text-teal-400 shrink-0" />
               <p className="text-xs font-light">
                 {lang === 'pt' 
@@ -571,17 +587,17 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
       </div>
 
       {/* SECTION 6: 📊 EVOLUÇÃO (Smooth, non-clinical wavy graph) */}
-      <div className="p-7 rounded-[2rem] bg-[#0d1324]/50 border border-[#1e2a4a]/75 shadow-xl space-y-6 relative">
+      <div className={`p-7 rounded-[2rem] border shadow-xl space-y-6 relative transition-all duration-300 ${containerBg}`}>
         <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-[#14b8a6]/2 rounded-full blur-[80px] pointer-events-none" />
         
         <div className="space-y-0.5 text-left">
           <span className="text-[10px] font-mono tracking-[0.25em] font-bold text-[#8B5CF6] uppercase block">Seção 03 • HISTÓRICO INTEGRADO</span>
-          <h3 className="text-xl font-serif font-black text-stone-100">📊 {lang === 'pt' ? 'Sintonia Geral do Ser' : 'Resonance Alignment Chart'}</h3>
-          <p className="text-xs text-slate-400">{lang === 'pt' ? 'Nossos gráficos não são clínicos ou punitivos; refletem o balanço das ondas do mar emocional.' : 'A peaceful organic graph illustrating weekly calming frequency.'}</p>
+          <h3 className={`text-xl font-serif font-black ${textPrimary}`}>📊 {lang === 'pt' ? 'Sintonia Geral do Ser' : 'Resonance Alignment Chart'}</h3>
+          <p className={`text-xs ${textSecondary}`}>{lang === 'pt' ? 'Nossos gráficos não são clínicos ou punitivos; refletem o balanço das ondas do mar emocional.' : 'A peaceful organic graph illustrating weekly calming frequency.'}</p>
         </div>
 
         {/* Rolling Sine Wave SVG representation of Introspection and Calm */}
-        <div className="relative w-full h-[140px] bg-[#070b14] border border-[#16213c] rounded-[2rem] overflow-hidden flex flex-col justify-end p-2 shrink-0">
+        <div className={`relative w-full h-[140px] border rounded-[2rem] overflow-hidden flex flex-col justify-end p-2 shrink-0 transition-colors duration-305 ${secondaryBg}`}>
           
           <svg viewBox="0 0 400 120" className="absolute inset-0 w-full h-full select-none" preserveAspectRatio="none">
             {/* Base Wave Layer 1 (Turquoise Wave of Calm) */}
@@ -617,7 +633,7 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div 
           onClick={() => onNavigateToScreen('refugio')}
-          className="p-7 rounded-[2rem] bg-[#0d1324] border border-[#1e2a4a] hover:border-[#8B5CF6]/50 transition-all duration-500 flex flex-col justify-between min-h-[175px] shadow-lg cursor-pointer group"
+          className={`p-7 rounded-[2rem] border transition-all duration-500 flex flex-col justify-between min-h-[175px] shadow-lg cursor-pointer group hover:scale-[1.01] ${containerBg} hover:border-[#8B5CF6]/50`}
         >
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-mono font-bold uppercase tracking-[0.25em] text-[#8B5CF6]">
@@ -628,10 +644,10 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
             </div>
           </div>
           <div className="my-3">
-            <h4 className="text-lg font-serif text-stone-100 font-bold group-hover:text-[#a78bfa] transition-colors">
+            <h4 className={`text-lg font-serif font-bold group-hover:text-[#8B5CF6] transition-colors ${textPrimary}`}>
               {lang === 'pt' ? 'Abrir Escrita Terapêutica' : 'Access Focus Journaling'}
             </h4>
-            <p className="text-xs text-slate-400 font-serif italic mt-1">
+            <p className={`text-xs font-serif italic mt-1 ${textSecondary}`}>
               {lang === 'pt' ? '“Se os seus sentimentos fossem uma sala, as janelas estariam abertas hoje?”' : '“If your inner feelings were a room, would its windows be open today?”'}
             </p>
           </div>
@@ -643,7 +659,7 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
 
         <div 
           onClick={() => onNavigateToScreen('chat')}
-          className="p-7 rounded-[2rem] bg-[#0d1324] border border-[#1e2a4a] hover:border-[#14B8A6]/50 transition-all duration-500 flex flex-col justify-between min-h-[175px] shadow-lg cursor-pointer group"
+          className={`p-7 rounded-[2rem] border transition-all duration-500 flex flex-col justify-between min-h-[175px] shadow-lg cursor-pointer group hover:scale-[1.01] ${containerBg} hover:border-[#14B8A6]/50`}
         >
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-mono font-bold uppercase tracking-[0.25em] text-[#14B8A6]">
@@ -654,10 +670,10 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
             </div>
           </div>
           <div className="my-3">
-            <h4 className="text-lg font-serif text-stone-100 font-bold group-hover:text-[#38bdf8] transition-colors">
+            <h4 className={`text-lg font-serif font-bold group-hover:text-[#14B8A6] transition-colors ${textPrimary}`}>
               {lang === 'pt' ? 'Conectar Via VozAtiva' : 'Activate Live Voice'}
             </h4>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className={`text-xs mt-1 ${textSecondary}`}>
               {lang === 'pt' ? 'Fale e receba feedback em ritmo desacelerado de hipnoterapia.' : 'Communicate verbally and receive calming pacing feedback.'}
             </p>
           </div>
@@ -669,11 +685,11 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
       </div>
 
       {/* MISSIONS */}
-      <div className="p-7 rounded-[2rem] bg-[#0d1324]/60 border border-[#1e2a4a]/70 shadow-xl space-y-6">
+      <div className={`p-7 rounded-[2rem] border shadow-xl space-y-6 transition-all duration-300 ${containerBg}`}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <span className="text-[10px] font-mono tracking-[0.25em] font-bold text-[#14B8A6] uppercase block">Seção 04 • CONQUISTAR O DIA</span>
-            <h3 className="text-xl font-serif font-black text-stone-100">🎯 {lang === 'pt' ? 'Missão do Dia PCH' : "Today's Harmonic Goal"}</h3>
+            <h3 className={`text-xl font-serif font-black ${textPrimary}`}>🎯 {lang === 'pt' ? 'Missão do Dia PCH' : "Today's Harmonic Goal"}</h3>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono font-bold text-[#10B981] bg-[#10B981]/10 px-3 py-1 rounded-full border border-[#10B981]/25">
@@ -699,15 +715,19 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
                 onClick={() => toggleMission(mission.id as any)}
                 className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-300 cursor-pointer ${
                   isChecked 
-                    ? 'bg-[#10B981]/5 border-[#10B981]/30 text-stone-100'
-                    : 'bg-[#0f1423] border-[#1b253f] text-slate-400 hover:border-slate-500/40'
+                    ? 'bg-[#10B981]/10 border-[#10B981]/35 text-[#10B981]'
+                    : isLightTheme
+                      ? 'bg-stone-50 border-stone-200/60 text-stone-600 hover:border-stone-400/50'
+                      : 'bg-[#0f1423] border-[#1b253f] text-slate-400 hover:border-slate-500/40'
                 }`}
               >
-                <span className="text-xs font-serif leading-relaxed">
+                <span className={`text-xs font-serif leading-relaxed ${isChecked ? 'text-[#10B981] font-semibold' : textSecondary}`}>
                   {lang === 'pt' ? mission.descPt : mission.descEn}
                 </span>
                 <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
-                  isChecked ? 'bg-[#10B981] border-transparent text-[#080b14]' : 'border-slate-700'
+                  isChecked 
+                    ? 'bg-[#10B981] border-transparent text-white' 
+                    : isLightTheme ? 'border-stone-350 border-stone-300' : 'border-slate-700'
                 }`}>
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
                 </div>
@@ -718,18 +738,20 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
 
         <div className="pt-2 flex flex-col items-center">
           {hasClaimedMission ? (
-            <div className="py-3 px-6 bg-emerald-950/20 border border-emerald-500/35 rounded-2xl text-[11px] font-mono tracking-wider text-emerald-400 uppercase font-bold flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <div className="py-3 px-6 bg-emerald-950/20 border border-emerald-500/35 rounded-2xl text-[11px] font-mono tracking-wider text-emerald-500 uppercase font-bold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
               <span>{lang === 'pt' ? 'Recompensa do Dia Resgatada!' : 'Daily Rewards Claimed!'}</span>
             </div>
           ) : (
             <button
               onClick={handleClaimReward}
               disabled={!isMissionComplete}
-              className={`py-3 px-8 rounded-2xl font-mono text-xs uppercase tracking-widest font-black transition-all ${
+              className={`py-3 px-8 rounded-2xl font-mono text-xs uppercase tracking-widest font-black transition-all cursor-pointer ${
                 isMissionComplete
                   ? 'bg-gradient-to-r from-amber-500 to-[#14b8a6] text-stone-950 hover:scale-103 shadow-lg'
-                  : 'bg-stone-900 border border-stone-850 text-stone-600 cursor-not-allowed'
+                  : isLightTheme
+                    ? 'bg-stone-100 border border-stone-250 text-stone-400 cursor-not-allowed'
+                    : 'bg-stone-900 border border-stone-850 text-stone-600 cursor-not-allowed'
               }`}
             >
               {lang === 'pt' ? '★ Concluir Missão do Dia (+50 XP)' : '★ Claim Daily Alignment Award (+50 XP)'}

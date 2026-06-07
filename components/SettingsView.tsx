@@ -14,7 +14,8 @@ import {
   Music,
   Play,
   Pause,
-  Volume2
+  Volume2,
+  Cpu
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -292,6 +293,65 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         {/* Section Blocks matches Screenshot 4 */}
         <div className="space-y-6">
+
+          {/* Card 0: Mente Adaptativa IPCH */}
+          <div className="p-6.5 rounded-[2rem] bg-white border border-stone-200/40 shadow-[0_3px_15px_rgba(21,46,34,0.01)] space-y-5">
+            <div className="flex gap-4.5 items-start">
+              <div className="p-3 bg-teal-500/10 rounded-full text-[#5c7c64]">
+                <Cpu className="w-5 h-5 stroke-[1.8] text-teal-600 animate-pulse" />
+              </div>
+              <div className="space-y-0.5 text-left">
+                <h3 className="text-base font-serif font-semibold text-stone-850">
+                  {lang === 'pt' ? 'Mente Adaptativa (NeuroModo)' : 'Adaptive NeuroMode Profile'}
+                </h3>
+                <p className="text-xs text-stone-400 font-light leading-relaxed">
+                  {lang === 'pt' ? 'Ajuste seu genótipo mental para recalibrar instantaneamente o comportamento visual, áudios e linguagem do Santuário.' : 'Alter your active cognitive engine profile to load customized fonts, tones, and daily items.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 xs:grid-cols-3 gap-2.5 pt-1.5">
+              {[
+                { id: 'normal', label: '🍃 Natural' },
+                { id: 'tdah', label: '⚡ TDAH Focus' },
+                { id: 'autismo', label: '🧩 Autismo' },
+                { id: 'ansiedade', label: '💕 Ansiedade' },
+                { id: 'burnout', label: '🌌 Burnout' },
+                { id: 'idoso', label: '👵👴 Idoso' },
+                { id: 'adolescente', label: '🪐 Jovem' },
+                { id: 'luto', label: '🌹 Luto' },
+                { id: 'cristao', label: '⛪ Fé Poética' },
+              ].map((p) => {
+                const isActive = (user?.neuroMode || 'normal') === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={async () => {
+                      if (!user?.id) return;
+                      // Update Firestore users table
+                      try {
+                        const userRef = doc(db, 'users', user.id);
+                        await updateDoc(userRef, { neuroMode: p.id });
+                        // Also update user_neuro_profile
+                        const nProfileRef = doc(db, 'user_neuro_profile', user.id);
+                        await updateDoc(nProfileRef, { neuroType: p.id });
+                      } catch (e) {
+                        console.warn("User neuro update warning: ", e);
+                      }
+                      window.location.reload(); // Refresh to lock new styles instantly
+                    }}
+                    className={`py-3 px-4.5 rounded-2xl border text-xs font-mono font-bold text-left transition-all cursor-pointer pointer-events-auto ${
+                      isActive 
+                        ? 'bg-[#5c7c64] border-transparent text-white shadow-sm' 
+                        : 'bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           
           {/* Card 1: Acessibilidade */}
           <div className="p-6.5 rounded-[2rem] bg-white border border-stone-200/40 shadow-[0_3px_15px_rgba(21,46,34,0.01)] space-y-5">

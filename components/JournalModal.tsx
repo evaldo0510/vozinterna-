@@ -59,6 +59,46 @@ export const JournalModal: React.FC<JournalModalProps> = ({
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
 
+  // AI Summarization
+  const [isAiSummarizing, setIsAiSummarizing] = useState(false);
+
+  const handleAiSummarize = async () => {
+    if (!currentText.trim()) return;
+    setIsAiSummarizing(true);
+    setSpeechError(null);
+    try {
+      const response = await fetch('/api/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: lang === 'pt' 
+            ? `Por favor, atue como a Voz Interior (guia de Poesia Cognitiva Hipnótica, um mestre da cura poética-cognitiva). Resuma e reconstrua a seguinte reflexão ditada por voz em uma de entrada de diário harmoniosa, profundamente reconfortante, lírica e curativa. Escreva em primeira pessoa ("Eu..."). Limite o diário a no máximo 1 parágrafo robusto e fluido de até 3 frases líricas tocantes. Retorne EXCLUSIVAMENTE o texto final do diário, sem qualquer introdução, notas adicionais ou aspas extras.
+
+Reflexão ditada: "${currentText}"`
+            : `Please act as the Inner Voice (expert in Poetic Cognitive Therapy). Summarize and restructure the following voice reflection into a deeply comforting, lyrical, and healing journal entry. Write in the first person ("I..."). Limit it to a single fluid paragraph of up to 3 touching lyrical sentences. Return ONLY the final output itself, with no introduction, headers, extra quotes, or concluding comments.
+
+Voice reflection: "${currentText}"`
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(lang === 'pt' ? 'Erro na comunicação com a Voz Interior.' : 'Communication with Inner Voice failed.');
+      }
+
+      const data = await response.json();
+      if (data.reply) {
+        setCurrentText(data.reply.trim());
+      } else {
+        throw new Error(lang === 'pt' ? 'Sintonia poética inacessível.' : 'Poetic resonance inaccessible.');
+      }
+    } catch (err: any) {
+      console.error("AI summarization failed:", err);
+      setSpeechError(err.message || (lang === 'pt' ? 'Falha ao processar resumo ecológico PCH.' : 'PCH cognitive summary failed.'));
+    } finally {
+      setIsAiSummarizing(false);
+    }
+  };
+
   const text = TRANSLATIONS[lang].journal;
 
   // Cleanup speech on unmount
@@ -623,6 +663,46 @@ export const JournalModal: React.FC<JournalModalProps> = ({
           }`}
           autoFocus
         />
+
+        {/* Voice and Spoken Reflection AI Summarizer Interaction */}
+        {currentText.trim().length > 10 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4.5 rounded-3xl bg-teal-500/5 border border-teal-500/10 mb-6 mt-4 animate-fade-in text-left">
+            <div className="flex items-start gap-3 flex-1">
+              <div className="p-2 bg-teal-500/10 rounded-xl text-teal-400 shrink-0">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-xs font-serif font-bold text-stone-200">
+                  {lang === 'pt' ? 'Resumo Poético com IA ✨' : 'Poetic AI Summarizer ✨'}
+                </p>
+                <p className="text-[10px] text-stone-400 font-light leading-relaxed">
+                  {lang === 'pt' 
+                    ? 'Use a inteligência cognitiva para sintetizar e polir o seu desabafo falado ou escrito.' 
+                    : 'Transform your spoken thoughts or long text into a condensed, peaceful reflection.'}
+                </p>
+              </div>
+            </div>
+            
+            <button
+              type="button"
+              onClick={handleAiSummarize}
+              disabled={isAiSummarizing}
+              className="px-5 py-2.5 rounded-2xl bg-teal-500 hover:bg-teal-400 text-stone-950 text-xs font-bold font-mono tracking-wider uppercase flex items-center gap-2 hover:shadow-[0_0_15px_rgba(20,184,166,0.25)] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            >
+              {isAiSummarizing ? (
+                <>
+                  <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>{lang === 'pt' ? 'Polindo...' : 'Summarizing...'}</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{lang === 'pt' ? 'Resumir com IA' : 'Summarize via AI'}</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Bottom Collapsible Settings panel for tags/quicknotes */}
         <div className={`mt-8 border-t pt-6 space-y-4 ${

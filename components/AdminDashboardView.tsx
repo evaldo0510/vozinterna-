@@ -17,6 +17,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
   const [activeTab, setActiveTab] = useState<'users' | 'system' | 'logs' | 'neuro_analytics'>('users');
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [allNeuroProfiles, setAllNeuroProfiles] = useState<any[]>([]);
+  const [loadingNeuroProfiles, setLoadingNeuroProfiles] = useState(true);
 
   // Real-time user filter search term
   const [searchTerm, setSearchTerm] = useState('');
@@ -197,6 +199,31 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
       }, (err) => {
         console.error("Failed to load user database inside Admin dashboard", err);
         setLoadingUsers(false);
+      });
+    }
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  // Load registered user neuro profiles live from Firestore
+  useEffect(() => {
+    let unsubscribe = () => {};
+    if (currentUser?.isAdmin) {
+      setLoadingNeuroProfiles(true);
+      const colRef = collection(db, 'user_neuro_profile');
+      unsubscribe = onSnapshot(colRef, (snapshot) => {
+        const list: any[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({
+            id: docSnap.id,
+            ...docSnap.data()
+          });
+        });
+        setAllNeuroProfiles(list);
+        setLoadingNeuroProfiles(false);
+      }, (err) => {
+        console.error("Failed to load user neuro profiles inside Admin dashboard", err);
+        setLoadingNeuroProfiles(false);
       });
     }
 
@@ -533,23 +560,23 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
 
       {/* Overview Analytics Metrics Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-stone-900/40 border border-stone-850/60 p-4 rounded-3xl backdrop-blur-md">
+        <div className="neu-card p-4 rounded-3xl">
           <span className="text-[9px] uppercase tracking-widest text-stone-500 font-mono block">Membros Registrados</span>
           <span className="text-2xl font-mono font-bold text-teal-400 mt-1 block">{allUsers.length}</span>
         </div>
-        <div className="bg-stone-900/40 border border-stone-850/60 p-4 rounded-3xl backdrop-blur-md">
+        <div className="glass-panel p-4 rounded-3xl">
           <span className="text-[9px] uppercase tracking-widest text-stone-500 font-mono block">Ativos Recentes</span>
           <span className="text-2xl font-mono font-bold text-amber-400 mt-1 block">
             {allUsers.filter(u => new Date(u.lastActive).getTime() > Date.now() - 24 * 60 * 60 * 1000).length}
           </span>
         </div>
-        <div className="bg-stone-900/40 border border-stone-850/60 p-4 rounded-3xl backdrop-blur-md">
+        <div className="neu-card p-4 rounded-3xl">
           <span className="text-[9px] uppercase tracking-widest text-stone-500 font-mono block">Perfis TDAH / Down / Autismo</span>
           <span className="text-2xl font-mono font-bold text-indigo-400 mt-1 block">
             {allUsers.filter(u => u.neuroMode && u.neuroMode !== 'natural').length}
           </span>
         </div>
-        <div className="bg-stone-900/40 border border-stone-850/60 p-4 rounded-3xl backdrop-blur-md">
+        <div className="glass-panel p-4 rounded-3xl">
           <span className="text-[9px] uppercase tracking-widest text-stone-500 font-mono block">Pontos Cultivados</span>
           <span className="text-2xl font-mono font-bold text-rose-400 mt-1 block">
             {allUsers.reduce((sum, u) => sum + (u.points || 0), 0)} XP
@@ -561,7 +588,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Users Table Column */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="bg-stone-900/30 border border-stone-850 rounded-3xl p-5 overflow-hidden relative">
+            <div className="neu-card rounded-3xl p-5 overflow-hidden relative">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5">
                 <div>
                   <h3 className="font-serif text-sm tracking-widest text-stone-300 uppercase">{lang === 'pt' ? 'Banco de Dados' : 'User Database'}</h3>
@@ -938,7 +965,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
           <div className="lg:col-span-1 space-y-4">
             
             {/* Pie Chart: Plan distribution */}
-            <div className="bg-stone-900/30 border border-stone-850 rounded-3xl p-5 flex flex-col justify-between h-80 relative overflow-hidden backdrop-blur-md">
+            <div className="glass-panel rounded-3xl p-5 flex flex-col justify-between h-80 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/5 rounded-full blur-2xl"></div>
               <div className="border-b border-stone-900 pb-2 mb-2 relative z-10">
                 <h4 className="font-serif text-xs uppercase tracking-widest text-stone-400">
@@ -993,7 +1020,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
             </div>
 
             {/* Line Chart: Registrations in last 30 days */}
-            <div className="bg-stone-900/30 border border-stone-850 rounded-3xl p-5 flex flex-col justify-between h-80 relative overflow-hidden backdrop-blur-md">
+            <div className="neu-card rounded-3xl p-5 flex flex-col justify-between h-80 relative overflow-hidden">
               <div className="absolute top-0 right-5 w-24 h-24 bg-teal-500/5 rounded-full blur-2xl"></div>
               <div className="border-b border-stone-900 pb-2 mb-2 relative z-10">
                 <h4 className="font-serif text-xs uppercase tracking-widest text-stone-400">
@@ -1048,13 +1075,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
 
       {activeTab === 'neuro_analytics' && (
         <div className="p-1 animate-fade-in">
-          <NeuroAnalyticsDashboard users={allUsers} lang={lang} />
+          <NeuroAnalyticsDashboard users={allUsers} neuroProfiles={allNeuroProfiles} lang={lang} />
         </div>
       )}
 
       {activeTab === 'system' && (
         /* Dynamic system editing (Gestão de Respostas do Dr Evaldo sem alterar o código!) */
-        <div className="bg-stone-900/30 border border-stone-850 rounded-3xl p-6 space-y-6 animate-fade-in font-sans">
+        <div className="glass-panel rounded-3xl p-6 space-y-6 animate-fade-in font-sans">
           <div className="flex justify-between items-center border-b border-stone-900 pb-3">
             <div>
               <h3 className="font-serif text-sm tracking-widest text-stone-300 uppercase">Gestão da Voz do Dr. Evaldo</h3>
@@ -1114,7 +1141,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
 
       {activeTab === 'logs' && (
         /* Administrative Activity Logs displaying chronological list */
-        <div className="bg-stone-900/30 border border-stone-850 rounded-3xl p-6 space-y-4 animate-fade-in font-sans">
+        <div className="neu-card rounded-3xl p-6 space-y-4 animate-fade-in font-sans">
           <div className="border-b border-stone-950 pb-3 flex flex-row justify-between items-center">
             <div>
               <h3 className="font-serif text-sm tracking-widest text-stone-300 uppercase">
