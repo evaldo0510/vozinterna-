@@ -44,6 +44,11 @@
           "type": "boolean",
           "description": "Enables enhanced visual contrast and auditory descriptions."
         },
+        "neuroMode": {
+          "type": "string",
+          "enum": ["normal", "tdah", "autismo", "ansiedade", "idoso", "dislexia", "tea_tdah"],
+          "description": "Adaptive experience mode for neurodivergent pathways."
+        },
         "dailyConversations": {
           "type": "integer",
           "description": "Number of successfully completed conversations today."

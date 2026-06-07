@@ -12,6 +12,8 @@ export type UserPlan = 'visitor' | 'member' | 'guardian';
 
 export type NeurodivergentMode = 'natural' | 'adhd' | 'autism' | 'dyslexia' | 'anxiety' | 'inclusive' | 'down' | 'senior' | 'child' | 'gifted' | 'burnout' | 'grief';
 
+export type NeuroMode = 'normal' | 'tdah' | 'autismo' | 'ansiedade' | 'idoso' | 'dislexia' | 'tea_tdah';
+
 export interface GardenPlant {
   id: string;
   type: 'flower' | 'tree' | 'shrub' | 'succulent' | 'fern' | 'flower2';
@@ -37,7 +39,8 @@ export interface User {
   level?: number;
   avatar?: string;
   communicationPreference?: 'voice' | 'text' | 'image' | 'hybrid';
-  neuroMode?: NeurodivergentMode;
+  neuroMode?: NeuroMode | NeurodivergentMode;
+  seekingGoal?: string;
   emotionalState?: string;
   manifestoStep?: number;
   manifestoCompleted?: boolean;

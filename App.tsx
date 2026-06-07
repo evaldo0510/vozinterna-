@@ -25,6 +25,7 @@ import { TuningPopover } from './components/TuningPopover';
 import { PortalView } from './components/PortalView';
 import { EspelhoView } from './components/EspelhoView';
 import { SoproBalloonView } from './components/SoproBalloonView';
+import { AdaptiveExperienceEngine } from './components/AdaptiveExperienceEngine';
 
 import { auth, db, OperationType, handleFirestoreError } from './lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -501,7 +502,7 @@ function App() {
             )}
 
             {activeScreen === 'home' && (
-              <HomeView 
+              <AdaptiveExperienceEngine 
                 user={currentUser}
                 lang={lang}
                 onNavigateToScreen={(screen) => setActiveScreen(screen)}
@@ -509,6 +510,8 @@ function App() {
                 onToggleTheme={() => setIsLightTheme(prev => !prev)}
                 onAddToast={addToast}
                 onOpenTuningPopover={() => setShowTuningPopover(true)}
+                onTextSizeChange={setTextSize}
+                onAccessibilityModeChange={setAccessibilityActive}
               />
             )}
 

@@ -90,6 +90,18 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
     }
   };
 
+  const translateGoal = (goal: string | undefined) => {
+    switch(goal) {
+      case 'autoconhecimento': return lang === 'pt' ? '🧘 Autoconhecimento Profundo' : '🧘 Deep Self-knowledge';
+      case 'organizacao': return lang === 'pt' ? '📅 Organização & Clareza' : '📅 Calm Routines & Focus';
+      case 'apoio': return lang === 'pt' ? '🫂 Apoio Emocional Seguro' : '🫂 Secure Emotional Support';
+      case 'talentos': return lang === 'pt' ? '✨ Desenvolver Talentos & Dons' : '✨ Talent & Potential Development';
+      case 'companhia_vocal': return lang === 'pt' ? '🎤 Companhia Vocal Ativa' : '🎤 Spoken Conversational Companion';
+      case 'reabilitacao': return lang === 'pt' ? '🧩 Reabilitação & Terapia Cognitiva' : '🧩 Cognitive Therapy & Memory';
+      default: return lang === 'pt' ? '🧘 Autoconhecimento Profundo' : '🧘 Deep Self-knowledge';
+    }
+  };
+
   const exportPDF = () => {
     try {
       const doc = new jsPDF({
@@ -533,6 +545,14 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
             <div>
               <p className="text-[10px] uppercase text-stone-500 tracking-wider font-semibold">{lang === 'pt' ? 'Experiência' : 'Cognitive Style'}</p>
               <p className="text-stone-300 font-semibold text-xs mt-0.5">{translateNeuro(user.neuroMode)}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3 text-xs pt-2 border-t border-stone-900/60">
+            <Smile className="w-4 h-4 text-teal-400 shrink-0" />
+            <div>
+              <p className="text-[10px] uppercase text-stone-500 tracking-wider font-semibold">{lang === 'pt' ? 'Objetivo do Cultivo' : 'Cultivation Goal'}</p>
+              <p className="text-stone-300 font-semibold text-xs mt-0.5">{translateGoal(user.seekingGoal)}</p>
             </div>
           </div>
         </div>

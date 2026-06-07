@@ -13,8 +13,9 @@ interface ProfileChoiceViewProps {
 }
 
 export const ProfileChoiceView: React.FC<ProfileChoiceViewProps> = ({ lang, currentUser, onSuccess, onLogout }) => {
-  const [commPreference, setCommPreference] = useState<'voice' | 'text' | 'image' | 'hybrid'>('hybrid');
-  const [adaptationMode, setAdaptationMode] = useState<NeurodivergentMode>('natural');
+  const [commPreference, setCommPreference] = useState<'voice' | 'text' | 'image' | 'hybrid'>(currentUser?.communicationPreference || 'hybrid');
+  const [adaptationMode, setAdaptationMode] = useState<NeurodivergentMode>(currentUser?.neuroMode || 'natural');
+  const [seekingGoal, setSeekingGoal] = useState<string>(currentUser?.seekingGoal || 'autoconhecimento');
   const [saving, setSaving] = useState(false);
 
   const commOptions = [
@@ -25,17 +26,26 @@ export const ProfileChoiceView: React.FC<ProfileChoiceViewProps> = ({ lang, curr
   ];
 
   const adaptationOptions = [
-    { id: 'natural' as const, label: lang === 'pt' ? 'Padrão 🍃' : 'Standard 🍃', desc: lang === 'pt' ? 'Experiência rítmica padrão' : 'Standard rhythmic flow' },
+    { id: 'natural' as const, label: lang === 'pt' ? 'Neurotípico 🍃' : 'Neurotypical 🍃', desc: lang === 'pt' ? 'Experiência rítmica padrão' : 'Standard rhythmic flow' },
     { id: 'adhd' as const, label: lang === 'pt' ? 'TDAH ⚡' : 'ADHD ⚡', desc: lang === 'pt' ? 'Prazos dinâmicos e sementes de foco' : 'Dynamic flow & focus seeds' },
     { id: 'autism' as const, label: lang === 'pt' ? 'Autismo 🧩' : 'Autism 🧩', desc: lang === 'pt' ? 'Estrutura previsível e ícones' : 'Predictable structure & icons' },
     { id: 'dyslexia' as const, label: lang === 'pt' ? 'Dislexia 📚' : 'Dyslexia 📚', desc: lang === 'pt' ? 'Fontes legíveis, áudio-leitor' : 'Clean fonts, audio helper' },
     { id: 'anxiety' as const, label: lang === 'pt' ? 'Ansiedade 🌬️' : 'Anxiety 🌬️', desc: lang === 'pt' ? 'Respiração guiada e relaxamento' : 'Guided breathing & safety' },
-    { id: 'senior' as const, label: lang === 'pt' ? 'Idosos 👵' : 'Seniors 👵', desc: lang === 'pt' ? 'Contraste alto, legado e memórias' : 'High contrast, memory logs' },
+    { id: 'senior' as const, label: lang === 'pt' ? 'Idoso 👵' : 'Senior 👵', desc: lang === 'pt' ? 'Contraste alto, legado e memórias' : 'High contrast, memory logs' },
     { id: 'child' as const, label: lang === 'pt' ? 'Infantil 👶' : 'Children 👶', desc: lang === 'pt' ? 'Narrativas lúdicas e estrelas' : 'Playful stories & rewards' },
-    { id: 'down' as const, label: lang === 'pt' ? 'S. Down ❤️' : 'S. Down ❤️', desc: lang === 'pt' ? 'Botões expandidos e áudio total' : 'Expanded buttons & full audio' },
-    { id: 'gifted' as const, label: lang === 'pt' ? 'A. Habilidades 🌌' : 'A. Habilidades 🌌', desc: lang === 'pt' ? 'Desafios conceituais e reflexões' : 'Conceptual depth & mind maps' },
+    { id: 'down' as const, label: lang === 'pt' ? 'S. Down ❤️' : 'S. Down ❤️', desc: lang === 'pt' ? 'Botões expandidos e áudio total' : 'Expanded buttons & audio total' },
+    { id: 'gifted' as const, label: lang === 'pt' ? 'A. Habilidades 🌌' : 'A. Habilidades 🌌', desc: lang === 'pt' ? 'Desafios conceituais e reflexões' : 'Conceptual depth & maps' },
     { id: 'burnout' as const, label: lang === 'pt' ? 'Burnout 🔥' : 'Burnout 🔥', desc: lang === 'pt' ? 'Redução suave de estresse' : 'Decompression & inner fire' },
     { id: 'grief' as const, label: lang === 'pt' ? 'Luto 🌹' : 'Grief 🌹', desc: lang === 'pt' ? 'Honrar memórias e restaurar' : 'Honoring memories & healing' },
+  ];
+
+  const seekingOptions = [
+    { id: 'autoconhecimento', label: lang === 'pt' ? 'Autoconhecimento 🧘' : 'Self-knowledge 🧘', desc: lang === 'pt' ? 'Explorar emoções e mente profunda' : 'Explore deep emotional layers' },
+    { id: 'organizacao', label: lang === 'pt' ? 'Organização 📅' : 'Organization 📅', desc: lang === 'pt' ? 'Hábitos leves e clareza mental' : 'Calm routines & focus seeds' },
+    { id: 'apoio', label: lang === 'pt' ? 'Apoio Emocional 🫂' : 'Emotional Support 🫂', desc: lang === 'pt' ? 'Espaço de acolhimento sem julgamentos' : 'Secure judgment-free listening' },
+    { id: 'talentos', label: lang === 'pt' ? 'Desenvolver Talentos ✨' : 'Develop Talents ✨', desc: lang === 'pt' ? 'Maximizar potencial criativo' : 'Unlock cognitive capacities' },
+    { id: 'companhia_vocal', label: lang === 'pt' ? 'Companhia Vocal 🎤' : 'Vocal Companionship 🎤', desc: lang === 'pt' ? 'Interagindo e conversando em voz' : 'Interactive spoken interactions' },
+    { id: 'reabilitacao', label: lang === 'pt' ? 'Reabilitação Cognitiva 🧩' : 'Cognitive Therapy 🧩', desc: lang === 'pt' ? 'Estímulos suaves e foco cognitivo' : 'Gentle memory & sensory aids' },
   ];
 
   const handleSave = async () => {
@@ -68,13 +78,15 @@ export const ProfileChoiceView: React.FC<ProfileChoiceViewProps> = ({ lang, curr
           manifestoCompleted: false,
           profileCompleted: true,
           communicationPreference: commPreference,
-          neuroMode: chosenNeuroMode
+          neuroMode: chosenNeuroMode,
+          seekingGoal: seekingGoal
         };
         await setDoc(docRef, userObj);
       } else {
         await updateDoc(docRef, {
           communicationPreference: commPreference,
           neuroMode: chosenNeuroMode,
+          seekingGoal: seekingGoal,
           accessibilityMode: enableAccessibility,
           profileCompleted: true,
           lastActive: new Date().toISOString()
@@ -154,9 +166,9 @@ export const ProfileChoiceView: React.FC<ProfileChoiceViewProps> = ({ lang, curr
         {/* Question 2 */}
         <div className="space-y-4 pt-4 border-t border-stone-900">
           <div className="flex items-center space-x-3">
-            <span className="text-lg">♿</span>
+            <span className="text-lg">🧠</span>
             <h3 className="text-xs uppercase font-bold text-stone-300 tracking-wider">
-              {lang === 'pt' ? 'Você deseja uma experiência adaptada?' : 'Do you want an adapted experience?' }
+              {lang === 'pt' ? 'Como você se identifica?' : 'How do you identify?' }
             </h3>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -174,6 +186,35 @@ export const ProfileChoiceView: React.FC<ProfileChoiceViewProps> = ({ lang, curr
                   }`}
                 >
                   <p className="font-bold text-[11px]">{opt.label}</p>
+                  <p className="text-[9px] text-stone-500 leading-tight block mt-1 leading-snug">{opt.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Question 3 */}
+        <div className="space-y-4 pt-4 border-t border-stone-900">
+          <div className="flex items-center space-x-3">
+            <span className="text-lg">🌱</span>
+            <h3 className="text-xs uppercase font-bold text-stone-300 tracking-wider">
+              {lang === 'pt' ? 'O que você procura hoje?' : 'What are you looking for today?' }
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {seekingOptions.map((opt) => {
+              const isActive = seekingGoal === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setSeekingGoal(opt.id)}
+                  className={`p-3 text-left rounded-xl border transition-all text-stone-300 flex flex-col justify-between h-20 active:scale-[0.99] cursor-pointer ${
+                    isActive 
+                      ? 'border-teal-500/50 bg-teal-500/5 text-teal-300' 
+                      : 'border-stone-900 bg-[#161515]/30 hover:border-stone-800'
+                  }`}
+                >
+                  <p className="font-bold text-[11px] leading-tight">{opt.label}</p>
                   <p className="text-[9px] text-stone-500 leading-tight block mt-1 leading-snug">{opt.desc}</p>
                 </button>
               );

@@ -137,6 +137,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({
   const [inputSensitivity, setInputSensitivity] = useState(0.01);
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'calibration' | 'overview'>('calibration');
   const [voice, setVoice] = useState<'essencia' | 'esperanca' | 'serenidade' | 'infantil' | 'sabedoria'>('essencia');
   const [voicePitch, setVoicePitch] = useState(1.0);
   const [speechRate, setSpeechRate] = useState(1.0);
@@ -2744,9 +2745,211 @@ Return a JSON object with:
                  </button>
               </div>
 
+               {/* Settings Tab Navigation */}
+               <div className="grid grid-cols-2 gap-1 p-1 bg-stone-900/60 rounded-xl border border-stone-800">
+                  <button
+                     onClick={() => setSettingsTab('calibration')}
+                     className={`py-2 text-[10px] uppercase font-bold tracking-widest font-mono rounded-lg transition-all ${
+                        settingsTab === 'calibration'
+                        ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
+                        : 'text-stone-500 hover:text-stone-300'
+                     }`}
+                  >
+                     {lang === 'pt' ? '🔬 Calibração' : '🔬 Calibration'}
+                  </button>
+                  <button
+                     onClick={() => setSettingsTab('overview')}
+                     className={`py-2 text-[10px] uppercase font-bold tracking-widest font-mono rounded-lg transition-all ${
+                        settingsTab === 'overview'
+                        ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
+                        : 'text-stone-500 hover:text-stone-300'
+                     }`}
+                  >
+                     {lang === 'pt' ? '📖 Visão Geral (PCH)' : '📖 Voice Overview'}
+                  </button>
+               </div>
+
               <div className="space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar pr-1">
                  
-                 {/* Motor Adaptativo PCH Engine System Stats */}
+                 {settingsTab === 'overview' ? (
+                     <div className="space-y-4 text-left font-sans select-none pb-4">
+                        <div className="p-4 bg-teal-950/10 border border-teal-900/30 rounded-2xl space-y-2">
+                           <h4 className="text-xs font-serif font-black uppercase text-teal-300 tracking-wide">
+                              {lang === 'pt' ? 'Como a Voz do Dr. Evaldo se Adapta 🧬' : 'How Dr. Evaldo\'s Voice Adapts 🧬'}
+                           </h4>
+                           <p className="text-[10px] text-stone-400 leading-relaxed font-light">
+                              {lang === 'pt' 
+                                 ? 'A Poesia Cognitiva Hipnótica (PCH) modula dinamicamente a velocidade, a tonalidade de som (altura) e os filtros ambientais para oferecer o máximo conforto e processamento ideal para cada perfil neurodivergente.' 
+                                 : 'Hypnotic Cognitive Poetry (PCH) dynamically modulates pitch, pace, and sound triggers to match cognitive processing needs across all neuroprofiles.'}
+                           </p>
+                        </div>
+
+                        <div className="space-y-2.5">
+                           {[
+                              {
+                                 id: 'natural',
+                                 icon: '🍃',
+                                 namePt: 'Neurotípico (Padrão)',
+                                 nameEn: 'Neurotypical (Default)',
+                                 rate: '1.00x',
+                                 pitch: '1.00x',
+                                 filterPt: 'Silêncio Terrestre',
+                                 filterEn: 'Terrestrial Silence',
+                                 descPt: 'Padrão estável ideal para escuta e relaxamento geral de nível diário.',
+                                 descEn: 'Standard stable pacing suited for day-to-day mindfulness loops.'
+                              },
+                              {
+                                 id: 'adhd',
+                                 icon: '⚡',
+                                 namePt: 'TDAH (Foco Dinâmico)',
+                                 nameEn: 'ADHD (Dynamic Focus)',
+                                 rate: '1.15x',
+                                 pitch: '1.05x',
+                                 filterPt: 'Ruído Branco (Espaço)',
+                                 filterEn: 'Atomic Focus (Space)',
+                                 descPt: 'Estímulo rápido de cadência rítmica para prender ganchos de atenção de TDAH.',
+                                 descEn: 'Fast active spacing designed to maintain focus and attention anchoring.'
+                              },
+                              {
+                                 id: 'autism',
+                                 icon: '🧩',
+                                 namePt: 'Autismo (Estruturado)',
+                                 nameEn: 'Autism (Structured)',
+                                 rate: '0.85x',
+                                 pitch: '0.90x',
+                                 filterPt: 'Silêncio Previsível',
+                                 filterEn: 'Predictable Calm',
+                                 descPt: 'Voz constante e tons graves com mínima sobrecarga sensorial acústica.',
+                                 descEn: 'Smooth predictable cadence with reduced auditory load and high stability.'
+                              },
+                              {
+                                 id: 'anxiety',
+                                 icon: '🌬️',
+                                 namePt: 'Ansiedade (Respirador)',
+                                 nameEn: 'Anxiety (Comfort-Breathe)',
+                                 rate: '0.78x',
+                                 pitch: '0.88x',
+                                 filterPt: 'Chuva Reconfortante',
+                                 filterEn: 'Luminous Rain',
+                                 descPt: 'Cadência compassiva sincronizada com ciclos de ancoragem física e calma.',
+                                 descEn: 'Deep soothing breath gaps with comforting low frequencies to soothe heart rate.'
+                              },
+                              {
+                                 id: 'senior',
+                                 icon: '👵',
+                                 namePt: 'Idoso (Clareza)',
+                                 nameEn: 'Seniors (Clear Connection)',
+                                 rate: '0.82x',
+                                 pitch: '0.95x',
+                                 filterPt: 'Sons do Bosque (Mata)',
+                                 filterEn: 'Clear Forest Sounds',
+                                 descPt: 'Enunciação clara, contrastes sonoros elevados e suporte vocal amigável.',
+                                 descEn: 'Slower, highly articulate parameters with memory guidance support.'
+                              },
+                              {
+                                 id: 'child',
+                                 icon: '👶',
+                                 namePt: 'Infantil (Lúdico)',
+                                 nameEn: 'Children (Playful Space)',
+                                 rate: '1.05x',
+                                 pitch: '1.15x',
+                                 filterPt: 'Eco das Estrelas (Espaço)',
+                                 filterEn: 'Stellar Echoes',
+                                 descPt: 'Frases coloridas, tom alegre elevado de fada e narrativa animada.',
+                                 descEn: 'Warm lighthearted delivery with rewarding tones for playful interactions.'
+                              },
+                              {
+                                 id: 'down',
+                                 icon: '❤️',
+                                 namePt: 'S. Down (Acessível)',
+                                 nameEn: 'Down Syndrome (Assistive)',
+                                 rate: '0.85x',
+                                 pitch: '1.00x',
+                                 filterPt: 'Sons do Bosque',
+                                 filterEn: 'Forest Ambient',
+                                 descPt: 'Tom doce, tempo de processamento estendido e botões expandidos.',
+                                 descEn: 'Patience-centric delay intervals with warm vocal guidance reinforcement.'
+                              },
+                              {
+                                 id: 'dyslexia',
+                                 icon: '📚',
+                                 namePt: 'Dislexia (Áudio Tutor)',
+                                 nameEn: 'Dyslexia (Audio Reader)',
+                                 rate: '0.95x',
+                                 pitch: '1.00x',
+                                 filterPt: 'Melodia PCH (Vento)',
+                                 filterEn: 'Melodic Wind',
+                                 descPt: 'Tom rítmico que facilita a absorção auditiva integral e apoio fonético.',
+                                 descEn: 'Melodic phonetic flow designed to replace complex written hurdles with audio.'
+                              },
+                              {
+                                 id: 'gifted',
+                                 icon: '🌌',
+                                 namePt: 'A. Habilidades (Denso)',
+                                 nameEn: 'Gifted (Conceptual Matrix)',
+                                 rate: '1.25x',
+                                 pitch: '1.00x',
+                                 filterPt: 'Espaço Cósmico',
+                                 filterEn: 'Deep Cosmic Resonance',
+                                 descPt: 'Vocabulário denso, rítmica ágil e conexões de alta velocidade analítica.',
+                                 descEn: 'Fast conceptual delivery for rapid mental schema processing.'
+                              },
+                              {
+                                 id: 'burnout',
+                                 icon: '🔥',
+                                 namePt: 'Burnout (Descompressão)',
+                                 nameEn: 'Burnout (Decompression)',
+                                 rate: '0.80x',
+                                 pitch: '0.90x',
+                                 filterPt: 'Chuva Reconfortante',
+                                 filterEn: 'Restorative Rain',
+                                 descPt: 'Voz calma e sem exigência alguma para reabastecimento bio-energético.',
+                                 descEn: 'Quiet non-demanding flow focusing on absolute recovery and rest.'
+                              },
+                              {
+                                 id: 'grief',
+                                 icon: 'rose',
+                                 namePt: 'Luto (Acolhimento)',
+                                 nameEn: 'Grief (Empathy Anchor)',
+                                 rate: '0.75x',
+                                 pitch: '0.85x',
+                                 filterPt: 'Silêncio Terrestre',
+                                 filterEn: 'Sanctuary Silence',
+                                 descPt: 'Compassividade amorosa sem cobranças para honrar seus sentimentos.',
+                                 descEn: 'Warm compassionate safety designed to gently console and hold memories.'
+                              }
+                           ].map((prof) => (
+                              <div key={prof.id} className="p-3 bg-stone-900 border border-stone-850 rounded-2xl space-y-1.5 hover:border-teal-500/20 transition-all">
+                                 <div className="flex justify-between items-center bg-transparent">
+                                    <div className="flex items-center space-x-1.5 text-xs font-bold text-stone-200">
+                                       <span>{prof.icon === 'rose' ? '🌹' : prof.icon}</span>
+                                       <span>{lang === 'pt' ? prof.namePt : prof.nameEn}</span>
+                                    </div>
+                                    <div className="flex items-center space-x-1">
+                                       <span className="text-[8px] font-mono bg-stone-950 border border-stone-850 px-1 py-0.5 rounded text-stone-400">
+                                          {lang === 'pt' ? 'Vel: ' : 'Spd: '}{prof.rate}
+                                       </span>
+                                       <span className="text-[8px] font-mono bg-stone-950 border border-stone-850 px-1 py-0.5 rounded text-stone-400">
+                                          {lang === 'pt' ? 'Tom: ' : 'Pch: '}{prof.pitch}
+                                       </span>
+                                    </div>
+                                 </div>
+                                 
+                                 <p className="text-[9.5px] text-stone-400 leading-relaxed font-light">
+                                    {lang === 'pt' ? prof.descPt : prof.descEn}
+                                 </p>
+                                 
+                                 <div className="flex items-center space-x-1 bg-transparent">
+                                    <span className="text-[8px] font-mono text-teal-400 font-bold uppercase tracking-wider">{lang === 'pt' ? 'Atmosfera: ' : 'Sound: '}</span>
+                                    <span className="text-[8px] font-mono text-stone-400">{lang === 'pt' ? prof.filterPt : prof.filterEn}</span>
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     </div>
+                 ) : (
+                     <div className="space-y-4">
+                        {/* Motor Adaptativo PCH Engine System Stats */}
                  <div className="p-4 bg-teal-950/10 border border-teal-900/30 rounded-xl flex flex-col space-y-3 font-sans text-left">
                     <div className="flex items-center space-x-2">
                        <Activity className="w-4 h-4 text-teal-400 animate-pulse" />
@@ -3047,13 +3250,14 @@ Return a JSON object with:
                           className="text-[9px] py-1 px-2.5 border border-teal-900/40 hover:border-teal-500 text-teal-400 hover:bg-teal-950/20 active:scale-95 disabled:opacity-30 disabled:border-stone-850 disabled:text-stone-600 transition-all font-mono uppercase rounded-full tracking-wider"
                        >
                           {lang === 'pt' ? 'Simular +1' : 'Simulate +1'}
-                       </button>
-                    </div>
-                 </div>
+						</button>
+					</div>
+				</div>
+					</div>
+				)}
+			</div>
 
-              </div>
-
-              <button 
+				<button 
                  onClick={() => setShowSettings(false)} 
                  className="w-full py-3 bg-stone-200 hover:bg-white text-stone-900 text-xs font-bold uppercase tracking-widest rounded"
               >

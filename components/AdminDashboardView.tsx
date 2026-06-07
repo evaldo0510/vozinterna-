@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { User, Language } from '../types';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, doc, getDocs, setDoc, getDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
-import { Users, Settings, Plus, Save, Activity, Heart, Eye, BookOpen, AlertCircle, Sparkles, Trash2, Download, Search, X, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Users, Settings, Plus, Save, Activity, Heart, Eye, BookOpen, AlertCircle, Sparkles, Trash2, Download, Search, X, ArrowUpDown, ChevronUp, ChevronDown, BarChart2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
+import { NeuroAnalyticsDashboard } from './NeuroAnalyticsDashboard';
 
 interface AdminDashboardViewProps {
   currentUser: User | null;
@@ -13,7 +14,7 @@ interface AdminDashboardViewProps {
 }
 
 export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentUser, lang, onImpersonateUser }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'system' | 'logs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'system' | 'logs' | 'neuro_analytics'>('users');
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
 
@@ -490,7 +491,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
         </div>
 
         {/* Tab triggers */}
-        <div className="flex bg-stone-900/50 p-1 rounded-2xl border border-stone-850">
+        <div className="flex bg-stone-900/50 p-1 rounded-2xl border border-stone-850 flex-wrap gap-1">
           <button
             onClick={() => setActiveTab('users')}
             className={`px-4 py-2 rounded-xl text-[10px] uppercase font-bold tracking-widest transition-all cursor-pointer flex items-center space-x-2 ${
@@ -499,6 +500,15 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
           >
             <Users className="w-3.5 h-3.5" />
             <span>{lang === 'pt' ? 'Usuários' : 'Users'} ({allUsers.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('neuro_analytics')}
+            className={`px-4 py-2 rounded-xl text-[10px] uppercase font-bold tracking-widest transition-all cursor-pointer flex items-center space-x-2 ${
+              activeTab === 'neuro_analytics' ? 'bg-teal-500 text-stone-950 font-black' : 'text-stone-500 hover:text-stone-300'
+            }`}
+          >
+            <BarChart2 className="w-3.5 h-3.5" />
+            <span>{lang === 'pt' ? 'NeuroMétricas' : 'NeuroMetrics'}</span>
           </button>
           <button
             onClick={() => setActiveTab('system')}
@@ -1033,6 +1043,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
             </div>
 
           </div>
+        </div>
+      )}
+
+      {activeTab === 'neuro_analytics' && (
+        <div className="p-1 animate-fade-in">
+          <NeuroAnalyticsDashboard users={allUsers} lang={lang} />
         </div>
       )}
 
