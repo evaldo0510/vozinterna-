@@ -18,8 +18,12 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+        request.auth.token.email_verified == true && 
+        (
+          request.auth.token.email == 'evaldo0510@gmail.com' ||
+          request.auth.token.email == 'ajariristartups@gmail.com' ||
+          request.auth.token.email == 'mentefelizterapias@gmail.com'
+        );
     }
 
     function isValidId(id) {
@@ -63,9 +67,9 @@ service cloud.firestore {
         && data.lastWatered is string;
     }
 
-    function isValidNeuroProfile(data) {
+    function isValidNeuroProfile(data, profileId) {
       return data.userId is string 
-        && data.userId == request.auth.uid 
+        && data.userId == profileId 
         && data.neuroType is string 
         && data.neuroType.size() <= 64
         && (!('preferredLanguage' in data) || (data.preferredLanguage is string && data.preferredLanguage.size() <= 64))
@@ -84,7 +88,7 @@ service cloud.firestore {
       allow create: if isOwner(userId) && isValidId(userId) && isValidUser(request.resource.data) 
                     && request.resource.data.id == userId 
                     && (
-                      (request.resource.data.isAdmin == false && request.resource.data.plan == 'member') ||
+                      (request.resource.data.isAdmin == false && request.resource.data.plan == 'essential') ||
                       (request.resource.data.isAdmin == true && request.resource.data.plan == 'guardian' && (
                         request.resource.data.email == 'evaldo0510@gmail.com' ||
                         request.resource.data.email == 'ajariristartups@gmail.com' ||
@@ -92,10 +96,11 @@ service cloud.firestore {
                       ))
                     );
       
-      allow update: if isOwner(userId) && isValidId(userId) && isValidUser(request.resource.data)
+      allow update: if (isOwner(userId) && isValidId(userId) && isValidUser(request.resource.data)
                     && request.resource.data.isAdmin == resource.data.isAdmin // Prevent self-elevation
                     && request.resource.data.plan == resource.data.plan // Prevent unauthorized plan upgrade
-                    && request.resource.data.id == resource.data.id; // Immutable UID
+                    && request.resource.data.id == resource.data.id) // Immutable UID
+                    || isAdmin();
 
       // Nested Journal Collection
       match /journals/{journalId} {
@@ -129,20 +134,71 @@ service cloud.firestore {
     match /user_neuro_profile/{profileId} {
       allow get, delete, list: if isOwner(profileId) || isAdmin();
       allow create: if isOwner(profileId) 
-                    && isValidNeuroProfile(request.resource.data) 
+                    && isValidNeuroProfile(request.resource.data, profileId) 
                     && request.resource.data.userId == request.auth.uid;
       allow update: if (isOwner(profileId) || isAdmin()) 
-                    && isValidNeuroProfile(request.resource.data);
+                    && isValidNeuroProfile(request.resource.data, profileId);
     }
 
     // System configurations read by users and managed by administrators
     match /system_config/{configId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
     // Administrative audit logs
     match /admin_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Complete Security Log collection
+    match /security_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Journeys and sub-collection for days
+    match /journeys/{journeyId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+
+      match /days/{dayId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin();
+      }
+    }
+
+    // Intellectual property library (CMS)
+    match /pch_library/{contentId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // AI Core Fine-Tuning configurations
+    match /ai_config/{configId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Anonymous system insights
+    match /global_insights/{insightId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Gamification settings
+    match /gamification_config/{itemId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Subscriptions Plan catalogs
+    match /subscription_plans/{planId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // PCH Sandbox Laboratory
+    match /pch_lab_sandbox/{sandboxId} {
       allow read, write: if isAdmin();
     }
   }

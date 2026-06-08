@@ -355,84 +355,242 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
               )}
             </AnimatePresence>
 
-            <div className="h-32 w-32 relative select-none flex items-center justify-center">
+            <div className="h-44 w-44 relative select-none flex items-center justify-center">
+              {/* Dynamic decorative visual glow rings around tree */}
+              <div className="absolute inset-0 rounded-full border border-teal-505/5 border-[#14B8A6]/5 animate-ping pointer-events-none" style={{ animationDuration: '4s' }} />
+              <div className="absolute w-[80%] h-[80%] rounded-full border border-dashed border-emerald-500/10 pointer-events-none animate-spin" style={{ animationDuration: '30s' }} />
+
               {gardenInfo.stage === 1 && (
-                <svg viewBox="0 0 100 100" fill="none" className="w-full h-full animate-pulse">
-                  <circle cx="50" cy="50" r="12" fill="url(#goldenGrad)" />
-                  <circle cx="50" cy="50" r="20" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.5" />
-                  <circle cx="50" cy="55" r="4" fill="#10B981" />
+                <motion.svg 
+                  viewBox="0 0 100 100" 
+                  fill="none" 
+                  className="w-full h-full"
+                  animate={{ y: [0, -3, 0] }}
+                  transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                >
+                  {/* Cosmic Seed Stage */}
+                  <circle cx="50" cy="50" r="14" fill="url(#cosmicSeedGrad)" className="filter drop-shadow-[0_0_12px_rgba(251,191,36,0.35)]" />
+                  <motion.circle 
+                    cx="50" cy="50" r="22" 
+                    stroke="#FBBF24" strokeWidth="1" strokeDasharray="4 4" strokeOpacity="0.4"
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 15, ease: "linear" }}
+                  />
+                  {/* Bud emergence */}
+                  <motion.path 
+                    d="M50 50 Q48 42, 50 36 M50 50 Q52 44, 55 38" 
+                    stroke="#34D399" strokeWidth="2.5" strokeLinecap="round"
+                    animate={{ scale: [0.9, 1.1, 0.9] }}
+                    transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                  />
                   <defs>
-                    <radialGradient id="goldenGrad" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(50 50) rotate(90) scale(12)">
-                      <stop stopColor="#F59E0B" stopOpacity="0.9" />
-                      <stop offset="1" stopColor="#D97706" />
+                    <radialGradient id="cosmicSeedGrad" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(50 50) rotate(90) scale(14)">
+                      <stop stopColor="#FBBF24" />
+                      <stop offset="0.75" stopColor="#D97706" />
+                      <stop offset="1" stopColor="#080B14" stopOpacity="0" />
                     </radialGradient>
                   </defs>
-                </svg>
+                </motion.svg>
               )}
 
               {gardenInfo.stage === 2 && (
-                <svg viewBox="0 0 100 100" fill="none" className="w-full h-full">
-                  <path d="M20 75 C40 70, 60 70, 80 75" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M50 73 Q45 50, 52 35" stroke="#10B981" strokeWidth="4.5" strokeLinecap="round" />
-                  <path d="M51 45 Q36 40, 38 30 Q47 33, 50 43" fill="#14B8A6" />
-                  <path d="M52 38 Q67 36, 68 25 Q58 29, 52 36" fill="#10B981" />
-                  <circle cx="52" cy="23" r="3" fill="#F59E0B" className="animate-ping" />
-                </svg>
+                <motion.svg 
+                  viewBox="0 0 100 100" 
+                  fill="none" 
+                  className="w-full h-full"
+                  animate={{ rotate: [-1, 1, -1] }}
+                  transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
+                >
+                  {/* Ground base line */}
+                  <path d="M20 78 C40 74, 60 74, 80 78" stroke="#101826" strokeWidth="3" strokeLinecap="round" />
+                  <path d="M20 78 C40 74, 60 74, 80 78" stroke="#14B8A6" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.3" />
+                  
+                  {/* Stem and Leaves path drawing and sway */}
+                  <motion.path 
+                    d="M50 76 Q45 52, 51 34" 
+                    stroke="#34D399" strokeWidth="4.5" strokeLinecap="round"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 1.2, ease: "easeOut" }}
+                  />
+                  {/* Left budding leaf */}
+                  <motion.path 
+                    d="M50 52 Q37 44, 38 34 Q46 38, 49 48" 
+                    fill="#14B8A6" 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.5, duration: 0.8 }}
+                  />
+                  {/* Right budding leaf */}
+                  <motion.path 
+                    d="M50 44 Q63 40, 64 28 Q57 32, 51 39" 
+                    fill="#34D399" 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.7, duration: 0.8 }}
+                  />
+                  <circle cx="51" cy="24" r="4.5" fill="#FBBF24" className="animate-pulse filter drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
+                </motion.svg>
               )}
 
               {gardenInfo.stage === 3 && (
-                <svg viewBox="0 0 100 100" fill="none" className="w-full h-full">
-                  <path d="M50 82 L50 48" stroke="#78350f" strokeWidth="7" strokeLinecap="round" />
-                  <path d="M50 55 Q35 45, 32 38" stroke="#78350f" strokeWidth="4" />
-                  <path d="M50 50 Q65 42, 68 36" stroke="#78350f" strokeWidth="4" />
-                  <circle cx="50" cy="36" r="17" fill="#10B981" fillOpacity="0.85" />
-                  <circle cx="34" cy="36" r="12" fill="#14B8A6" fillOpacity="0.8" />
-                  <circle cx="65" cy="34" r="13" fill="#10B981" fillOpacity="0.75" />
-                  <circle cx="50" cy="22" r="11" fill="#34d399" fillOpacity="0.9" />
-                </svg>
+                <motion.svg 
+                  viewBox="0 0 100 100" 
+                  fill="none" 
+                  className="w-full h-full"
+                  animate={{ y: [0, -1.5, 0], rotate: [-0.5, 0.5, -0.5] }}
+                  transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+                >
+                  {/* Tree trunk with deep roots anchor */}
+                  <path d="M50 82 L50 48" stroke="#1E293B" strokeWidth="7" strokeLinecap="round" />
+                  <path d="M50 82 L50 48" stroke="#14B8A6" strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.4" />
+                  <path d="M38 84 Q50 80, 62 84" stroke="#101826" strokeWidth="2.5" strokeLinecap="round" />
+
+                  {/* Gentle curved side branches */}
+                  <path d="M50 58 Q34 48, 30 40" stroke="#1E293B" strokeWidth="4" strokeLinecap="round" />
+                  <path d="M50 52 Q66 45, 70 38" stroke="#1E293B" strokeWidth="4" strokeLinecap="round" strokeOpacity="0.8" />
+
+                  {/* Foilage circles with premium gradients and breathing scale animations */}
+                  <motion.circle 
+                    cx="50" cy="35" r="16" 
+                    fill="#34D399" fillOpacity="0.3" stroke="#34D399" strokeWidth="1" strokeOpacity="0.3"
+                    className="backdrop-blur-sm"
+                    animate={{ scale: [1, 1.05, 1] }} 
+                    transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }} 
+                  />
+                  <motion.circle 
+                    cx="32" cy="35" r="11" 
+                    fill="#14B8A6" fillOpacity="0.25" stroke="#14B8A6" strokeWidth="1" strokeOpacity="0.25"
+                    className="backdrop-blur-sm"
+                    animate={{ scale: [1, 1.08, 1] }} 
+                    transition={{ repeat: Infinity, duration: 4.5, delay: 0.5, ease: "easeInOut" }} 
+                  />
+                  <motion.circle 
+                    cx="68" cy="32" r="13" 
+                    fill="#14B8A6" fillOpacity="0.25" stroke="#14B8A6" strokeWidth="1" strokeOpacity="0.25"
+                    className="backdrop-blur-sm"
+                    animate={{ scale: [1, 1.06, 1] }} 
+                    transition={{ repeat: Infinity, duration: 5, delay: 1, ease: "easeInOut" }} 
+                  />
+                  {/* Core crown glowing light node */}
+                  <circle cx="50" cy="22" r="4.5" fill="#34D399" className="animate-pulse filter drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
+                </motion.svg>
               )}
 
               {gardenInfo.stage === 4 && (
-                <svg viewBox="0 0 100 100" fill="none" className="w-full h-full">
-                  <path d="M50 82 L50 48" stroke="#78350f" strokeWidth="6" />
-                  <path d="M50 55 Q32 40, 27 35" stroke="#78350f" strokeWidth="3" />
-                  <path d="M50 50 Q68 38, 72 32" stroke="#78350f" strokeWidth="3" />
-                  <circle cx="50" cy="40" r="15" fill="#10B981" fillOpacity="0.7" />
-                  <circle cx="30" cy="38" r="11" fill="#14B8A6" fillOpacity="0.7" />
-                  <circle cx="70" cy="32" r="11" fill="#22c55e" fillOpacity="0.7" />
-                  <circle cx="32" cy="34" r="5" fill="#8B5CF6" className="animate-pulse" />
-                  <circle cx="66" cy="28" r="6" fill="#A78BFA" className="animate-pulse" style={{ animationDelay: '300ms' }} />
-                  <circle cx="48" cy="24" r="7" fill="#8B5CF6" className="animate-pulse" style={{ animationDelay: '600ms' }} />
-                  <circle cx="52" cy="42" r="5" fill="#F59E0B" />
-                </svg>
+                <motion.svg 
+                  viewBox="0 0 100 100" 
+                  fill="none" 
+                  className="w-full h-full"
+                  animate={{ y: [0, -2, 0], rotate: [-1, 1, -1] }}
+                  transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
+                >
+                  <path d="M50 82 L50 48" stroke="#1E293B" strokeWidth="6" strokeLinecap="round" />
+                  <path d="M50 82 L50 48" stroke="#14B8A6" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.5" />
+                  
+                  {/* Splaying branches */}
+                  <path d="M50 55 Q30 40, 24 35" stroke="#1E293B" strokeWidth="3" />
+                  <path d="M50 50 Q70 36, 76 30" stroke="#1E293B" strokeWidth="3" />
+
+                  {/* Multiple soft foliage overlay loops */}
+                  <circle cx="50" cy="38" r="16" fill="#14B8A6" fillOpacity="0.2" />
+                  <circle cx="28" cy="35" r="12" fill="#34D399" fillOpacity="0.2" />
+                  <circle cx="72" cy="30" r="13" fill="#34D399" fillOpacity="0.2" />
+
+                  {/* Pulsing blossoms (representing mental poetry accomplishments) */}
+                  <motion.circle 
+                    cx="28" cy="28" r="5" fill="#FBBF24" 
+                    className="filter drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]"
+                    animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.7, 1, 0.7] }} 
+                    transition={{ repeat: Infinity, duration: 3 }} 
+                  />
+                  <motion.circle 
+                    cx="74" cy="22" r="6" fill="#FBBF24" 
+                    className="filter drop-shadow-[0_0_12px_rgba(251,191,36,0.75)]"
+                    animate={{ scale: [1.2, 0.8, 1.2], opacity: [1, 0.6, 1] }} 
+                    transition={{ repeat: Infinity, duration: 4, delay: 0.5 }} 
+                  />
+                  <motion.circle 
+                    cx="48" cy="22" r="7" fill="#14B8A6" 
+                    className="filter drop-shadow-[0_0_10px_rgba(20,184,166,0.6)]"
+                    animate={{ scale: [0.9, 1.1, 0.9] }} 
+                    transition={{ repeat: Infinity, duration: 3.5, delay: 1 }} 
+                  />
+                  
+                  {/* Floating stardust leaves */}
+                  <motion.circle cx="34" cy="48" r="1.5" fill="#34D399" animate={{ y: [0, -30], opacity: [0, 0.8, 0] }} transition={{ repeat: Infinity, duration: 3, delay: 0.2 }} />
+                  <motion.circle cx="62" cy="46" r="1.5" fill="#14B8A6" animate={{ y: [0, -35], opacity: [0, 0.8, 0] }} transition={{ repeat: Infinity, duration: 3.5, delay: 1.1 }} />
+                </motion.svg>
               )}
 
               {gardenInfo.stage === 5 && (
-                <svg viewBox="0 0 100 100" fill="none" className="w-full h-full">
-                  <line x1="50" y1="80" x2="30" y2="45" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" strokeDasharray="2 2" />
-                  <line x1="50" y1="80" x2="70" y2="45" stroke="#10b981" strokeWidth="1" strokeOpacity="0.4" strokeDasharray="2 2" />
-                  <line x1="30" y1="45" x2="50" y2="20" stroke="#8b5cf6" strokeWidth="1" strokeOpacity="0.4" />
-                  <line x1="70" y1="45" x2="50" y2="20" stroke="#8b5cf6" strokeWidth="1" strokeOpacity="0.4" />
-                  <circle cx="50" cy="80" r="4" fill="#10B981" />
-                  <circle cx="30" cy="45" r="8" fill="url(#starGrad1)" className="animate-pulse" />
-                  <circle cx="70" cy="45" r="9" fill="url(#starGrad2)" className="animate-pulse" style={{ animationDelay: '500ms' }} />
-                  <circle cx="50" cy="20" r="11" fill="url(#starGradMain)" className="animate-spin" style={{ animationDuration: '10s' }} />
+                <motion.svg 
+                  viewBox="0 0 100 100" 
+                  fill="none" 
+                  className="w-full h-full"
+                >
+                  {/* Stellar geometric connection chords */}
+                  <motion.line 
+                    x1="50" y1="80" x2="28" y2="45" 
+                    stroke="#14B8A6" strokeWidth="1.5" strokeOpacity="0.4"
+                    strokeDasharray="4 4"
+                    animate={{ strokeDashoffset: [0, -20] }}
+                    transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+                  />
+                  <motion.line 
+                    x1="50" y1="80" x2="72" y2="45" 
+                    stroke="#14B8A6" strokeWidth="1.5" strokeOpacity="0.4"
+                    strokeDasharray="4 4"
+                    animate={{ strokeDashoffset: [0, 20] }}
+                    transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+                  />
+                  <line x1="28" y1="45" x2="50" y2="18" stroke="#FBBF24" strokeWidth="1" strokeOpacity="0.3" />
+                  <line x1="72" y1="45" x2="50" y2="18" stroke="#FBBF24" strokeWidth="1" strokeOpacity="0.3" />
+
+                  {/* Root center */}
+                  <circle cx="50" cy="80" r="5" fill="#34D399" className="filter drop-shadow-[0_0_10px_rgba(52,211,153,0.6)]" />
+
+                  {/* Rotating/Orbiting cosmic celestial tree centers */}
+                  <motion.g 
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
+                    style={{ originX: '50px', originY: '45px' }}
+                  >
+                    <circle cx="28" cy="45" r="9" fill="url(#starGrad1)" className="filter drop-shadow-[0_0_12px_rgba(20,184,166,0.6)]" />
+                    <circle cx="72" cy="45" r="10" fill="url(#starGrad2)" className="filter drop-shadow-[0_0_12px_rgba(139,92,246,0.6)]" />
+                  </motion.g>
+
+                  {/* Central radiant cosmic coordinates core */}
+                  <motion.circle 
+                    cx="50" cy="18" r="13" 
+                    fill="url(#starGradMain)"
+                    animate={{ scale: [1, 1.12, 1] }}
+                    transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
+                  />
+
+                  {/* Floating particle systems */}
+                  <motion.circle cx="50" cy="42" r="1.5" fill="#FBBF24" animate={{ y: [0, -35], opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 4, delay: 0.1 }} />
+                  <motion.circle cx="38" cy="55" r="1.5" fill="#34D399" animate={{ y: [0, -25], opacity: [0, 0.9, 0] }} transition={{ repeat: Infinity, duration: 3, delay: 0.8 }} />
+                  <motion.circle cx="62" cy="55" r="1.5" fill="#14B8A6" animate={{ y: [0, -28], opacity: [0, 0.9, 0] }} transition={{ repeat: Infinity, duration: 3.5, delay: 1.5 }} />
+
                   <defs>
-                    <radialGradient id="starGrad1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(30 45) rotate(90) scale(8)">
+                    <radialGradient id="starGrad1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(28 45) rotate(90) scale(9)">
                       <stop stopColor="#14B8A6" />
-                      <stop offset="1" stopColor="#080b14" stopOpacity="0" />
+                      <stop offset="0.7" stopColor="#0D9488" />
+                      <stop offset="1" stopColor="#080B14" stopOpacity="0" />
                     </radialGradient>
-                    <radialGradient id="starGrad2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(70 45) rotate(90) scale(9)">
+                    <radialGradient id="starGrad2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(72 45) rotate(90) scale(10)">
                       <stop stopColor="#8B5CF6" />
-                      <stop offset="1" stopColor="#080b14" stopOpacity="0" />
+                      <stop offset="0.8" stopColor="#6D28D9" />
+                      <stop offset="1" stopColor="#080B14" stopOpacity="0" />
                     </radialGradient>
-                    <radialGradient id="starGradMain" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(50 20) rotate(90) scale(11)">
-                      <stop stopColor="#F59E0B" />
-                      <stop offset="0.6" stopColor="#EC4899" />
-                      <stop offset="1" stopColor="#0a0f1d" stopOpacity="0" />
+                    <radialGradient id="starGradMain" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(50 18) rotate(90) scale(13)">
+                      <stop stopColor="#FBBF24" />
+                      <stop offset="0.5" stopColor="#EC4899" />
+                      <stop offset="1" stopColor="#080B14" stopOpacity="0" />
                     </radialGradient>
                   </defs>
-                </svg>
+                </motion.svg>
               )}
             </div>
           </div>
@@ -629,57 +787,121 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
         </div>
       </div>
 
-      {/* QUICK ACTIONS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div 
-          onClick={() => onNavigateToScreen('refugio')}
-          className={`p-7 rounded-[2rem] border transition-all duration-500 flex flex-col justify-between min-h-[175px] shadow-lg cursor-pointer group hover:scale-[1.01] ${containerBg} hover:border-[#8B5CF6]/50`}
-        >
-          <div className="flex justify-between items-start">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-[0.25em] text-[#8B5CF6]">
-              {lang === 'pt' ? '📖 DIÁRIO DE ESCRITA' : '📖 REFLECTIVE JOURNAL'}
-            </span>
-            <div className="p-2 rounded-full bg-[#8B5CF6]/10 border border-[#8B5CF6]/20 group-hover:bg-[#8B5CF6]/20">
-              <BookOpen className="w-4 h-4 text-[#8B5CF6]" />
-            </div>
-          </div>
-          <div className="my-3">
-            <h4 className={`text-lg font-serif font-bold group-hover:text-[#8B5CF6] transition-colors ${textPrimary}`}>
-              {lang === 'pt' ? 'Abrir Escrita Terapêutica' : 'Access Focus Journaling'}
-            </h4>
-            <p className={`text-xs font-serif italic mt-1 ${textSecondary}`}>
-              {lang === 'pt' ? '“Se os seus sentimentos fossem uma sala, as janelas estariam abertas hoje?”' : '“If your inner feelings were a room, would its windows be open today?”'}
-            </p>
-          </div>
-          <div className="flex items-center gap-1.5 text-[9px] text-[#A78BFA] font-bold font-mono uppercase tracking-wider">
-            <span>{lang === 'pt' ? 'Ancorar Palavras' : 'Write Reflections'}</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-          </div>
+      {/* SEÇÃO — GRID DE FERRAMENTAS TERAPÊUTICAS */}
+      <div className="space-y-4">
+        <div className="text-left">
+          <span className="text-[10px] font-mono tracking-[0.25em] font-bold text-[#14B8A6] uppercase block">Seção 03 • AMBIENTES DE CO-REGULAÇÃO</span>
+          <h3 className={`text-xl font-serif font-black ${textPrimary}`}>🛠️ {lang === 'pt' ? 'Grelha de Práticas Terapêuticas' : 'Therapeutic Regulation Grid'}</h3>
+          <p className={`text-xs ${textSecondary}`}>{lang === 'pt' ? 'Selecione uma ferramenta PCH premium sob medida para alinhar sua mente e ressonância.' : 'Select a premium PCH tool tailored to restore neurological alignment.'}</p>
         </div>
 
-        <div 
-          onClick={() => onNavigateToScreen('chat')}
-          className={`p-7 rounded-[2rem] border transition-all duration-500 flex flex-col justify-between min-h-[175px] shadow-lg cursor-pointer group hover:scale-[1.01] ${containerBg} hover:border-[#14B8A6]/50`}
-        >
-          <div className="flex justify-between items-start">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-[0.25em] text-[#14B8A6]">
-              {lang === 'pt' ? '🎤 CONVERSAR (IA COGNITIVA)' : '🎤 CONVERSE WITH DR. EVALDO'}
-            </span>
-            <div className="p-2 rounded-full bg-[#14B8A6]/10 border border-[#14B8A6]/20 group-hover:bg-[#14B8A6]/20">
-              <MessageSquare className="w-4 h-4 text-[#14B8A6]" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* Item 1: Sopro Coerente */}
+          <div 
+            onClick={() => onNavigateToScreen('sopro')}
+            className={`p-6 rounded-[2rem] border transition-all duration-300 flex flex-col justify-between min-h-[185px] shadow-md cursor-pointer group hover:scale-[1.03] ${containerBg} hover:border-[#14B8A6]/40`}
+          >
+            <div className="flex justify-between items-start">
+              <div className="p-2.5 rounded-2xl bg-[#14B8A6]/10 border border-[#14B8A6]/10 group-hover:bg-[#14B8A6]/20">
+                <Droplet className="w-5 h-5 text-[#14B8A6]" />
+              </div>
+              <span className="text-[9px] font-mono font-bold uppercase text-[#14B8A6] bg-[#14B8A6]/10 px-2 py-0.5 rounded-md">
+                {lang === 'pt' ? 'REGULAÇÃO' : 'PACE'}
+              </span>
+            </div>
+            <div className="mt-3 text-left">
+              <h4 className={`text-sm font-semibold transition-colors group-hover:text-[#14B8A6] ${textPrimary}`}>
+                {lang === 'pt' ? '🌬️ Sopro Coerente' : '🌬️ Coherent Breath'}
+              </h4>
+              <p className="text-[10.5px] text-slate-400 mt-1 line-clamp-2">
+                {lang === 'pt' ? 'Respiração guiada minimalista com 4 ambientes cinematográficos.' : 'Guided minimalist breathing synced to calming atmospheric scopes.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 text-[9px] text-[#14B8A6] font-bold font-mono uppercase tracking-wider pt-2 border-t border-[#1d2745]/30">
+              <span>{lang === 'pt' ? 'Entrar em Sopro' : 'Breathe Now'}</span>
+              <ArrowRight className="w-3 w-3 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
-          <div className="my-3">
-            <h4 className={`text-lg font-serif font-bold group-hover:text-[#14B8A6] transition-colors ${textPrimary}`}>
-              {lang === 'pt' ? 'Conectar Via VozAtiva' : 'Activate Live Voice'}
-            </h4>
-            <p className={`text-xs mt-1 ${textSecondary}`}>
-              {lang === 'pt' ? 'Fale e receba feedback em ritmo desacelerado de hipnoterapia.' : 'Communicate verbally and receive calming pacing feedback.'}
-            </p>
+
+          {/* Item 2: Diário do Silêncio */}
+          <div 
+            onClick={() => onNavigateToScreen('refugio')}
+            className={`p-6 rounded-[2rem] border transition-all duration-300 flex flex-col justify-between min-h-[185px] shadow-md cursor-pointer group hover:scale-[1.03] ${containerBg} hover:border-[#FBBF24]/40`}
+          >
+            <div className="flex justify-between items-start">
+              <div className="p-2.5 rounded-2xl bg-[#FBBF24]/10 border border-[#FBBF24]/10 group-hover:bg-[#FBBF24]/20">
+                <BookOpen className="w-5 h-5 text-[#FBBF24]" />
+              </div>
+              <span className="text-[9px] font-mono font-bold uppercase text-[#FBBF24] bg-[#FBBF24]/10 px-2 py-0.5 rounded-md">
+                {lang === 'pt' ? 'INTEGRAÇÃO' : 'JOURNAL'}
+              </span>
+            </div>
+            <div className="mt-3 text-left">
+              <h4 className={`text-sm font-semibold transition-colors group-hover:text-[#FBBF24] ${textPrimary}`}>
+                {lang === 'pt' ? '📝 Caderno Vivo' : '📝 Living Journal'}
+              </h4>
+              <p className="text-[10.5px] text-slate-400 mt-1 line-clamp-2">
+                {lang === 'pt' ? 'Diário terapêutico estilo caderno vivo com rascunho de rastro.' : 'A living notebook workspace with fluid keystroke auto-saving.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 text-[9px] text-[#FBBF24] font-bold font-mono uppercase tracking-wider pt-2 border-t border-[#1d2745]/30">
+              <span>{lang === 'pt' ? 'Escrever Diário' : 'Access Diary'}</span>
+              <ArrowRight className="w-3 w-3 group-hover:translate-x-1 transition-transform" />
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 text-[9px] text-[#14B8A6] font-bold font-mono uppercase tracking-wider">
-            <span>{lang === 'pt' ? 'Falar com Dr. Evaldo' : 'Connect with Doctor'}</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+
+          {/* Item 3: Espelho Emocional */}
+          <div 
+            onClick={() => onNavigateToScreen('espelho')}
+            className={`p-6 rounded-[2rem] border transition-all duration-300 flex flex-col justify-between min-h-[185px] shadow-md cursor-pointer group hover:scale-[1.03] ${containerBg} hover:border-[#34D399]/40`}
+          >
+            <div className="flex justify-between items-start">
+              <div className="p-2.5 rounded-2xl bg-[#34D399]/10 border border-[#34D399]/10 group-hover:bg-[#34D399]/20">
+                <Droplet className="w-5 h-5 text-[#34D399]" />
+              </div>
+              <span className="text-[9px] font-mono font-bold uppercase text-[#34D399] bg-[#34D399]/10 px-2 py-0.5 rounded-md">
+                {lang === 'pt' ? 'METÁFORA' : 'WEATHER'}
+              </span>
+            </div>
+            <div className="mt-3 text-left">
+              <h4 className={`text-sm font-semibold transition-colors group-hover:text-[#34D399] ${textPrimary}`}>
+                {lang === 'pt' ? '🔮 Espelho Interno' : '🔮 Emotion Mirror'}
+              </h4>
+              <p className="text-[10.5px] text-slate-400 mt-1 line-clamp-2">
+                {lang === 'pt' ? 'Espelho emocional cinematográfico de climatologia mental.' : 'A reflective surface translating mood into raw landscape poetry.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 text-[9px] text-[#34D399] font-bold font-mono uppercase tracking-wider pt-2 border-t border-[#1d2745]/30">
+              <span>{lang === 'pt' ? 'Olhar o Espelho' : 'View Mirror'}</span>
+              <ArrowRight className="w-3  w-3 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Item 4: IA Voz Ativa (Chat) */}
+          <div 
+            onClick={() => onNavigateToScreen('chat')}
+            className={`p-6 rounded-[2rem] border transition-all duration-300 flex flex-col justify-between min-h-[185px] shadow-md cursor-pointer group hover:scale-[1.03] ${containerBg} hover:border-violet-400/40`}
+          >
+            <div className="flex justify-between items-start">
+              <div className="p-2.5 rounded-2xl bg-violet-400/10 border border-violet-400/10 group-hover:bg-violet-400/20">
+                <MessageSquare className="w-5 h-5 text-violet-400" />
+              </div>
+              <span className="text-[9px] font-mono font-bold uppercase text-violet-400 bg-violet-400/10 px-2 py-0.5 rounded-md">
+                {lang === 'pt' ? 'SINTONIA' : 'AI RESONANCE'}
+              </span>
+            </div>
+            <div className="mt-3 text-left">
+              <h4 className={`text-sm font-semibold transition-colors group-hover:text-violet-400 ${textPrimary}`}>
+                {lang === 'pt' ? '🎤 Diálogo VozAtiva' : '🎤 Live Voice Chat'}
+              </h4>
+              <p className="text-[10.5px] text-slate-400 mt-1 line-clamp-2">
+                {lang === 'pt' ? 'Ressonância terapêutica com o Dr. Evaldo em fluxo desacelerado.' : 'Slowing conversational companion engine calibrating brainwaves.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 text-[9px] text-violet-400 font-bold font-mono uppercase tracking-wider pt-2 border-t border-[#1d2745]/30">
+              <span>{lang === 'pt' ? 'Falar com Dr.' : 'Converse Now'}</span>
+              <ArrowRight className="w-3 w-3 group-hover:translate-x-1 transition-transform" />
+            </div>
           </div>
         </div>
       </div>

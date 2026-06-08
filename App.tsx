@@ -28,6 +28,11 @@ import { EspelhoView } from './components/EspelhoView';
 import { SoproBalloonView } from './components/SoproBalloonView';
 import { AdaptiveHome } from './components/AdaptiveHome';
 
+// New high-craft unified core workspaces
+import { SantuarioView } from './components/SantuarioView';
+import { RefletirView } from './components/RefletirView';
+import { EvoluirView } from './components/EvoluirView';
+
 import { auth, db, OperationType, handleFirestoreError } from './lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
@@ -44,6 +49,8 @@ type NavigationScreen =
   | 'portal'
   | 'home'
   | 'chat'
+  | 'refletir'
+  | 'evoluir'
   | 'profile'
   | 'settings'
   | 'admin'
@@ -220,7 +227,7 @@ function App() {
         console.error('Error updating user session stats:', err);
       }
     }
-    setActiveScreen('profile');
+    setActiveScreen('evoluir');
   };
 
   const activeScreenRef = useRef(activeScreen);
@@ -265,7 +272,8 @@ function App() {
               emotionalState: data.emotionalState,
               points: data.points || 0,
               level: data.level || 1,
-              badges: data.badges || []
+              badges: data.badges || [],
+              suspended: !!data.suspended
             };
 
             setCurrentUser(syncedUser);
@@ -347,6 +355,38 @@ function App() {
         <p className="text-[10px] uppercase tracking-[0.4em] text-stone-600">
           {lang === 'pt' ? 'Sintonizando Alma...' : 'Tuning Sanctuary...'}
         </p>
+      </div>
+    );
+  }
+
+  // Suspended account guard
+  if (currentUser && currentUser.suspended && !currentUser.isAdmin) {
+    return (
+      <div className="h-screen w-full bg-[#080B14] flex flex-col justify-center items-center font-sans space-y-6 p-6 text-center select-none">
+        <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-450 animate-pulse">
+          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 1 1 .518 1.397l-.041-.02-.041.02a.75.75 0 1 1-.518-1.397Zm0 3.96.041-.02a.75.75 0 1 1 .518 1.397l-.041-.02-.041.02a.75.75 0 1 1-.518-1.397Zm0-7.92.041-.02a.75.75 0 1 1 .518 1.397l-.041-.02-.041.02a.75.75 0 1 1-.518-1.397ZM12 2.25a9.75 9.75 0 1 0 0 19.5 9.75 9.75 0 0 0 0-19.5Z" />
+          </svg>
+        </div>
+        <div className="max-w-md space-y-3">
+          <h2 className="text-lg font-serif text-rose-400 uppercase tracking-widest font-black">Santuário Suspenso</h2>
+          <p className="text-xs text-stone-400 leading-relaxed uppercase tracking-wider font-mono">
+            {lang === 'pt' 
+              ? 'Seu acesso ao ecossistema Voz Interior PCH foi temporariamente suspenso pela administração.'
+              : 'Your access to the Inner Voice PCH ecosystem has been temporarily suspended by the administration.'}
+          </p>
+          <p className="text-[10px] text-stone-600 leading-relaxed font-mono">
+            {lang === 'pt'
+              ? 'Caso julgue este bloqueio incorreto, por favor entre em contato com seu terapeuta/guia.'
+              : 'If you believe this action was made in error, please contact your therapist or guide.'}
+          </p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="border border-stone-850 text-[10px] font-mono text-stone-400 hover:text-stone-200 hover:border-stone-750 py-3 px-7 rounded-xl uppercase tracking-widest transition-all cursor-pointer bg-stone-950/45 active:scale-95"
+        >
+          {lang === 'pt' ? 'Desconectar' : 'Disconnect / Logout'}
+        </button>
       </div>
     );
   }
@@ -526,17 +566,19 @@ function App() {
                   transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
                   className="w-full flex-1"
                 >
-                  <AdaptiveHome 
-                    user={currentUser}
-                    lang={lang}
-                    onNavigateToScreen={(screen) => setActiveScreen(screen)}
-                    isLightTheme={isLightTheme}
-                    onToggleTheme={() => setIsLightTheme(prev => !prev)}
-                    onAddToast={addToast}
-                    onOpenTuningPopover={() => setShowTuningPopover(true)}
-                    onTextSizeChange={setTextSize}
-                    onAccessibilityModeChange={setAccessibilityActive}
-                  />
+                  {currentUser && (
+                    <SantuarioView 
+                      user={currentUser}
+                      lang={lang}
+                      onNavigateToTab={(tab) => setActiveScreen(tab)}
+                      isLightTheme={isLightTheme}
+                      onToggleTheme={() => setIsLightTheme(prev => !prev)}
+                      onAddToast={addToast}
+                      onOpenTuningPopover={() => setShowTuningPopover(true)}
+                      onTextSizeChange={setTextSize}
+                      onAccessibilityModeChange={setAccessibilityActive}
+                    />
+                  )}
                 </motion.div>
               )}
 
@@ -565,87 +607,43 @@ function App() {
                 </motion.div>
               )}
 
-              {activeScreen === 'jornada' && (
+              {activeScreen === 'refletir' && (
                 <motion.div
-                  key="jornada"
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
-                  className="flex-1 w-full relative"
-                >
-                  <TelaJornada 
-                    lang={lang}
-                    onBack={() => setActiveScreen('home')}
-                    onNavigateToProfile={() => setActiveScreen('profile')}
-                  />
-                </motion.div>
-              )}
-
-              {activeScreen === 'espelho' && (
-                <motion.div
-                  key="espelho"
+                  key="refletir"
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
                   className="w-full flex-1"
                 >
-                  <EspelhoView 
-                    user={currentUser}
-                    lang={lang}
-                    onBack={() => setActiveScreen('home')}
-                    onAddToast={addToast}
-                  />
+                  {currentUser && (
+                    <RefletirView 
+                      user={currentUser}
+                      lang={lang}
+                      isLightTheme={isLightTheme}
+                      onAddToast={addToast}
+                    />
+                  )}
                 </motion.div>
               )}
 
-              {activeScreen === 'refugio' && (
+              {activeScreen === 'evoluir' && (
                 <motion.div
-                  key="refugio"
+                  key="evoluir"
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
                   className="w-full flex-1"
                 >
-                  <TelaRefugio 
-                    onClose={() => setActiveScreen('home')} 
-                    lang={lang} 
-                  />
-                </motion.div>
-              )}
-
-              {activeScreen === 'sopro' && (
-                <motion.div
-                  key="sopro"
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
-                  className="w-full flex-1"
-                >
-                  <SoproBalloonView 
-                    onClose={() => setActiveScreen('home')} 
-                    lang={lang} 
-                  />
-                </motion.div>
-              )}
-
-              {activeScreen === 'profile' && (
-                <motion.div
-                  key="profile"
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
-                  className="flex justify-center items-center min-h-full py-8 w-full"
-                >
-                  <UserProfileView 
-                    user={currentUser} 
-                    lang={lang} 
-                    onNavigateToSettings={() => setActiveScreen('jornada')} 
-                  />
+                  {currentUser && (
+                    <EvoluirView 
+                      user={currentUser}
+                      lang={lang}
+                      isLightTheme={isLightTheme}
+                      onNavigateToSettings={() => setActiveScreen('settings')}
+                    />
+                  )}
                 </motion.div>
               )}
 
@@ -703,7 +701,7 @@ function App() {
             </AnimatePresence>
           </main>
 
-          {/* New Bottom silent navigation bar - matching user requirements & mockup */}
+          {/* New Bottom silent navigation bar - matching user requirements of exactly 4 areas */}
           {!isFullyImmersive && (
             <footer className={`w-full py-4 px-6 border-t flex justify-around items-center z-45 transition-all duration-300 select-none ${
               isLightTheme 
@@ -711,43 +709,10 @@ function App() {
                 : 'bg-[#080B14]/95 border-stone-900 text-stone-300 shadow-[0_-4px_24px_rgba(0,0,0,0.4)] backdrop-blur-md'
             }`}>
               
-              {/* Tab 1: Portal */}
-              <button 
-                onClick={() => setActiveScreen('portal')}
-                className={`transition-all duration-250 cursor-pointer flex items-center justify-center ${
-                  activeScreen === 'portal'
-                    ? isLightTheme
-                      ? 'gap-1.5 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-[#2B6140] font-semibold scale-102 shadow-sm'
-                      : 'gap-1.5 px-4 py-2 rounded-full bg-emerald-950/40 border border-emerald-900/40 text-[#4ade80] font-semibold scale-102 shadow-sm'
-                    : isLightTheme
-                      ? 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent rounded-full hover:bg-stone-100/40'
-                      : 'flex-col p-2 text-stone-500 hover:text-stone-200 bg-transparent rounded-full hover:bg-stone-900/20'
-                }`}
-                title={lang === 'pt' ? 'Portal' : 'Portal'}
-              >
-                {/* Micro Flower pattern vector inside Portal */}
-                <svg viewBox="0 0 100 100" fill="none" className="w-[18px] h-[18px]" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="50" cy="50" r="14" stroke="currentColor" strokeWidth="3.5" strokeOpacity="0.7" fill="none" />
-                  {[0, 60, 120, 180, 240, 300].map((angle) => {
-                    const rad = (angle * Math.PI) / 180;
-                    const cx = 50 + 17 * Math.cos(rad);
-                    const cy = 50 + 17 * Math.sin(rad);
-                    return (
-                      <circle key={angle} cx={cx} cy={cy} r="14" stroke="currentColor" strokeWidth="3.5" strokeOpacity="0.7" fill="none" />
-                    );
-                  })}
-                </svg>
-                {activeScreen === 'portal' && (
-                  <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-bold">
-                    {lang === 'pt' ? 'Portal' : 'Portal'}
-                  </span>
-                )}
-              </button>
-
-              {/* Tab 2: Santuário */}
+              {/* Tab 1: Santuário 🌳 */}
               <button 
                 onClick={() => setActiveScreen('home')}
-                className={`transition-all duration-250 cursor-pointer flex items-center justify-center ${
+                className={`transition-all duration-255 cursor-pointer flex items-center justify-center ${
                   activeScreen === 'home'
                     ? isLightTheme
                       ? 'gap-1.5 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-[#2B6140] font-semibold scale-102 shadow-sm'
@@ -758,20 +723,18 @@ function App() {
                 }`}
                 title={lang === 'pt' ? 'Santuário' : 'Sanctuary'}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-[18px] h-[18px]">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
-                </svg>
+                <span className="text-[17px] mr-1">🌳</span>
                 {activeScreen === 'home' && (
-                  <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-bold">
+                  <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-extrabold">
                     {lang === 'pt' ? 'Santuário' : 'Sanctuary'}
                   </span>
                 )}
               </button>
 
-              {/* Tab 3: Escuta */}
+              {/* Tab 2: Conversar 🎙 */}
               <button 
                 onClick={() => setActiveScreen('chat')}
-                className={`transition-all duration-250 cursor-pointer flex items-center justify-center ${
+                className={`transition-all duration-255 cursor-pointer flex items-center justify-center ${
                   activeScreen === 'chat'
                     ? isLightTheme
                       ? 'gap-1.5 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-[#2B6140] font-semibold scale-102 shadow-sm'
@@ -780,23 +743,21 @@ function App() {
                       ? 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent rounded-full hover:bg-stone-100/40'
                       : 'flex-col p-2 text-stone-500 hover:text-stone-200 bg-transparent rounded-full hover:bg-stone-900/20'
                 }`}
-                title={lang === 'pt' ? 'Escuta' : 'Echo'}
+                title={lang === 'pt' ? 'Conversar' : 'Chat'}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-[18px] h-[18px]">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
-                </svg>
+                <span className="text-[17px] mr-1">🎙️</span>
                 {activeScreen === 'chat' && (
-                  <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-bold">
-                    {lang === 'pt' ? 'Escuta' : 'Listening'}
+                  <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-extrabold">
+                    {lang === 'pt' ? 'Conversar' : 'Chat'}
                   </span>
                 )}
               </button>
 
-              {/* Tab 4: Jornada */}
+              {/* Tab 3: Refletir 📖 */}
               <button 
-                onClick={() => setActiveScreen('jornada')}
-                className={`transition-all duration-250 cursor-pointer flex items-center justify-center ${
-                  activeScreen === 'jornada'
+                onClick={() => setActiveScreen('refletir')}
+                className={`transition-all duration-255 cursor-pointer flex items-center justify-center ${
+                  activeScreen === 'refletir'
                     ? isLightTheme
                       ? 'gap-1.5 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-[#2B6140] font-semibold scale-102 shadow-sm'
                       : 'gap-1.5 px-4 py-2 rounded-full bg-emerald-950/40 border border-emerald-900/40 text-[#4ade80] font-semibold scale-102 shadow-sm'
@@ -804,14 +765,34 @@ function App() {
                       ? 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent rounded-full hover:bg-stone-100/40'
                       : 'flex-col p-2 text-stone-500 hover:text-stone-200 bg-transparent rounded-full hover:bg-stone-900/20'
                 }`}
-                title={lang === 'pt' ? 'Jornada' : 'Journey'}
+                title={lang === 'pt' ? 'Refletir' : 'Reflect'}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-[18px] h-[18px]">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 21l-.813-5.096L3 15l5.096-.813L9 9l.813 5.096L15 15l-5.187.904ZM18 5.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm-3 3a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
-                </svg>
-                {activeScreen === 'jornada' && (
-                  <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-bold">
-                    {lang === 'pt' ? 'Jornada' : 'Journey'}
+                <span className="text-[17px] mr-1">📖</span>
+                {activeScreen === 'refletir' && (
+                  <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-extrabold">
+                    {lang === 'pt' ? 'Refletir' : 'Reflect'}
+                  </span>
+                )}
+              </button>
+
+              {/* Tab 4: Evoluir ⭐ */}
+              <button 
+                onClick={() => setActiveScreen('evoluir')}
+                className={`transition-all duration-255 cursor-pointer flex items-center justify-center ${
+                  activeScreen === 'evoluir'
+                    ? isLightTheme
+                      ? 'gap-1.5 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-[#2B6140] font-semibold scale-102 shadow-sm'
+                      : 'gap-1.5 px-4 py-2 rounded-full bg-emerald-950/40 border border-emerald-900/40 text-[#4ade80] font-semibold scale-102 shadow-sm'
+                    : isLightTheme
+                      ? 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent rounded-full hover:bg-stone-100/40'
+                      : 'flex-col p-2 text-stone-500 hover:text-stone-200 bg-transparent rounded-full hover:bg-stone-900/20'
+                }`}
+                title={lang === 'pt' ? 'Evoluir' : 'Evolve'}
+              >
+                <span className="text-[17px] mr-1">⭐</span>
+                {activeScreen === 'evoluir' && (
+                  <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-extrabold">
+                    {lang === 'pt' ? 'Evoluir' : 'Evolve'}
                   </span>
                 )}
               </button>

@@ -2,7 +2,7 @@
   "entities": {
     "User": {
       "title": "User Profile",
-      "description": "Secure record of user profile, plan, settings, and daily interaction counts.",
+      "description": "Secure record of user profile, plan, settings, gamification progress, active subscription status, and daily limits.",
       "type": "object",
       "properties": {
         "id": {
@@ -23,8 +23,8 @@
         },
         "plan": {
           "type": "string",
-          "enum": ["visitor", "member", "guardian"],
-          "description": "The tier of consciousness plan unlocked."
+          "enum": ["visitor", "essential", "premium", "guardian", "institutional"],
+          "description": "The tier of premium access unlocked."
         },
         "registeredAt": {
           "type": "string",
@@ -35,6 +35,22 @@
           "type": "string",
           "format": "date-time",
           "description": "ISO timestamp of last activity."
+        },
+        "points": {
+          "type": "integer",
+          "description": "The current accumulation of PCH Experience Points."
+        },
+        "level": {
+          "type": "integer",
+          "description": "The active neurological alignment level achieved."
+        },
+        "unlockedBadges": {
+          "type": "array",
+          "description": "Array of awarded medals ID references."
+        },
+        "subscription": {
+          "type": "object",
+          "description": "Specific subscription metrics mapping."
         },
         "resonanceScore": {
           "type": "number",
@@ -70,7 +86,7 @@
           "description": "Dimmed background visual patterns."
         }
       },
-      "required": ["id", "name", "email", "isAdmin", "plan", "registeredAt", "lastActive"]
+      "required": ["id", "name", "email", "isAdmin", "plan", "registeredAt", "lastActive", "points", "level"]
     },
     "Journal": {
       "title": "Journal Entry",
@@ -121,7 +137,7 @@
         },
         "stage": {
           "type": "integer",
-          "description": "Maturation stage from 0 (seed) to 3 (mature)."
+          "description": "Maturation stage from 0 (seed) to 5 (mystical stellar)."
         },
         "color": {
           "type": "string",
@@ -218,12 +234,311 @@
         }
       },
       "required": ["userId", "neuroType", "preferredLanguage", "accessibilityLevel", "currentJourney", "currentLevel", "lastInteraction", "evolutionHistory"]
+    },
+    "Journey": {
+      "title": "Therapeutic Journey",
+      "description": "Structured clinical path built to guide emotional development through sequential content blocks.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the journey (e.g., 'Jornada Ansiedade')."
+        },
+        "description": {
+          "type": "string"
+        },
+        "targetProfile": {
+          "type": "string",
+          "enum": ["tdah", "autismo", "ansiedade", "normal", "idoso", "adolescente"]
+        },
+        "durationDays": {
+          "type": "integer"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "title", "description", "targetProfile", "durationDays", "active"]
+    },
+    "JourneyDay": {
+      "title": "Journey Day Detail",
+      "description": "Metadata and resources allocated to a specific day of a therapeutic journey.",
+      "type": "object",
+      "properties": {
+        "dayNumber": {
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string",
+          "description": "The day's guiding text or educational insights."
+        },
+        "audioUrl": {
+          "type": "string"
+        },
+        "exerciseId": {
+          "type": "string"
+        },
+        "poetryText": {
+          "type": "string"
+        },
+        "videoUrl": {
+          "type": "string"
+        },
+        "durationMinutes": {
+          "type": "integer"
+        }
+      },
+      "required": ["dayNumber", "title", "text"]
+    },
+    "PCHLibrary": {
+      "title": "PCH Intellectual Property Library (CMS)",
+      "description": "Centralized repository for poem, audio, video, spiritual, article, and exercise assets.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["poems", "reflections", "audios", "videos", "exercises", "spirituality", "articles", "meditations"]
+        },
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string",
+          "description": "Markdown text or body text representing the clinical or metaphorical work."
+        },
+        "mediaUrl": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "targetNeuro": {
+          "type": "string",
+          "enum": ["tdah", "autismo", "ansiedade", "idoso", "neurotipico", "adolescente", "comum"]
+        },
+        "tags": {
+          "type": "array"
+        },
+        "isDraft": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "category", "title", "content", "targetNeuro", "isDraft"]
+    },
+    "AIConfig": {
+      "title": "Voice Interior AI Configuration",
+      "description": "Fine-Tuning properties controlling Dr. Evaldo core behavior, pace, language guidelines, and clinical constraints.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "description": "The behavioral pattern (e.g. Acolhedor)."
+        },
+        "intensity": {
+          "type": "integer"
+        },
+        "poeticPercent": {
+          "type": "integer"
+        },
+        "directivePercent": {
+          "type": "integer"
+        },
+        "personalityPrompt": {
+          "type": "string"
+        },
+        "tone": {
+          "type": "string"
+        },
+        "limits": {
+          "type": "object"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedBy": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "mode", "intensity", "poeticPercent", "directivePercent", "personalityPrompt"]
+    },
+    "GlobalInsights": {
+      "title": "Global Anonymized Insights",
+      "description": "Consolidated statistics mapping the emotional ecosystem across all users.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Formatted date (e.g. YYYY-MM-DD)."
+        },
+        "date": {
+          "type": "string"
+        },
+        "dominantEmotions": {
+          "type": "object"
+        },
+        "recurrentWords": {
+          "type": "array"
+        },
+        "recurrentThemes": {
+          "type": "array"
+        },
+        "hourlyUsage": {
+          "type": "object"
+        },
+        "totalSessions": {
+          "type": "integer"
+        },
+        "activeUsersCount": {
+          "type": "integer"
+        }
+      },
+      "required": ["id", "date", "dominantEmotions", "totalSessions", "activeUsersCount"]
+    },
+    "GamificationConfig": {
+      "title": "Gamification Milestone Configuration",
+      "description": "Registry defining target XP thresholds, milestones, and reward descriptions.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "badgeTitle": {
+          "type": "string"
+        },
+        "badgeDescription": {
+          "type": "string"
+        },
+        "badgeIcon": {
+          "type": "string"
+        },
+        "xpRequired": {
+          "type": "integer"
+        }
+      },
+      "required": ["id", "badgeTitle", "badgeDescription", "badgeIcon", "xpRequired"]
+    },
+    "SubscriptionPlan": {
+      "title": "Subscription Plan Catalog",
+      "description": "Defines access permissions and billing options for visitor, essential, premium, guardian, and institutional accounts.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "billingPeriod": {
+          "type": "string"
+        },
+        "features": {
+          "type": "array"
+        },
+        "maxActiveSessions": {
+          "type": "integer"
+        },
+        "activeCount": {
+          "type": "integer"
+        }
+      },
+      "required": ["id", "name", "price", "billingPeriod", "features"]
+    },
+    "SecurityLog": {
+      "title": "Detailed Security Audit Log",
+      "description": "Consolidated security log for active administrator sessions, policy checks, logins, and API permissions.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "userEmail": {
+          "type": "string"
+        },
+        "ipAddress": {
+          "type": "string"
+        },
+        "eventType": {
+          "type": "string",
+          "enum": ["login", "login_failed", "permission_denied", "admin_escalation_attempt", "session_revoke", "schema_access", "content_modified"]
+        },
+        "userAgent": {
+          "type": "string"
+        },
+        "details": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "timestamp", "userId", "userEmail", "eventType", "details"]
+    },
+    "LabSandbox": {
+      "title": "PCH Laboratory Sandbox Environment",
+      "description": "Draft space enabling safe clinical playtesting of custom poems, exercises, protocols, and AI custom prompts.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "experimentType": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "experimentType", "name", "createdAt", "createdBy"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "Primary user profile, settings, and stats database."
+      "description": "Primary user profile, settings, settings, gamification, and stats database."
     },
     "/users/{userId}/journals/{journalId}": {
       "schema": "Journal",
@@ -243,7 +558,43 @@
     },
     "/admin_logs/{logId}": {
       "schema": "AdminLog",
-      "description": "Audit trail records for supervisors' modifications."
+      "description": "Audit trail records for supervisors' modifications (Legacy tracker)."
+    },
+    "/security_logs/{logId}": {
+      "schema": "SecurityLog",
+      "description": "Complete logging records for audit trails, permissions, and session events."
+    },
+    "/journeys/{journeyId}": {
+      "schema": "Journey",
+      "description": "Global journeys collection designed to configure sequential day progression maps."
+    },
+    "/journeys/{journeyId}/days/{dayId}": {
+      "schema": "JourneyDay",
+      "description": "Detail list of items within sequential day blocks for a journey."
+    },
+    "/pch_library/{contentId}": {
+      "schema": "PCHLibrary",
+      "description": "CMS repository organizing mental poems, meditations, visual patterns, and audio clinical metaphors."
+    },
+    "/ai_config/{configId}": {
+      "schema": "AIConfig",
+      "description": "AI fine-tuning models configuring character personality prompt profiles, sliders and controls."
+    },
+    "/global_insights/{insightId}": {
+      "schema": "GlobalInsights",
+      "description": "Chronological map storing anonymized ecosystem mood metrics, keywords, and schedules."
+    },
+    "/gamification_config/{itemId}": {
+      "schema": "GamificationConfig",
+      "description": "Central catalog listing milestone targets and badges awarded to mental practitioners."
+    },
+    "/subscription_plans/{planId}": {
+      "schema": "SubscriptionPlan",
+      "description": "Catalog tracking subscription tiers and billing pricing parameters."
+    },
+    "/pch_lab_sandbox/{sandboxId}": {
+      "schema": "LabSandbox",
+      "description": "Sandboxed draft structures for risk-free research and clinical simulations."
     }
   }
 }

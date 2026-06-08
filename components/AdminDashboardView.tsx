@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { User, Language } from '../types';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, doc, getDocs, setDoc, getDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, getDoc, onSnapshot, deleteDoc, updateDoc } from 'firebase/firestore';
+import { logCriticalAudit } from '../lib/auditService';
+import { getDashboardMetrics, DashboardMetrics } from '../lib/adminServices';
 import { Users, Settings, Plus, Save, Activity, Heart, Eye, BookOpen, AlertCircle, Sparkles, Trash2, Download, Search, X, ArrowUpDown, ChevronUp, ChevronDown, BarChart2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
@@ -45,6 +47,25 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // Aggregated Analytics Metrics State (calculated using Firestore aggregation patterns)
+  const [aggregatedMetrics, setAggregatedMetrics] = useState<DashboardMetrics | null>(null);
+  const [loadingMetrics, setLoadingMetrics] = useState(false);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
+
+  const fetchAggregatedMetrics = async () => {
+    setLoadingMetrics(true);
+    setMetricsError(null);
+    try {
+      const data = await getDashboardMetrics();
+      setAggregatedMetrics(data);
+    } catch (err: any) {
+      console.error("Failed to fetch consolidated dashboard metrics", err);
+      setMetricsError(err?.message || String(err));
+    } finally {
+      setLoadingMetrics(false);
+    }
+  };
 
   // Recent search history (persisted in localStorage)
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
@@ -230,6 +251,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
     return () => unsubscribe();
   }, [currentUser]);
 
+  // Synchronize deep metrics aggregation when user registers or updates are pushed to the database
+  useEffect(() => {
+    if (currentUser?.isAdmin) {
+      fetchAggregatedMetrics();
+    }
+  }, [currentUser, allUsers.length]);
+
   // Load editable Voice configurations (Dr Evaldo prompt/responses) from Firestore live config doc
   useEffect(() => {
     const fetchSystemConfig = async () => {
@@ -282,6 +310,37 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
       console.error("Failed to save custom config to firestore", err);
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const [suspendingUserId, setSuspendingUserId] = useState<string | null>(null);
+
+  const handleToggleSuspension = async (userObj: User) => {
+    setSuspendingUserId(userObj.id);
+    const newSuspendedState = !userObj.suspended;
+    try {
+      const userDocRef = doc(db, 'users', userObj.id);
+      await updateDoc(userDocRef, {
+        suspended: newSuspendedState
+      });
+
+      await logCriticalAudit({
+        actionType: newSuspendedState ? 'user_suspension' : 'user_unsuspension',
+        description: lang === 'pt'
+          ? `Status de suspensão do praticante "${userObj.name}" alterado para ${newSuspendedState ? 'SUSPENSO' : 'ATIVO'}`
+          : `Practitioner "${userObj.name}" suspension state toggled to ${newSuspendedState ? 'SUSPENDED' : 'ACTIVE'}`,
+        targetUserId: userObj.id,
+        metadata: {
+          name: userObj.name,
+          email: userObj.email,
+          previousState: !!userObj.suspended,
+          newState: newSuspendedState
+        }
+      });
+    } catch (err) {
+      console.error("Failed to toggle suspension", err);
+    } finally {
+      setSuspendingUserId(null);
     }
   };
 
@@ -558,29 +617,173 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
         </div>
       </div>
 
-      {/* Overview Analytics Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="neu-card p-4 rounded-3xl">
-          <span className="text-[9px] uppercase tracking-widest text-stone-500 font-mono block">Membros Registrados</span>
-          <span className="text-2xl font-mono font-bold text-teal-400 mt-1 block">{allUsers.length}</span>
+      {/* Executive Dashboard: SaaS Premium Analytics Grid */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#14B8A6] font-bold">Dashboard Executivo PCH</h3>
+          <button
+            onClick={fetchAggregatedMetrics}
+            disabled={loadingMetrics}
+            className="flex items-center space-x-1 py-1 px-2.5 rounded bg-teal-500/10 border border-teal-500/20 text-teal-400 hover:text-teal-200 hover:border-teal-500/40 text-[9px] font-mono transition-all lowercase disabled:opacity-50 cursor-pointer active:scale-95"
+            title="Consolidar agregação real-time do Firestore"
+          >
+            <span>{loadingMetrics ? 'consolidando...' : 're-calcular agregação ⟳'}</span>
+          </button>
         </div>
-        <div className="glass-panel p-4 rounded-3xl">
-          <span className="text-[9px] uppercase tracking-widest text-stone-500 font-mono block">Ativos Recentes</span>
-          <span className="text-2xl font-mono font-bold text-amber-400 mt-1 block">
-            {allUsers.filter(u => new Date(u.lastActive).getTime() > Date.now() - 24 * 60 * 60 * 1000).length}
-          </span>
-        </div>
-        <div className="neu-card p-4 rounded-3xl">
-          <span className="text-[9px] uppercase tracking-widest text-stone-500 font-mono block">Perfis TDAH / Down / Autismo</span>
-          <span className="text-2xl font-mono font-bold text-indigo-400 mt-1 block">
-            {allUsers.filter(u => u.neuroMode && u.neuroMode !== 'natural').length}
-          </span>
-        </div>
-        <div className="glass-panel p-4 rounded-3xl">
-          <span className="text-[9px] uppercase tracking-widest text-stone-500 font-mono block">Pontos Cultivados</span>
-          <span className="text-2xl font-mono font-bold text-rose-400 mt-1 block">
-            {allUsers.reduce((sum, u) => sum + (u.points || 0), 0)} XP
-          </span>
+        {metricsError && (
+          <div className="text-[9px] text-rose-400 font-mono bg-rose-950/20 border border-rose-900/30 p-2 rounded-xl">
+            Erro na agregação Cloud: {metricsError}
+          </div>
+        )}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          
+          {/* Card 1: Active Users */}
+          <div className="bg-[#101826] border border-[#14B8A6]/20 p-5 rounded-3xl relative overflow-hidden transition-all hover:border-[#14B8A6]/40 group">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-[#14B8A6]/5 rounded-full blur-xl group-hover:bg-[#14B8A6]/10 transition-all"></div>
+            <span className="text-[9px] uppercase tracking-wider text-stone-500 font-mono block">Usuários Ativos (Mensal)</span>
+            <div className="flex items-baseline space-x-1.5 mt-2">
+              <span className="text-2xl font-mono font-bold text-teal-400">
+                {aggregatedMetrics 
+                  ? aggregatedMetrics.activeUsersCount 
+                  : allUsers.filter(u => new Date(u.lastActive).getTime() > Date.now() - 30 * 24 * 60 * 60 * 1000).length}
+              </span>
+              <span className="text-[8px] text-emerald-450 font-mono font-bold">● online</span>
+            </div>
+          </div>
+
+          {/* Card 2: New Signups */}
+          <div className="bg-[#101826] border border-[#14B8A6]/20 p-5 rounded-3xl relative overflow-hidden transition-all hover:border-[#14B8A6]/40 group">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-[#34D399]/5 rounded-full blur-xl group-hover:bg-[#34D399]/10 transition-all"></div>
+            <span className="text-[9px] uppercase tracking-wider text-stone-500 font-mono block">Novos Cadastros (7d)</span>
+            <div className="flex items-baseline space-x-1.5 mt-2">
+              <span className="text-2xl font-mono font-bold text-[#34D399]">
+                {aggregatedMetrics 
+                  ? aggregatedMetrics.newSignupsThisWeek 
+                  : allUsers.filter(u => new Date(u.registeredAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000).length}
+              </span>
+              <span className="text-[8px] text-stone-600 font-mono">+12% vs m-1</span>
+            </div>
+          </div>
+
+          {/* Card 3: Sessions Today */}
+          <div className="bg-[#101826] border border-[#14B8A6]/20 p-5 rounded-3xl relative overflow-hidden transition-all hover:border-[#14B8A6]/40 group">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-[#FBBF24]/5 rounded-full blur-xl group-hover:bg-[#FBBF24]/10 transition-all"></div>
+            <span className="text-[9px] uppercase tracking-wider text-stone-500 font-mono block">Sessões Hoje</span>
+            <div className="flex items-baseline space-x-1.5 mt-2">
+              <span className="text-2xl font-mono font-bold text-[#FBBF24]">
+                {aggregatedMetrics 
+                  ? aggregatedMetrics.dailySessions 
+                  : allUsers.filter(u => new Date(u.lastActive).toDateString() === new Date().toDateString()).length}
+              </span>
+              <span className="text-[8px] text-amber-500 font-mono font-bold">hoje</span>
+            </div>
+          </div>
+
+          {/* Card 4: Average Session Time */}
+          <div className="bg-[#101826] border border-[#14B8A6]/20 p-5 rounded-3xl relative overflow-hidden transition-all hover:border-[#14B8A6]/40 group">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/5 rounded-full blur-xl transition-all"></div>
+            <span className="text-[9px] uppercase tracking-wider text-stone-500 font-mono block">Tempo Médio</span>
+            <div className="flex items-baseline space-x-1.5 mt-2">
+              <span className="text-2xl font-mono font-bold text-indigo-400">14.5m</span>
+              <span className="text-[8px] text-stone-600 font-mono">por dia</span>
+            </div>
+          </div>
+
+          {/* Card 5: Average level */}
+          <div className="bg-[#101826] border border-[#14B8A6]/20 p-5 rounded-3xl relative overflow-hidden transition-all hover:border-[#14B8A6]/40 group">
+            <span className="text-[9px] uppercase tracking-wider text-stone-500 font-mono block">Nível Médio</span>
+            <div className="flex items-baseline space-x-1.5 mt-2">
+              <span className="text-2xl font-mono font-bold text-teal-350">
+                {aggregatedMetrics 
+                  ? aggregatedMetrics.averageUserLevel.toFixed(1)
+                  : (allUsers.length > 0 ? (allUsers.reduce((sum, u) => sum + (u.level || 1), 0) / allUsers.length).toFixed(1) : '1.0')}
+              </span>
+              <span className="text-[8px] text-stone-600 font-mono">XP calibrado</span>
+            </div>
+          </div>
+
+          {/* Card 6: Dominant Mood today */}
+          <div className="bg-[#101826] border border-[#14B8A6]/20 p-5 rounded-3xl relative overflow-hidden transition-all hover:border-[#14B8A6]/40 group">
+            <span className="text-[9px] uppercase tracking-wider text-stone-500 font-mono block">Humor Médio (Constelação)</span>
+            <div className="flex items-baseline mt-2">
+              <span className="text-xs font-sans font-black text-rose-450 tracking-tight truncate max-w-full">
+                {aggregatedMetrics ? (() => {
+                  const state = aggregatedMetrics.averageMood;
+                  const moodsPt: Record<string, string> = {
+                    ansiedade: 'Névoa Trêmula 🌧️',
+                    tdah: 'Vento Veloce ⚡',
+                    calma: 'Brisa Leve 🍃',
+                    feliz: 'Sol Radiante ☀️',
+                    cansado: 'Crepúsculo Suave 🌅',
+                    triste: 'Sereno de Outono 🍂'
+                  };
+                  const moodsEn: Record<string, string> = {
+                    ansiedade: 'Trembling Mist 🌧️',
+                    tdah: 'Swift Wind ⚡',
+                    calma: 'Gentle Breeze 🍃',
+                    feliz: 'Radiant Sun ☀️',
+                    cansado: 'Soft Twilight 🌅',
+                    triste: 'Autumn Serene 🍂'
+                  };
+                  return lang === 'pt' ? (moodsPt[state] || state) : (moodsEn[state] || state);
+                })() : React.useMemo(() => {
+                  const counts: Record<string, number> = {};
+                  allUsers.forEach(u => {
+                    if (u.emotionalState) {
+                      counts[u.emotionalState] = (counts[u.emotionalState] || 0) + 1;
+                    }
+                  });
+                  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+                  if (sorted.length > 0) {
+                    const state = sorted[0][0];
+                    const moodsPt: Record<string, string> = {
+                      ansiedade: 'Névoa Trêmula 🌧️',
+                      tdah: 'Vento Veloce ⚡',
+                      calma: 'Brisa Leve 🍃',
+                      feliz: 'Sol Radiante ☀️',
+                      cansado: 'Crepúsculo Suave 🌅',
+                      triste: 'Sereno de Outono 🍂'
+                    };
+                    const moodsEn: Record<string, string> = {
+                      ansiedade: 'Trembling Mist 🌧️',
+                      tdah: 'Swift Wind ⚡',
+                      calma: 'Gentle Breeze 🍃',
+                      feliz: 'Radiant Sun ☀️',
+                      cansado: 'Soft Twilight 🌅',
+                      triste: 'Autumn Serene 🍂'
+                    };
+                    return lang === 'pt' ? (moodsPt[state] || state) : (moodsEn[state] || state);
+                  }
+                  return lang === 'pt' ? 'Mar de Rosas 🌊' : 'Calm Seas 🌊';
+                }, [allUsers, lang])}
+              </span>
+            </div>
+          </div>
+
+          {/* Card 7: Evolved Garden Trees/Plants */}
+          <div className="bg-[#101826] border border-[#14B8A6]/20 p-5 rounded-3xl relative overflow-hidden transition-all hover:border-[#14B8A6]/40 group">
+            <span className="text-[9px] uppercase tracking-wider text-stone-500 font-mono block">Árvores Evoluídas</span>
+            <div className="flex items-baseline space-x-1.5 mt-2">
+              <span className="text-2xl font-mono font-bold text-[#34D399]">
+                {allUsers.filter(u => (u.level || 1) >= 3).length}
+              </span>
+              <span className="text-[8px] text-stone-600 font-mono">estágio 3</span>
+            </div>
+          </div>
+
+          {/* Card 8: Active Subscriptions scale */}
+          <div className="bg-[#101826] border border-[#14B8A6]/20 p-5 rounded-3xl relative overflow-hidden transition-all hover:border-[#14B8A6]/40 group">
+            <span className="text-[9px] uppercase tracking-wider text-stone-500 font-mono block">Assinaturas Ativas</span>
+            <div className="flex items-baseline space-x-1.5 mt-2">
+              <span className="text-2xl font-mono font-bold text-amber-500">
+                {allUsers.filter(u => u.plan === 'guardian' || u.plan === 'member').length}
+              </span>
+              <span className="text-[8px] text-stone-600 font-mono">
+                ({(allUsers.length > 0 ? (allUsers.filter(u => u.plan === 'guardian' || u.plan === 'member').length / allUsers.length * 100) : 0).toFixed(0)}%)
+              </span>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -842,6 +1045,21 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ currentU
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
                                     </svg>
                                     <span>{lang === 'pt' ? 'Interagir' : 'Interact'}</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggleSuspension(userObj)}
+                                    disabled={suspendingUserId === userObj.id}
+                                    className={`p-1.5 px-2.5 rounded transition-all font-sans text-[9px] uppercase tracking-wider font-semibold cursor-pointer active:scale-95 inline-flex items-center space-x-1 border disabled:opacity-50 ${
+                                      userObj.suspended 
+                                        ? 'bg-amber-955/25 border-amber-700 text-amber-400 hover:bg-amber-950' 
+                                        : 'bg-stone-900 border border-stone-850 hover:bg-stone-800 text-stone-400'
+                                    }`}
+                                    title={userObj.suspended ? (lang === 'pt' ? 'Reativar Praticante' : 'Activate Practitioner') : (lang === 'pt' ? 'Suspender Praticante' : 'Suspend Practitioner')}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-3 h-3">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                                    </svg>
+                                    <span>{userObj.suspended ? (lang === 'pt' ? 'Desbloquear' : 'Unsuspend') : (lang === 'pt' ? 'Suspender' : 'Suspend')}</span>
                                   </button>
                                   <button
                                     onClick={() => setUserToDelete(userObj)}

@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Check, Feather, Sparkles, Volume2, VolumeX, Lock, Unlock, Shield, EyeOff, Clipboard, FileText } from 'lucide-react';
-import { Language } from '../types';
+import { ArrowLeft, Check, Feather, Sparkles, Volume2, VolumeX, Lock, Unlock, Shield, EyeOff, Clipboard, FileText, Mic, MicOff } from 'lucide-react';
+import { Language, User } from '../types';
 import { auth, db } from '../lib/firebase';
-import { doc, setDoc, collection } from 'firebase/firestore';
+import { doc, setDoc, collection, updateDoc } from 'firebase/firestore';
+import { motion } from 'motion/react';
 
 interface TelaRefugioProps {
   onClose: () => void;
   lang: Language;
+  user?: User;
 }
 
-export const TelaRefugio: React.FC<TelaRefugioProps> = ({ onClose, lang }) => {
+export const TelaRefugio: React.FC<TelaRefugioProps> = ({ onClose, lang, user }) => {
   const [texto, setTexto] = useState('');
   const [salvo, setSalvo] = useState(false);
   const [ancoraDoDia, setAncoraDoDia] = useState('');
@@ -32,6 +34,277 @@ export const TelaRefugio: React.FC<TelaRefugioProps> = ({ onClose, lang }) => {
   const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold' | 'exhale' | 'holdEmpty'>('inhale');
   const [breathingElapsed, setBreathingElapsed] = useState(0);
   const [breathingCycles, setBreathingCycles] = useState(0);
+
+  // Feature 5: Speech Recording (Transcribe Voice & Sentiment Analysis)
+  const [isRecording, setIsRecording] = useState(false);
+  const [recognitionError, setRecognitionError] = useState<string | null>(null);
+  const [showSentimentReport, setShowSentimentReport] = useState(false);
+  const [sentimentResult, setSentimentResult] = useState<{
+    score: number;
+    labelPt: string;
+    labelEn: string;
+    emoji: string;
+    stateValue: string;
+    detailsPt: string;
+    detailsEn: string;
+  } | null>(null);
+
+  const [isSelfListening, setIsSelfListening] = useState(false);
+  const selfSpeakingUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const startSelfListening = () => {
+    if (!window.speechSynthesis) return;
+
+    if (isSelfListening) {
+      window.speechSynthesis.cancel();
+      setIsSelfListening(false);
+      return;
+    }
+
+    const cleanText = texto;
+    if (!cleanText.trim()) return;
+
+    // stop any other speak
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    selfSpeakingUtteranceRef.current = utterance;
+
+    // Peaceful, slow therapeutic rate
+    utterance.lang = lang === 'pt' ? 'pt-BR' : 'en-US';
+    utterance.rate = 0.82; 
+    utterance.pitch = 1.05;
+
+    const voices = window.speechSynthesis.getVoices();
+    const voiceMatch = voices.find(v => v.lang.startsWith(lang === 'pt' ? 'pt' : 'en'));
+    if (voiceMatch) {
+      utterance.voice = voiceMatch;
+    }
+
+    utterance.onend = () => {
+      setIsSelfListening(false);
+    };
+
+    utterance.onerror = () => {
+      setIsSelfListening(false);
+    };
+
+    setIsSelfListening(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    const SpeechClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechClass) {
+      const rec = new SpeechClass();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = lang === 'pt' ? 'pt-BR' : 'en-US';
+
+      rec.onresult = (event: any) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          setTexto((prev) => {
+            const separator = prev.trim() ? ' ' : '';
+            return prev + separator + finalTranscript;
+          });
+        }
+      };
+
+      rec.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setRecognitionError(event.error);
+        setIsRecording(false);
+      };
+
+      rec.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = rec;
+    }
+  }, [lang]);
+
+  const toggleRecording = () => {
+    if (!recognitionRef.current) {
+      alert(lang === 'pt' ? 'Reconhecimento de fala não é suportado pelo seu navegador atual. Use o Google Chrome ou Edge.' : 'Speech recognition is not fully supported in this browser. Please try Google Chrome or MS Edge.');
+      return;
+    }
+
+    if (isRecording) {
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {
+        console.error(err);
+      }
+      setIsRecording(false);
+      // Wait slightly and analyze sentiment
+      setTimeout(() => {
+        analyzeSentiment(texto);
+      }, 500);
+    } else {
+      // Cancel active self-listening during recording
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      setIsSelfListening(false);
+
+      setRecognitionError(null);
+      setSentimentResult(null);
+      setShowSentimentReport(false);
+      try {
+        recognitionRef.current.start();
+        setIsRecording(true);
+      } catch (err) {
+        console.error('Error starting recording:', err);
+      }
+    }
+  };
+
+  const analyzeSentiment = async (content: string) => {
+    if (!content.trim()) return;
+
+    const lowercase = content.toLowerCase();
+
+    // Word matrices
+    const peaceWords = [
+      'calma', 'paz', 'tranquil', 'leve', 'seren', 'medit', 'aceit', 'respir', 
+      'calm', 'peace', 'seren', 'flow', 'aconcheg', 'alivi', 'grat', 'amor',
+      'suave', 'sinton', 'equilibr', 'harmonia', 'presença', 'presente', 'foco'
+    ];
+    const lowWords = [
+      'triste', 'pesad', 'dor', 'cansad', 'solid', 'angústia', 'choro', 'tristeza', 
+      'exaust', 'heavy', 'sad', 'tired', 'grief', 'desanim', 'só', 'vazio', 'culp',
+      'frio', 'fardo', 'carregar', 'machuc', 'sofr', 'desespero', 'morte', 'desânimo'
+    ];
+    const anxWords = [
+      'ansios', 'raiva', 'irritad', 'estress', 'nervos', 'medo', 'pressa', 'acelerad', 
+      'anxious', 'stress', 'angry', 'fear', 'rush', 'pânico', 'preocup', 'tenso',
+      'tensão', 'agita', 'frustra', 'inquiet', 'preocupado', 'assustado'
+    ];
+
+    let scorePeace = 0;
+    let scoreLow = 0;
+    let scoreAnx = 0;
+
+    peaceWords.forEach(w => {
+      const occurrences = (lowercase.match(new RegExp(w, 'g')) || []).length;
+      scorePeace += occurrences;
+    });
+
+    lowWords.forEach(w => {
+      const occurrences = (lowercase.match(new RegExp(w, 'g')) || []).length;
+      scoreLow += occurrences;
+    });
+
+    anxWords.forEach(w => {
+      const occurrences = (lowercase.match(new RegExp(w, 'g')) || []).length;
+      scoreAnx += occurrences;
+    });
+
+    let detectedState = 'neutral';
+    let labelPt = 'Equilíbrio Cósmico';
+    let labelEn = 'Cosmic Balance';
+    let detailsPt = 'Seu tom é estável e neutro, residindo num ponto de equilíbrio profundo.';
+    let detailsEn = 'Your tone is stable and neutral, residing in a deep state of inner equilibrium.';
+    let emoji = '🔮';
+    
+    const maxScore = Math.max(scorePeace, scoreLow, scoreAnx);
+    if (maxScore > 0) {
+      if (maxScore === scorePeace) {
+        detectedState = 'peace';
+        labelPt = 'Calma & Fluidez Interior';
+        labelEn = 'Inner Calm & Flow';
+        detailsPt = 'Energia de presença e renovação. Sua Árvore Interior florescerá com um brilho verde cintilante!';
+        detailsEn = 'Energy of presence and renewal. Your Inner Tree will grow with glowing emerald leaves!';
+        emoji = '🍃';
+      } else if (maxScore === scoreAnx) {
+        detectedState = 'anx';
+        labelPt = 'Calor Impulsivo / Ansiedade';
+        labelEn = 'Anxious / Inner Turbulence';
+        detailsPt = 'Seu tom indica agitação ou urgência. A Árvore Interior receberá uma aura âmbar calorosa para acalmar os ventos cognivos.';
+        detailsEn = 'Your tone reflects turbulence. The Inner Tree will display an amber aura to soothe active winds.';
+        emoji = '🔥';
+      } else if (maxScore === scoreLow) {
+        detectedState = 'sad';
+        labelPt = 'Refúgio de Cansaço / Peso';
+        labelEn = 'Bearing Exhaustion / Heaviness';
+        detailsPt = 'Sua voz carrega peso ou tristeza. A Árvore Interior receberá uma aura azul profunda e repousante para aconchegar seu cansaço.';
+        detailsEn = 'Your voice holds emotional weight. The Inner Tree will envelop itself in deep indigo restfulness.';
+        emoji = '❄️';
+      }
+    }
+
+    const res = {
+      score: maxScore,
+      labelPt,
+      labelEn,
+      emoji,
+      stateValue: detectedState,
+      detailsPt,
+      detailsEn,
+    };
+
+    setSentimentResult(res);
+    setShowSentimentReport(true);
+
+    // Save and publish results directly to the user's emotionalState in auth/firebase
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        let dbState = 'neutral';
+        if (detectedState === 'peace') dbState = 'flow_peace_seren';
+        if (detectedState === 'anx') dbState = 'anx_accel_irrit_raiv';
+        if (detectedState === 'sad') dbState = 'low_sad_triste_heavy';
+
+        await updateDoc(userDocRef, {
+          emotionalState: dbState,
+          points: (user?.points || 0) + 15
+        });
+
+        // Soft chime synthesizer
+        if (window.AudioContext || (window as any).webkitAudioContext) {
+          const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+          const actx = new AudioCtxClass();
+          const osc = actx.createOscillator();
+          const amp = actx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, actx.currentTime); // D5
+          osc.frequency.exponentialRampToValueAtTime(880, actx.currentTime + 0.4); // A5 glide
+          amp.gain.setValueAtTime(0.05, actx.currentTime);
+          amp.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 1.2);
+          osc.connect(amp);
+          amp.connect(actx.destination);
+          osc.start();
+          osc.stop(actx.currentTime + 1.3);
+        }
+
+      } catch (err) {
+        console.error('Error updating state in Firebase:', err);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!isBreathingRunning) {
@@ -542,6 +815,186 @@ export const TelaRefugio: React.FC<TelaRefugioProps> = ({ onClose, lang }) => {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Voz Interior / Speech Recognition HUD and Action bar */}
+        <div className="w-full bg-stone-50/70 border border-stone-200/50 rounded-2xl p-5 mb-6 transition-all duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleRecording}
+                className={`w-11 h-11 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm relative ${
+                  isRecording 
+                    ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/20' 
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-200/50'
+                }`}
+                title={lang === 'pt' ? 'Gravar reflexão por voz' : 'Record voice reflection'}
+              >
+                {isRecording ? (
+                  <>
+                    <MicOff className="w-5 h-5 shrink-0" />
+                    <span className="absolute -inset-1 rounded-full border border-rose-400 animate-ping opacity-50" />
+                  </>
+                ) : (
+                  <Mic className="w-5 h-5 shrink-0" />
+                )}
+              </button>
+
+              <div>
+                <h4 className="text-xs font-serif font-bold text-stone-700 flex items-center gap-1.5">
+                  <span>{lang === 'pt' ? '🎙️ Voz Refletida' : '🎙️ Resonant Voice'}</span>
+                  {isRecording && (
+                    <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 text-[8px] font-mono rounded font-bold uppercase animate-pulse">
+                      {lang === 'pt' ? 'LOGANDO' : 'LISTENING'}
+                    </span>
+                  )}
+                </h4>
+                <p className="text-[10px] text-stone-500 leading-relaxed">
+                  {isRecording 
+                    ? (lang === 'pt' ? 'Fale livremente. Seus pensamentos estão sendo transcritos...' : 'Speak freely. Your stream of consciousness is being captured...')
+                    : (lang === 'pt' ? 'Toque no microfone para ditar sua reflexão em tempo real e mapear o humor.' : 'Tap to speak your thoughts. They are transcribed and mapped to your Inner Tree.')}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => analyzeSentiment(texto)}
+                disabled={!texto.trim()}
+                className="py-1.5 px-3.5 border border-stone-200 hover:border-emerald-500/30 hover:bg-emerald-50/30 disabled:opacity-40 disabled:hover:border-stone-200 disabled:hover:bg-transparent text-[10px] font-mono font-medium rounded-xl uppercase tracking-wider text-stone-600 hover:text-emerald-700 transition-all cursor-pointer"
+              >
+                {lang === 'pt' ? 'Analisar Humor' : 'Analyze Mood'}
+              </button>
+            </div>
+          </div>
+
+          {/* Dynamic Voice Recording Pulse Waves */}
+          {isRecording && (
+            <div className="flex items-center justify-center gap-1 mt-4 py-2 bg-rose-50/40 rounded-xl border border-rose-100/30">
+              <div className="w-1 h-3 bg-rose-400 rounded-full animate-bounce [animation-delay:0.1s]" />
+              <div className="w-1 h-5 bg-rose-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+              <div className="w-1 h-7 bg-rose-600 rounded-full animate-bounce [animation-delay:0.3s]" />
+              <div className="w-1 h-4 bg-rose-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+              <div className="w-1 h-2 bg-rose-400 rounded-full animate-bounce [animation-delay:0.5s]" />
+            </div>
+          )}
+
+          {/* Sentiment Analysis Report card */}
+          {showSentimentReport && sentimentResult && (
+            <div className="mt-4 p-4 rounded-xl border bg-white border-stone-200/70 shadow-sm animate-fade-in text-left space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{sentimentResult.emoji}</span>
+                  <div>
+                    <h5 className="font-serif text-xs font-bold text-stone-800">
+                      {lang === 'pt' ? sentimentResult.labelPt : sentimentResult.labelEn}
+                    </h5>
+                    <p className="text-[9px] font-mono text-emerald-600 uppercase tracking-wider">
+                      {lang === 'pt' ? `Estado Sincronizado • +15 XP` : `State Synced • +15 XP`}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSentimentReport(false)}
+                  className="text-stone-400 hover:text-stone-700 text-xs font-mono p-1 rounded hover:bg-stone-50 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-stone-600 font-light leading-relaxed font-sans">
+                {lang === 'pt' ? sentimentResult.detailsPt : sentimentResult.detailsEn}
+              </p>
+
+              {/* Auto-escuta Ativa block with light waves */}
+              <div className="pt-3 border-t border-stone-100 flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-[#0D9488] font-extrabold animate-pulse">
+                    {lang === 'pt' ? '🎧 Auto-Escuta Ativa' : '🎧 Active Self-Listening'}
+                  </span>
+                  
+                  <button
+                    onClick={startSelfListening}
+                    disabled={!texto.trim()}
+                    className={`py-1 px-3 rounded-full border text-[9px] font-mono uppercase tracking-wider font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isSelfListening 
+                        ? 'bg-teal-50 border-teal-300 text-teal-700 animate-pulse shadow-[0_0_10px_rgba(20,184,166,0.1)]' 
+                        : 'border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-600'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSelfListening ? 'bg-teal-500' : 'bg-stone-400'}`} />
+                    <span>
+                      {isSelfListening 
+                        ? (lang === 'pt' ? 'Mudar' : 'Mute') 
+                        : (lang === 'pt' ? 'Ouvir Tom' : 'Listen')}
+                    </span>
+                  </button>
+                </div>
+
+                {isSelfListening && (
+                  <div className="w-full h-10 relative bg-stone-900 rounded-xl overflow-hidden shadow-inner flex items-center justify-center border border-stone-800 animate-fade-in">
+                    {/* Soft glowing light rays reflecting emotion */}
+                    <div 
+                      className="absolute inset-0 opacity-20 filter blur-md transition-all duration-700"
+                      style={{
+                        backgroundColor: 
+                          sentimentResult.stateValue === 'peace' ? '#10B981' :
+                          sentimentResult.stateValue === 'sad' ? '#3B82F6' :
+                          sentimentResult.stateValue === 'anx' ? '#F59E0B' : '#8B5CF6'
+                      }}
+                    />
+
+                    {/* SVG Undulating Light waves of varying frequencies */}
+                    <svg viewBox="0 0 400 40" fill="none" className="w-full h-full relative z-10 select-none pointer-events-none">
+                      <motion.path
+                        d="M 0,20 Q 100,5 200,20 T 400,20"
+                        stroke={
+                          sentimentResult.stateValue === 'peace' ? '#34D399' :
+                          sentimentResult.stateValue === 'sad' ? '#60A5FA' :
+                          sentimentResult.stateValue === 'anx' ? '#FBBF24' : '#C084FC'
+                        }
+                        strokeWidth="1.5"
+                        animate={{
+                          d: [
+                            "M 0,20 Q 100,2 200,20 T 400,20",
+                            "M 0,20 Q 100,38 200,20 T 400,20",
+                            "M 0,20 Q 100,2 200,20 T 400,20"
+                          ]
+                        }}
+                        transition={{
+                          duration: sentimentResult.stateValue === 'anx' ? 1.5 : 2.8,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                      />
+                      <motion.path
+                        d="M 0,20 Q 100,32 200,10 T 400,20"
+                        stroke={
+                          sentimentResult.stateValue === 'peace' ? '#10B981' :
+                          sentimentResult.stateValue === 'sad' ? '#3B82F6' :
+                          sentimentResult.stateValue === 'anx' ? '#EF4444' : '#8B5CF6'
+                        }
+                        strokeWidth="1.0"
+                        strokeOpacity="0.6"
+                        animate={{
+                          d: [
+                            "M 0,20 Q 100,35 200,5 T 400,20",
+                            "M 0,20 Q 100,5 200,35 T 400,20",
+                            "M 0,20 Q 100,35 200,5 T 400,20"
+                          ]
+                        }}
+                        transition={{
+                          duration: sentimentResult.stateValue === 'anx' ? 1.1 : 2.2,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: 0.15
+                        }}
+                      />
+                    </svg>
+                  </div>
+                )}
               </div>
             </div>
           )}

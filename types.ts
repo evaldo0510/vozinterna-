@@ -47,6 +47,7 @@ export interface User {
   profileCompleted?: boolean;
   hasSeenOnboarding?: boolean;
   badges?: string[];
+  suspended?: boolean;
 }
 
 export interface SessionHistoryItem {
