@@ -67,6 +67,16 @@ service cloud.firestore {
         && data.lastWatered is string;
     }
 
+    function isValidFeedback(data) {
+      return data.id is string
+        && data.id.size() <= 128
+        && data.userId is string
+        && data.userId == request.auth.uid
+        && data.emoji is string
+        && data.emoji.size() <= 32
+        && data.timestamp is string;
+    }
+
     function isValidNeuroProfile(data, profileId) {
       return data.userId is string 
         && data.userId == profileId 
@@ -127,6 +137,20 @@ service cloud.firestore {
                       
         allow update: if isOwner(userId) && isValidId(userId) && isValidId(plantId) 
                       && isValidGardenPlant(request.resource.data) 
+                      && request.resource.data.id == resource.data.id;
+      }
+
+      // Nested Feedbacks collection
+      match /feedbacks/{feedbackId} {
+        allow get, delete: if isOwner(userId) && isValidId(userId) && isValidId(feedbackId);
+        allow list: if isOwner(userId);
+        
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(feedbackId) 
+                      && isValidFeedback(request.resource.data) 
+                      && request.resource.data.id == feedbackId;
+                      
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(feedbackId) 
+                      && isValidFeedback(request.resource.data) 
                       && request.resource.data.id == resource.data.id;
       }
     }

@@ -35,7 +35,7 @@ import { EvoluirView } from './components/EvoluirView';
 
 import { auth, db, OperationType, handleFirestoreError } from './lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
 
 // Icons using lucide-react
 import { BookOpen, MessageSquare, User as UserIcon, Sliders, Shield, LogOut, HelpCircle } from 'lucide-react';
@@ -77,6 +77,7 @@ function App() {
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
   const [isMinimalMode, setIsMinimalMode] = useState(false);
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
+  const [showQuickPulse, setShowQuickPulse] = useState(false);
   
   // Immersive mode & mobile swipe gestures with debounce & velocity constraints
   const [isFullyImmersive, setIsFullyImmersive] = useState(false);
@@ -227,6 +228,7 @@ function App() {
         console.error('Error updating user session stats:', err);
       }
     }
+    setShowQuickPulse(true);
     setActiveScreen('evoluir');
   };
 
@@ -453,6 +455,53 @@ function App() {
                   </span>
                 </div>
               </div>
+
+              {/* Quick Pulse Feedback component */}
+              {showQuickPulse && currentUser && (
+                <div id="quick-pulse-feedback-container" className="mx-4 flex items-center gap-3 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full animate-fade-in text-xs select-none shadow-sm max-w-sm md:max-w-md shrink-0">
+                  <span className="text-[11px] text-emerald-600 font-serif font-semibold">
+                    {lang === 'pt' ? 'Como se sente após esta sessão PCH?' : 'How do you feel post-session?'}
+                  </span>
+                  <div className="flex gap-2">
+                    {['😌', '🕊️', '🌱', '⚡', '💖'].map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={async () => {
+                          const feedbackId = Date.now().toString();
+                          try {
+                            const feedbackRef = doc(db, 'users', currentUser.id, 'feedbacks', feedbackId);
+                            await setDoc(feedbackRef, {
+                              id: feedbackId,
+                              userId: currentUser.id,
+                              emoji: emoji,
+                              timestamp: new Date().toISOString()
+                            });
+                            addToast({
+                              type: 'badge',
+                              title: lang === 'pt' ? 'Ressonância Guardada!' : 'Resonance Guarded!',
+                              description: lang === 'pt' ? 'Seu pulso emocional pós-sessão foi registrado com sucesso.' : 'Your post-session emotional pulse was registered successfully.'
+                            });
+                          } catch (err) {
+                            console.error('Error saving Quick Pulse feedback:', err);
+                          }
+                          setShowQuickPulse(false);
+                        }}
+                        className="hover:scale-130 active:scale-95 transition-all text-[15px] cursor-pointer filter hover:drop-shadow"
+                        title={emoji}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                  <button 
+                    onClick={() => setShowQuickPulse(false)} 
+                    className="text-[10px] text-stone-400 hover:text-stone-600 transition-colors cursor-pointer px-1"
+                    title={lang === 'pt' ? 'Fechar' : 'Close'}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
               {/* Aesthetic interactive navigation rails */}
               <nav className="flex items-center gap-0.5">

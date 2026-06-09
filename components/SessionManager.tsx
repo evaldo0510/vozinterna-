@@ -19,6 +19,7 @@ import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { useMotorAdaptativo } from '../hooks/useMotorAdaptativo';
 import { PainelDaVozAtivo } from './PainelDaVozAtivo';
+import { natureAudioPlayer } from '../lib/natureAudio';
 
 interface SessionManagerProps {
   onDisconnect: () => void;
@@ -144,6 +145,19 @@ const SessionManager: React.FC<SessionManagerProps> = ({
   const [voicePersona, setVoicePersona] = useState<'natural' | 'elder' | 'supporter' | 'poet' | 'playful' | 'custom'>('natural');
   const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>('');
   const [browserVoices, setBrowserVoices] = useState<any[]>([]);
+
+  // Background 'nature sound' loop using Web Audio API during active session
+  useEffect(() => {
+    const isEnabled = localStorage.getItem('pch_nature_loop_enabled') === 'true';
+    if (isEnabled && status === SessionStatus.CONNECTED) {
+      natureAudioPlayer.start();
+    } else {
+      natureAudioPlayer.stop();
+    }
+    return () => {
+      natureAudioPlayer.stop();
+    };
+  }, [status]);
 
   // Load available speech synthesis voices
   useEffect(() => {

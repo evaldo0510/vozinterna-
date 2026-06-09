@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { natureAudioPlayer } from '../lib/natureAudio';
 
 interface SettingsViewProps {
   user: User | null;
@@ -51,6 +52,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [gestosSuaves, setGestosSuaves] = useState<boolean>(false);
   const [silencioNoturno, setSilencioNoturno] = useState<boolean>(true);
   const [contrasRef, setContrasRef] = useState<'natural' | 'sepia' | 'crepusculo'>('natural');
+
+  const [natureLoopActive, setNatureLoopActive] = useState<boolean>(false);
+
+  useEffect(() => {
+    const isEnabled = localStorage.getItem('pch_nature_loop_enabled') === 'true';
+    setNatureLoopActive(isEnabled);
+    if (isEnabled) {
+      natureAudioPlayer.start();
+    }
+  }, []);
 
   // Web Audio ambient soundscape generator state
   const audioCtxRef = React.useRef<AudioContext | null>(null);
@@ -237,6 +248,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         try { node.stop(); } catch(e){}
         try { node.disconnect(); } catch(e){}
       });
+      natureAudioPlayer.stop();
     };
   }, []);
 
@@ -600,6 +612,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </button>
                 );
               })}
+            </div>
+
+            {/* Custom background nature sound loop Web Audio toggle */}
+            <div className="flex justify-between items-center bg-stone-50/60 p-4 rounded-2xl border border-stone-150 mt-4" id="nature-sound-toggle-container">
+              <div className="text-left space-y-1">
+                <span className="text-sm font-serif font-bold text-stone-850 flex items-center gap-1.5">
+                  🍃 {lang === 'pt' ? 'Sons de Natureza de Fundo' : 'Background Nature Sounds'}
+                </span>
+                <span className="text-[11px] text-stone-500 font-light block leading-relaxed">
+                  {lang === 'pt' ? 'Sussurros de floresta e grilos com Web Audio para imersão.' : 'Soothing synthesized procedural forest breeze and crickets.'}
+                </span>
+              </div>
+              
+              <button
+                id="btn-nature-sound-toggle"
+                onClick={() => {
+                  const newVal = !natureLoopActive;
+                  setNatureLoopActive(newVal);
+                  localStorage.setItem('pch_nature_loop_enabled', String(newVal));
+                  if (newVal) {
+                    natureAudioPlayer.start();
+                  } else {
+                    natureAudioPlayer.stop();
+                  }
+                }}
+                className={`w-11 h-6.5 rounded-full p-0.5 transition-colors duration-300 outline-none cursor-pointer border ${
+                  natureLoopActive ? 'bg-emerald-600 border-emerald-700' : 'bg-stone-200 border-stone-300'
+                }`}
+              >
+                <div className={`bg-white w-5 h-5 rounded-full shadow-sm transition-transform duration-300 ${
+                  natureLoopActive ? 'translate-x-4.5' : 'translate-x-0'
+                }`} />
+              </button>
             </div>
           </div>
 

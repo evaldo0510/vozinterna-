@@ -533,12 +533,37 @@
         }
       },
       "required": ["id", "experimentType", "name", "createdAt", "createdBy"]
+    },
+    "Feedback": {
+      "title": "Quick Pulse Feedback",
+      "description": "User emoji reaction and mood response logged after completing a PCH session.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "emoji": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "userId", "emoji", "timestamp"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
       "description": "Primary user profile, settings, settings, gamification, and stats database."
+    },
+    "/users/{userId}/feedbacks/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "Nested collection of Quick Pulse emotional feedbacks collected after sessions."
     },
     "/users/{userId}/journals/{journalId}": {
       "schema": "Journal",
