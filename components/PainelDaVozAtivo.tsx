@@ -16,6 +16,7 @@ interface PainelDaVozAtivoProps {
   aiSpeechText: string;
   elapsedSeconds: number;
   onTriggerSupport?: () => void;
+  onSendQuickReply?: (text: string) => void;
 }
 
 export const PainelDaVozAtivo: React.FC<PainelDaVozAtivoProps> = ({
@@ -31,6 +32,7 @@ export const PainelDaVozAtivo: React.FC<PainelDaVozAtivoProps> = ({
   aiSpeechText,
   elapsedSeconds,
   onTriggerSupport,
+  onSendQuickReply,
 }) => {
   const [escutando, setEscutando] = useState(!isMicMuted);
   const [textoCapturado, setTextoCapturado] = useState('');
@@ -286,6 +288,35 @@ export const PainelDaVozAtivo: React.FC<PainelDaVozAtivoProps> = ({
             </button>
           )}
         </div>
+
+        {/* WhatsApp + Calm + Headspace Styled Horizontal Scrolling Quick Replies */}
+        {onSendQuickReply && (
+          <div className="w-full flex flex-col gap-1.5 px-4 my-2 shrink-0 animate-fade-in">
+            <span className="text-[8px] font-mono tracking-widest text-stone-500 font-bold uppercase text-center select-none">
+              {lang === 'pt' ? 'Atalhos de Sintonia Rápida' : 'Quick Alignment Shortcuts'}
+            </span>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar py-2 w-full justify-start sm:justify-center px-1">
+              {[
+                { key: 'ansioso', labelPt: 'Estou ansioso', labelEn: 'I feel anxious', icon: '🌤' },
+                { key: 'refletir', labelPt: 'Preciso refletir', labelEn: 'Need to reflect', icon: '📖' },
+                { key: 'escrever', labelPt: 'Quero escrever', labelEn: 'Want to write', icon: '✍️' },
+                { key: 'respirar', labelPt: 'Quero respirar', labelEn: 'Want to breathe', icon: '🫁' },
+                { key: 'organizar', labelPt: 'Organizar mente', labelEn: 'Clarity needed', icon: '🧠' }
+              ].map((reply) => (
+                <button
+                  key={reply.key}
+                  onClick={() => {
+                    onSendQuickReply(lang === 'pt' ? reply.labelPt : reply.labelEn);
+                  }}
+                  className="shrink-0 px-4 py-2 border border-stone-200 dark:border-stone-800 bg-white/50 dark:bg-stone-900/40 rounded-full hover:bg-teal-500/10 dark:hover:bg-teal-400/10 hover:border-teal-500/35 text-stone-700 dark:text-stone-300 hover:text-teal-600 dark:hover:text-teal-400 text-[10px] font-semibold transition-all shadow-sm flex items-center gap-1 cursor-pointer hover:scale-[1.03]"
+                >
+                  <span className="text-[11px] select-none">{reply.icon}</span>
+                  <span>{lang === 'pt' ? reply.labelPt : reply.labelEn}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Indicador Sonoro (se estiver falando) */}
         {isUserSpeaking && (

@@ -551,14 +551,13 @@ export const HomeNormal: React.FC<HomeViewProps> = ({
                   <circle cx="50" cy="80" r="5" fill="#34D399" className="filter drop-shadow-[0_0_10px_rgba(52,211,153,0.6)]" />
 
                   {/* Rotating/Orbiting cosmic celestial tree centers */}
-                  <motion.g 
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
-                    style={{ originX: '50px', originY: '45px' }}
+                  <g 
+                    className="animate-[spin_25s_linear_infinite]"
+                    style={{ transformOrigin: '50px 45px' }}
                   >
                     <circle cx="28" cy="45" r="9" fill="url(#starGrad1)" className="filter drop-shadow-[0_0_12px_rgba(20,184,166,0.6)]" />
                     <circle cx="72" cy="45" r="10" fill="url(#starGrad2)" className="filter drop-shadow-[0_0_12px_rgba(139,92,246,0.6)]" />
-                  </motion.g>
+                  </g>
 
                   {/* Central radiant cosmic coordinates core */}
                   <motion.circle 

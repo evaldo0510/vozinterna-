@@ -40,8 +40,8 @@ const JOURNEY_MEDALS: JourneyMedal[] = [
     titleEn: 'Cosmic Breath',
     descPt: 'Foco síncrono e controle respiratório harmonioso.',
     descEn: 'Mindful rhythmic breathing done in safe, focused sessions.',
-    requirementPt: 'Alcançar 100 pontos de experiência (XP).',
-    requirementEn: 'Reach 100 Experience points (XP).',
+    requirementPt: 'Presença e sintonias ampliadas.',
+    requirementEn: 'Deepen active focus and harmony.',
     color: 'from-amber-500/10 to-amber-400/10 text-amber-400 border-amber-500/20 shadow-amber-500/5',
     icon: '🌬️',
     checkUnlocked: (pts, entries, badges) => pts >= 100 || badges.includes('Sopro Cósmico') || badges.includes('Cosmic Breath')
@@ -52,8 +52,8 @@ const JOURNEY_MEDALS: JourneyMedal[] = [
     titleEn: 'Eden Gardener',
     descPt: 'Dedicação diária e germinação das sementes botânicas.',
     descEn: 'Cultivated emotional flowers inside your inner sanctuary.',
-    requirementPt: 'Alcançar 200 pontos de experiência (XP).',
-    requirementEn: 'Reach 200 Experience points (XP).',
+    requirementPt: 'Crescimento ativo da Árvore.',
+    requirementEn: 'Nurturing the Inner Tree.',
     color: 'from-emerald-500/10 to-emerald-400/10 text-emerald-400 border-emerald-500/20 shadow-emerald-500/5',
     icon: '🌱',
     checkUnlocked: (pts, entries, badges) => pts >= 200 || badges.includes('Semeador do Éden') || badges.includes('Eden Seeds')
@@ -66,7 +66,7 @@ const JOURNEY_MEDALS: JourneyMedal[] = [
     descEn: 'Shared deep feelings in your confidential diary.',
     requirementPt: 'Ter pelo menos 3 diários guardados.',
     requirementEn: 'Have at least 3 journal entries recorded.',
-    color: 'from-purple-500/10 to-purple-400/10 text-purple-400 border-purple-500/20 shadow-purple-500/5',
+    color: 'from-purple-500/10 to-purple-400/10 text-purple-450 text-indigo-400 border-purple-500/20 shadow-purple-500/5',
     icon: '📓',
     checkUnlocked: (pts, entries, badges) => entries >= 3 || pts >= 300 || badges.includes('Verdade Escrita') || badges.includes('Written Truth')
   },
@@ -76,8 +76,8 @@ const JOURNEY_MEDALS: JourneyMedal[] = [
     titleEn: 'Mental Symphony',
     descPt: 'Sinergia cognitiva e alinhamento de ressonância profunda.',
     descEn: 'Achieved high harmonic alignment across categories.',
-    requirementPt: 'Alcançar 400 pontos de experiência (XP).',
-    requirementEn: 'Reach 400 Experience points (XP).',
+    requirementPt: 'Equilíbrio sutil e harmonia cognitiva.',
+    requirementEn: 'Cultivating subtle inner harmony.',
     color: 'from-pink-500/10 to-rose-450/10 text-pink-400 border-pink-500/20 shadow-pink-500/5',
     icon: '✨',
     checkUnlocked: (pts, entries, badges) => pts >= 400 || badges.includes('Voz da Alma') || badges.includes('Soul Voice')
@@ -88,8 +88,8 @@ const JOURNEY_MEDALS: JourneyMedal[] = [
     titleEn: 'Beacon of Light',
     descPt: 'Acesso pleno ao autoconhecimento e decompressão de burnout.',
     descEn: 'Accessed the peak of mindfulness and emotional wisdom.',
-    requirementPt: 'Alcançar 500 pontos de experiência (XP).',
-    requirementEn: 'Reach 500 Experience points (XP).',
+    requirementPt: 'Descompressão e paz integrada.',
+    requirementEn: 'Deep integration and restorative calm.',
     color: 'from-fuchsia-500/10 to-violet-500/10 text-fuchsia-400 border-fuchsia-500/20 shadow-fuchsia-500/5',
     icon: '👑',
     checkUnlocked: (pts, entries, badges) => pts >= 500 || badges.includes('Guardião da Luz') || badges.includes('Beacon of Light')
@@ -250,7 +250,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
       doc.text(`${lang === 'pt' ? 'Plano' : 'Plan'}: ${user.plan === 'guardian' ? 'Guardian (Guardiao)' : 'Standard (Membro)'}`, leftMargin, y);
       y += 6;
       
-      doc.text(`${lang === 'pt' ? 'Nivel de Progresso' : 'Progress Level'}: Nivel ${level} (${points} XP)`, leftMargin, y);
+      doc.text(`${lang === 'pt' ? 'Seu Crescimento' : 'Your Growth'}: ${user.streak || 1} ${lang === 'pt' ? 'Dias de Atividade' : 'Days of Active Presence'}`, leftMargin, y);
       y += 6;
       
       const cleanNeuro = translateNeuro(user.neuroMode).replace(/[^\x00-\x7F]/g, "").trim(); // strip emojis for PDF safety
@@ -452,22 +452,22 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ user, lang, on
       {/* Gamification Level Status Card */}
       <div className="glass-panel p-6 rounded-3xl space-y-4">
         <div className="flex justify-between items-center text-xs">
-          <span className="text-[10px] uppercase tracking-widest text-stone-500 font-mono">Nível {level}</span>
-          <span className="text-[10px] text-amber-400 font-mono">{points} XP</span>
+          <span className="text-[10px] uppercase tracking-widest text-[#2DD4BF] font-serif font-semibold">{lang === 'pt' ? 'Como você está hoje' : 'How you are today'}</span>
+          <span className="text-[10px] text-amber-400 font-serif font-black">{lang === 'pt' ? 'Seu Crescimento' : 'Your Growth'}</span>
         </div>
 
         {/* Custom Progress bar */}
-        <div className="w-full h-2 bg-stone-950 rounded-full overflow-hidden">
+        <div className="w-full h-[3px] bg-stone-950 rounded-full overflow-hidden">
           <div 
             className="h-full bg-gradient-to-r from-teal-500 to-amber-400 transition-all duration-1000"
-            style={{ width: `${levelProgress}%` }}
+            style={{ width: `${Math.max(8, levelProgress)}%` }}
           />
         </div>
 
-        <p className="text-[10px] text-stone-500 font-light italic leading-relaxed">
+        <p className="text-[10px] text-stone-400 font-light italic leading-relaxed text-left">
           {lang === 'pt' 
-            ? `Faltam ${pointsRemaining} pontos para desbloquear o próximo nível do seu Jardim.` 
-            : `${pointsRemaining} points needed until your next Garden level-up.`}
+            ? 'Sua energia silenciosa expande suavemente, preenchendo novos camais de serenidade e alimentando as folhas do seu santuário interno.' 
+            : 'Your rhythmic focus flow expand gently, watering the branches and grounding your cognitive well-being.'}
         </p>
       </div>
 

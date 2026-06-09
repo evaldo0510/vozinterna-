@@ -203,19 +203,23 @@ function App() {
           lastActive: new Date().toISOString()
         });
 
-        addToast({
-          type: 'session',
-          title: lang === 'pt' ? 'Sessão Concluída!' : 'Session Completed!',
-          description: lang === 'pt' ? `+50 XP & Calibração de Ressonância (${newResonanceScore}%) integrados ao perfil.` : `+50 XP & Resonance Calibration (${newResonanceScore}%) integrated.`
-        });
-
-        if (newLevel > oldLevel) {
-          addToast({
-            type: 'level',
-            title: lang === 'pt' ? 'Novo Nível Alcançado! 🎉' : 'New Level Unlocked! 🎉',
-            description: lang === 'pt' ? `Você evoluiu para o Nível ${newLevel}!` : `You evolved to Level ${newLevel}!`
-          });
-        }
+         addToast({
+           type: 'session',
+           title: lang === 'pt' ? 'Sessão Concluída!' : 'Session Completed!',
+           description: lang === 'pt' 
+             ? `Seu crescimento foi cultivado & Calibração de Ressonância (${newResonanceScore}%) integrada ao seu perfil.` 
+             : `Your growth has been nurtured & Resonance Calibration (${newResonanceScore}%) integrated.`
+         });
+ 
+         if (newLevel > oldLevel) {
+           addToast({
+             type: 'level',
+             title: lang === 'pt' ? 'Sua Árvore Floresceu! 🌱' : 'Your Tree Unfurled! 🌱',
+             description: lang === 'pt' 
+               ? `Seu crescimento interno evoluiu! Seu santuário floresce com nova energia.` 
+               : `Your inner growth has evolved! Your sanctuary blooms with beautiful new life.`
+           });
+         }
 
         if (unlockedNewBadge) {
           addToast({
@@ -451,7 +455,7 @@ function App() {
                     </span>
                   </span>
                   <span className="text-[8px] text-stone-500 font-mono tracking-widest uppercase">
-                    LVL {currentUser.level || 1} • {currentUser.points || 0} XP
+                    {lang === 'pt' ? 'Cultivo da Presença • Pequenas Conquistas' : 'Cultivating Presence • Tiny Conquests'}
                   </span>
                 </div>
               </div>
@@ -758,7 +762,7 @@ function App() {
                 : 'bg-[#080B14]/95 border-stone-900 text-stone-300 shadow-[0_-4px_24px_rgba(0,0,0,0.4)] backdrop-blur-md'
             }`}>
               
-              {/* Tab 1: Santuário 🌳 */}
+              {/* Tab 1: Acolher 🏠 */}
               <button 
                 onClick={() => setActiveScreen('home')}
                 className={`transition-all duration-255 cursor-pointer flex items-center justify-center ${
@@ -770,17 +774,17 @@ function App() {
                       ? 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent rounded-full hover:bg-stone-100/40'
                       : 'flex-col p-2 text-stone-500 hover:text-stone-200 bg-transparent rounded-full hover:bg-stone-900/20'
                 }`}
-                title={lang === 'pt' ? 'Santuário' : 'Sanctuary'}
+                title={lang === 'pt' ? 'Acolher' : 'Welcome'}
               >
-                <span className="text-[17px] mr-1">🌳</span>
+                <span className="text-[17px] mr-1">🏠</span>
                 {activeScreen === 'home' && (
                   <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-extrabold">
-                    {lang === 'pt' ? 'Santuário' : 'Sanctuary'}
+                    {lang === 'pt' ? 'Acolher' : 'Welcome'}
                   </span>
                 )}
               </button>
-
-              {/* Tab 2: Conversar 🎙 */}
+ 
+              {/* Tab 2: Escutar 🎙 */}
               <button 
                 onClick={() => setActiveScreen('chat')}
                 className={`transition-all duration-255 cursor-pointer flex items-center justify-center ${
@@ -792,17 +796,17 @@ function App() {
                       ? 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent rounded-full hover:bg-stone-100/40'
                       : 'flex-col p-2 text-stone-500 hover:text-stone-200 bg-transparent rounded-full hover:bg-stone-900/20'
                 }`}
-                title={lang === 'pt' ? 'Conversar' : 'Chat'}
+                title={lang === 'pt' ? 'Escutar' : 'Listen'}
               >
                 <span className="text-[17px] mr-1">🎙️</span>
                 {activeScreen === 'chat' && (
                   <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-extrabold">
-                    {lang === 'pt' ? 'Conversar' : 'Chat'}
+                    {lang === 'pt' ? 'Escutar' : 'Listen'}
                   </span>
                 )}
               </button>
-
-              {/* Tab 3: Refletir 📖 */}
+ 
+              {/* Tab 3: Transformar 🌱 */}
               <button 
                 onClick={() => setActiveScreen('refletir')}
                 className={`transition-all duration-255 cursor-pointer flex items-center justify-center ${
@@ -814,17 +818,17 @@ function App() {
                       ? 'flex-col p-2 text-stone-400 hover:text-stone-700 bg-transparent rounded-full hover:bg-stone-100/40'
                       : 'flex-col p-2 text-stone-500 hover:text-stone-200 bg-transparent rounded-full hover:bg-stone-900/20'
                 }`}
-                title={lang === 'pt' ? 'Refletir' : 'Reflect'}
+                title={lang === 'pt' ? 'Transformar' : 'Transform'}
               >
-                <span className="text-[17px] mr-1">📖</span>
+                <span className="text-[17px] mr-1">🌱</span>
                 {activeScreen === 'refletir' && (
                   <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-extrabold">
-                    {lang === 'pt' ? 'Refletir' : 'Reflect'}
+                    {lang === 'pt' ? 'Transformar' : 'Transform'}
                   </span>
                 )}
               </button>
-
-              {/* Tab 4: Evoluir ⭐ */}
+ 
+              {/* Tab 4: Evoluir ✨ */}
               <button 
                 onClick={() => setActiveScreen('evoluir')}
                 className={`transition-all duration-255 cursor-pointer flex items-center justify-center ${
@@ -838,14 +842,14 @@ function App() {
                 }`}
                 title={lang === 'pt' ? 'Evoluir' : 'Evolve'}
               >
-                <span className="text-[17px] mr-1">⭐</span>
+                <span className="text-[17px] mr-1">✨</span>
                 {activeScreen === 'evoluir' && (
                   <span className="text-[9px] font-mono tracking-[0.25em] uppercase leading-none font-extrabold">
                     {lang === 'pt' ? 'Evoluir' : 'Evolve'}
                   </span>
                 )}
               </button>
-
+ 
             </footer>
           )}
         </div>

@@ -35,7 +35,7 @@ export const HomeIdoso: React.FC<HomeViewProps> = ({
     onAddToast({
       type: 'success',
       title: lang === 'pt' ? 'Atividade Concluída! 👴👵' : 'Nourishment Confirmed! 👵👴',
-      description: lang === 'pt' ? 'Parabéns por praticar seu autocuidado de hoje. +25 XP.' : 'Good job taking care of your wellness. +25 XP.'
+      description: lang === 'pt' ? 'Parabéns por praticar seu autocuidado de hoje. Você está cultivando seu bem-estar!' : 'Good job taking care of your wellness. Your growth expands!'
     });
 
     if (user?.id && db) {
@@ -116,7 +116,7 @@ export const HomeIdoso: React.FC<HomeViewProps> = ({
           >
             <div className="space-y-1">
               <span className="text-lg md:text-xl font-serif font-black block text-stone-950">☘️ COLHER SEMENTE: ATIVIDADE CONCLUÍDA</span>
-              <span className="text-xs font-sans text-stone-900 font-medium block">Toque aqui caso tenha regado suas plantas ou praticado hoje (+25 XP).</span>
+              <span className="text-xs font-sans text-stone-900 font-medium block">Toque aqui caso tenha regado suas plantas ou praticado hoje (Cultivo do Dia).</span>
             </div>
           </button>
 

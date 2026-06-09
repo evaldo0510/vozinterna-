@@ -78,7 +78,7 @@ export const HomeAutismo: React.FC<HomeViewProps> = ({
       onAddToast({
         type: 'success',
         title: lang === 'pt' ? 'Etapa Registrada ☘️' : 'Routine Step Validated ☘️',
-        description: lang === 'pt' ? 'Progresso previsível adicionado! +15 XP.' : 'Predictability milestone consolidated! +15 XP.'
+        description: lang === 'pt' ? 'Progresso previsível cultivado com sucesso no seu tempo.' : 'Routine step consolidated into your inner growth.'
       });
 
       if (user?.id && db) {

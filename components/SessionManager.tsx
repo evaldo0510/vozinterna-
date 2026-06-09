@@ -3447,36 +3447,85 @@ Return a JSON object with:
       )}
 
       <AnimatePresence>
-        {showPainelVoz && status === SessionStatus.CONNECTED && (
-          <PainelDaVozAtivo
-            fecharPainel={() => setShowPainelVoz(false)}
-            lang={lang}
-            isMicMuted={isMicMuted}
-            onToggleMute={() => {
-              const newState = !isMicMuted;
-              setIsMicMuted(newState);
-              if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                navigator.vibrate(newState ? [30] : [50, 40, 50]);
-              }
-              if (!newState) {
-                triggerVoiceAlert(lang === 'pt' ? 'Microfone Ativado' : 'Microphone Activated');
-              } else {
-                triggerVoiceAlert(lang === 'pt' ? 'Microfone Mute / Silenciado' : 'Microphone Silenced');
-              }
-            }}
-            onDisconnect={handlePreDisconnect}
-            volume={volume}
-            isUserSpeaking={isUserSpeaking}
-            isAiSpeaking={isAiSpeaking}
-            speechTranscript={speechTranscript}
-            aiSpeechText={aiSpeechText}
-            elapsedSeconds={elapsedSeconds}
-            onTriggerSupport={() => {
-              setShowPainelVoz(false);
-              setShowReferral(true);
-            }}
-          />
-        )}
+        {showPainelVoz && status === SessionStatus.CONNECTED && (() => {
+          const handleQuickReplyCommand = (quickReplyText: string) => {
+            triggerVoiceAlert(`${lang === 'pt' ? 'Atalho selecionado' : 'Shortcut triggered'}: ${quickReplyText}`);
+            
+            let finalPromptText = quickReplyText;
+            
+            if (quickReplyText === 'Estou ansioso' || quickReplyText === 'I feel anxious') {
+              finalPromptText = lang === 'pt'
+                ? "Estou com muita ansiedade agora. Por favor, conduza-me em um exercício de respiração lenta combinando hipnoterapia poética para desacelerar meus batimentos cardíacos."
+                : "I am experiencing high anxiety right now. Please guide me through a calming breathing pace and poetic hypnotherapy hold.";
+            } else if (quickReplyText === 'Preciso refletir' || quickReplyText === 'Need to reflect') {
+              finalPromptText = lang === 'pt'
+                ? "Gostaria de fazer uma reflexão consciente profunda. Faça-me uma pergunta profunda e compassiva para desencadear minha escrita reflexiva."
+                : "I want to engage in deep reflection. Ask me a profound, compassionate question to unlock my inner writing.";
+            } else if (quickReplyText === 'Quero escrever' || quickReplyText === 'Want to write') {
+              finalPromptText = lang === 'pt'
+                ? "Quero escrever minhas sensações e sentimentos. Me dê um gatilho de reflexão em até duas frases para inspirar meu diário."
+                : "I want to formulate my inner feelings. Give me a 2-sentence journal prompt to spark my written expression.";
+            } else if (quickReplyText === 'Quero respirar' || quickReplyText === 'Want to breathe') {
+              finalPromptText = lang === 'pt'
+                ? "Deixe-me sintonizar meu ritmo biológico. Me guie oralmente contando 4 segundos de inspiração, 4 de retenção e 4 de expiração."
+                : "Let me align my biological pacing. Vocally guide me through a box breathing pattern: inhale for 4, hold for 4, exhale for 4.";
+            } else if (quickReplyText === 'Organizar mente' || quickReplyText === 'Clarity needed') {
+              finalPromptText = lang === 'pt'
+                ? "Minha mente está desorganizada e barulhenta. Por favor, de forma acolhedora, me ajude a destrinchar meus pensamentos em blocos claros com 3 pequenos conselhos."
+                : "My mind feels cluttered and loud. Kindly help me organize my thoughts into simple conceptual blocks with 3 bullet advices.";
+            }
+
+            setSpeechTranscript(`[${quickReplyText}]`);
+            runIntelligencePipeline(finalPromptText);
+
+            if (activeSessionRef.current) {
+              sessionTranscriptRef.current += `\nUser: [Quick Shortcut: ${quickReplyText}]`;
+              activeSessionRef.current.then((session: any) => {
+                session.send({
+                  clientContent: {
+                    turns: [{
+                      role: 'user',
+                      parts: [{ text: finalPromptText }]
+                    }],
+                    turnComplete: true
+                  }
+                });
+              });
+            }
+          };
+
+          return (
+            <PainelDaVozAtivo
+              fecharPainel={() => setShowPainelVoz(false)}
+              lang={lang}
+              isMicMuted={isMicMuted}
+              onToggleMute={() => {
+                const newState = !isMicMuted;
+                setIsMicMuted(newState);
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                  navigator.vibrate(newState ? [30] : [50, 40, 50]);
+                }
+                if (!newState) {
+                  triggerVoiceAlert(lang === 'pt' ? 'Microfone Ativado' : 'Microphone Activated');
+                } else {
+                  triggerVoiceAlert(lang === 'pt' ? 'Microfone Mute / Silenciado' : 'Microphone Silenced');
+                }
+              }}
+              onDisconnect={handlePreDisconnect}
+              volume={volume}
+              isUserSpeaking={isUserSpeaking}
+              isAiSpeaking={isAiSpeaking}
+              speechTranscript={speechTranscript}
+              aiSpeechText={aiSpeechText}
+              elapsedSeconds={elapsedSeconds}
+              onTriggerSupport={() => {
+                setShowPainelVoz(false);
+                setShowReferral(true);
+              }}
+              onSendQuickReply={handleQuickReplyCommand}
+            />
+          );
+        })()}
       </AnimatePresence>
 
     </div>

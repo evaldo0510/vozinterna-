@@ -5,6 +5,8 @@ import { User, Language, NeuroProfileType } from '../types';
 import { db, auth } from '../lib/firebase';
 import { doc, updateDoc, collection, getDocs } from 'firebase/firestore';
 import { useNeuroProfileManager, neuroProfiles } from './NeuroAdaptiveEngine';
+import { DailyAffirmation } from './DailyAffirmation';
+import { BreathingGuide } from './BreathingGuide';
 
 interface SantuarioViewProps {
   user: User;
@@ -45,6 +47,7 @@ export const SantuarioView: React.FC<SantuarioViewProps> = ({
   // Core Garden Echoes (Reflected Thoughts)
   const [journals, setJournals] = useState<any[]>([]);
   const [selectedEcho, setSelectedEcho] = useState<any | null>(null);
+  const [showBreathingGuide, setShowBreathingGuide] = useState(false);
 
   useEffect(() => {
     // Fetch average heart rate from Sopro breathing sessions
@@ -320,43 +323,38 @@ export const SantuarioView: React.FC<SantuarioViewProps> = ({
   const getGardenStage = (xp: number) => {
     if (xp <= 100) {
       return { 
-        stage: 1, 
-        namePt: 'Fase 1: Semente Cósmica', 
-        nameEn: 'Phase 1: Cosmic Seed',
-        descPt: 'Sua intenção reside latente no silêncio primordial, envolta por mistério.',
-        descEn: 'Your intention lies dormant in the baseline silence, cradled in mystery.'
+        namePt: 'Semente Cósmica • Intenção', 
+        nameEn: 'Cosmic Seed • Intention',
+        descPt: 'Sua intenção de calma reside latente no silêncio primordial, envolta por mistério e esperança.',
+        descEn: 'Your intent of calm lies dormant in the baseline silence, cradled in baseline peace.'
       };
     } else if (xp <= 255) {
       return { 
-        stage: 2, 
-        namePt: 'Fase 2: Broto Sagrado', 
-        nameEn: 'Phase 2: Sacred Sprout',
-        descPt: 'A primeira folha verde surge da quietude, buscando a luz do autoconhecimento.',
-        descEn: 'The first emerald leaf sprouts from the quiet, reaching for conscious light.'
+        namePt: 'Despertar Verdejante • Presença', 
+        nameEn: 'Sacred Sprout Awakening • Presence',
+        descPt: 'A primeira folha de presença surge da quietude, buscando a luz dourada do autoconhecimento.',
+        descEn: 'The first emerald leaf of presence sprouts from the quiet, reaching for conscious light.'
       };
     } else if (xp <= 500) {
       return { 
-        stage: 3, 
-        namePt: 'Fase 3: Árvore da Presença', 
-        nameEn: 'Phase 3: Tree of Presence',
-        descPt: 'Tronco robusto e raízes profundas firmemente ancorados em clareza emocional.',
-        descEn: 'A resilient trunk and deep roots anchored in emotional clarity.'
+        namePt: 'Raízes Profundas • Conexão', 
+        nameEn: 'Roots of Calm Presence • Connection',
+        descPt: 'Tronco esguio e canopia em expansão firmemente ancorados em aceitação e clareza emocional.',
+        descEn: 'A resilient trunk and deep roots anchored in deep emotional clarity.'
       };
     } else if (xp <= 800) {
       return { 
-        stage: 4, 
-        namePt: 'Fase 4: Florescimento Poético', 
-        nameEn: 'Phase 4: Poetic Blooming',
-        descPt: 'Pétalas de renovação e cura exalam fragrância cognitiva sob a sintonia de paz.',
-        descEn: 'Blossoms of renewal and cognitive healing release tranquility under the light.'
+        namePt: 'Espelho da Alma • Florescimento', 
+        nameEn: 'Blossoms of Inner Silence • Bloom',
+        descPt: 'Pétalas de renovação e cura exalam fragrância cognitiva sob a sintonia de paz profunda.',
+        descEn: 'Blossoms of renewal and cognitive healing release tranquility under the inner light.'
       };
     } else {
       return { 
-        stage: 5, 
-        namePt: 'Fase 5: Constelação Interior', 
-        nameEn: 'Phase 5: Inner Constellation',
-        descPt: 'Seu jardim se conecta ao cosmos. Cada flor é uma estrela sintonizada.',
-        descEn: 'Your garden fuses with the stars. Each blossom acts as a stellar coordinate.'
+        namePt: 'Santuário Florescido • Integração', 
+        nameEn: 'Fully Unfolded Sanctuary • Integration',
+        descPt: 'Seu jardim se cura e se une ao cosmos em perfeita serenidade. Cada ramo vibra em paz.',
+        descEn: 'Your garden heals and fuses with the cosmos. Every branch and bloom is aligned.'
       };
     }
   };
@@ -415,8 +413,8 @@ export const SantuarioView: React.FC<SantuarioViewProps> = ({
             type: 'success',
             title: lang === 'pt' ? 'Árvore Nutrida! 💧' : 'Tree Nourished! 💧',
             description: lang === 'pt' 
-              ? 'Água de presença aplicada. +15 XP integrados ao seu Santuário Interior.' 
-              : 'Flow of presence applied. +15 XP integrated into your Inner Sanctuary.'
+              ? 'Água de presença aplicada. Mais saúde e vitalidade integradas ao seu Santuário Interior.' 
+              : 'Flow of presence applied. More health and vitality integrated into your Inner Sanctuary.'
           });
         } catch (e) {
           console.error("Database update failed:", e);
@@ -531,60 +529,177 @@ export const SantuarioView: React.FC<SantuarioViewProps> = ({
 
   const currentInvite = getMicroPractice();
 
+  // Helper to obtain custom neurodesign style attributes for each profile
+  const getNeuroTheme = (mode: NeuroProfileType, isLight: boolean) => {
+    switch (mode) {
+      case 'tdah':
+        return {
+          bgClass: isLight 
+            ? 'bg-gradient-to-b from-[#FFFDF8] via-[#FFF9ED] to-[#FFF1CE]' 
+            : 'bg-gradient-to-b from-[#080705] via-[#120F0B] to-[#1F1703]',
+          cardClass: isLight
+            ? 'bg-white/85 backdrop-blur-md border-amber-200/60 shadow-md rounded-[2.5rem] border'
+            : 'bg-[#181510]/85 backdrop-blur-md border-[#F59E0B]/25 shadow-[0_8px_32px_rgba(245,158,11,0.05)] rounded-[2.5rem] border',
+          accentText: 'text-amber-450',
+          accentBg: 'bg-amber-500/10 border border-amber-500/20 text-amber-305',
+          primaryText: isLight ? 'text-stone-850' : 'text-stone-100',
+          secondaryText: isLight ? 'text-stone-650 font-medium' : 'text-stone-400',
+          buttonClass: 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-420 hover:to-orange-420 text-stone-950 font-mono tracking-widest uppercase font-black rounded-2xl cursor-pointer hover:shadow-lg hover:shadow-amber-500/25 hover:scale-[1.02] active:scale-98 transition-all',
+          subtleBtnClass: 'bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 text-amber-450 rounded-xl transition-all cursor-pointer',
+          treeGlow: 'rgba(245, 158, 11, 0.45)',
+          treePulse: 1.4, // Snappy pulse
+          showParticles: true,
+          particleColor: '#F59E0B',
+          typography: 'font-sans tracking-wide',
+          titleFont: 'font-sans font-black uppercase tracking-wider',
+          organicBorder: 'rounded-[2.5rem] border border-dashed border-amber-550/20',
+          interactiveTonePt: 'Modo Foco Ativo: Micro-tarefas focadas e feed dinâmico para evitar dispersão física.'
+        };
+      case 'autismo':
+        return {
+          bgClass: isLight 
+            ? 'bg-[#F2F4F8]' 
+            : 'bg-[#060810]',
+          cardClass: isLight
+            ? 'bg-white border-2 border-stone-300 shadow-none rounded-xl'
+            : 'bg-[#0C0F1D] border-2 border-[#1E293B]/80 shadow-none rounded-xl',
+          accentText: 'text-blue-400',
+          accentBg: 'bg-blue-500/10 border border-blue-500/20 text-blue-300',
+          primaryText: isLight ? 'text-stone-900 border-b border-stone-200' : 'text-stone-100 border-b border-slate-900',
+          secondaryText: isLight ? 'text-stone-700 font-normal' : 'text-stone-400',
+          buttonClass: 'bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-mono tracking-wider uppercase font-bold rounded-lg border-2 border-blue-600 cursor-pointer shadow-sm active:scale-95 transition-all',
+          subtleBtnClass: 'bg-[#1E293B]/60 hover:bg-[#1E293B]/90 border border-stone-800 text-stone-300 rounded-lg transition-all cursor-pointer',
+          treeGlow: 'none',
+          treePulse: 0, // Zero movement to avoid sensory saturation
+          showParticles: false, // Absolutely still
+          particleColor: '#3B82F6',
+          typography: 'font-mono select-text',
+          titleFont: 'font-mono font-bold tracking-tight',
+          organicBorder: 'rounded-xl border-2 border-[#1E293B]/50',
+          interactiveTonePt: 'Modo Simetria PCH: Sem decorações supérfluas ou cores flutuantes. Informação estruturada.'
+        };
+      case 'ansiedade':
+        return {
+          bgClass: isLight 
+            ? 'bg-gradient-to-b from-[#F2FDFB] via-[#E6FAF4] to-[#CEF2EA]' 
+            : 'bg-gradient-to-b from-[#04090A] via-[#091516] to-[#02100E]',
+          cardClass: isLight
+            ? 'bg-white/95 backdrop-blur-md border-emerald-200/50 shadow-[0_4px_32px_rgba(16,185,129,0.03)] rounded-[3rem] border'
+            : 'bg-[#0E1B1C]/90 backdrop-blur-md border-[#10B981]/20 shadow-[0_4px_32px_rgba(16,185,129,0.06)] rounded-[3rem] border',
+          accentText: 'text-emerald-400',
+          accentBg: 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300',
+          primaryText: isLight ? 'text-teal-950' : 'text-emerald-50',
+          secondaryText: isLight ? 'text-stone-600 font-sans font-normal opacity-90' : 'text-stone-350 font-sans font-light',
+          buttonClass: 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-450 hover:to-cyan-450 text-stone-950 font-serif italic font-extrabold rounded-full cursor-pointer hover:shadow-[0_8px_32px_rgba(16,185,129,0.2)] hover:scale-[1.01] active:scale-98 transition-all',
+          subtleBtnClass: 'bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full transition-all cursor-pointer',
+          treeGlow: 'rgba(16, 185, 129, 0.4)',
+          treePulse: 3.8, // Slow deep breath-like pulse
+          showParticles: true,
+          particleColor: '#10B981',
+          typography: 'font-serif tracking-wide leading-relaxed',
+          titleFont: 'font-serif font-semibold tracking-tight italic',
+          organicBorder: 'rounded-[3rem] border border-emerald-550/20',
+          interactiveTonePt: 'Modo Co-Regulação Suave: Foco em respiração lenta e pacer de expansão do balão.'
+        };
+      case 'idoso':
+        return {
+          bgClass: isLight 
+            ? 'bg-[#FCFAF2]' 
+            : 'bg-[#0F0E0C]',
+          cardClass: isLight
+            ? 'bg-white border-4 border-stone-900 shadow-[6px_6px_0_0_#1c1917] rounded-3xl'
+            : 'bg-[#1F1C18] border-4 border-stone-350 shadow-[6px_6px_0_0_#e7e5e4] rounded-3xl',
+          accentText: isLight ? 'text-stone-950 font-black underline' : 'text-stone-105 font-black',
+          accentBg: isLight ? 'bg-stone-100 border-4 border-stone-900 text-stone-950' : 'bg-[#2D2824] border-4 border-stone-300 text-stone-100',
+          primaryText: isLight ? 'text-stone-950 text-xl font-black' : 'text-white text-xl font-black',
+          secondaryText: isLight ? 'text-stone-800 text-sm font-bold' : 'text-stone-150 text-sm font-bold',
+          buttonClass: 'bg-stone-900 hover:bg-black text-white border-4 border-stone-900 rounded-2xl px-10 py-5 text-[15px] font-black uppercase tracking-widest shadow-md hover:scale-[1.02] cursor-pointer',
+          subtleBtnClass: 'bg-stone-100 hover:bg-stone-200 border-2 border-stone-900 text-stone-900 text-xs font-bold rounded-xl transition-all cursor-pointer py-3 px-5',
+          treeGlow: 'none',
+          treePulse: 1.8,
+          showParticles: false,
+          particleColor: '#D97706',
+          typography: 'font-sans font-bold leading-normal',
+          titleFont: 'font-sans font-black tracking-tight text-xl sm:text-2xl',
+          organicBorder: 'rounded-3xl border-4 border-stone-600',
+          interactiveTonePt: 'Modo Acessibilidade Idoso: Letras ampliadas, botões grandes e contraste extremo.'
+        };
+      default: // normal / natural
+        return {
+          bgClass: isLight 
+            ? 'bg-gradient-to-b from-[#F9F7F3] via-[#EFF1EC] to-[#E2E6DF]' 
+            : 'bg-gradient-to-b from-[#080B14] via-[#0E1424] to-[#04060B]',
+          cardClass: isLight
+            ? 'bg-white/90 backdrop-blur-md border-stone-200/70 shadow-sm rounded-[2.5rem] border'
+            : 'bg-[#0E1325]/80 backdrop-blur-md border-[#1F2C4C] shadow-lg rounded-[2.5rem] border',
+          accentText: 'text-teal-400',
+          accentBg: 'bg-teal-500/10 border border-teal-500/20 text-teal-300',
+          primaryText: isLight ? 'text-stone-850' : 'text-stone-100',
+          secondaryText: isLight ? 'text-stone-600' : 'text-stone-400',
+          buttonClass: 'bg-gradient-to-r from-teal-500 to-emerald-505 text-stone-950 font-mono tracking-wider font-extrabold rounded-2xl cursor-pointer hover:shadow-lg hover:shadow-teal-500/15 active:scale-95 transition-all',
+          subtleBtnClass: 'bg-stone-900/40 hover:bg-stone-900/60 border border-stone-800 text-stone-400 rounded-xl transition-all cursor-pointer',
+          treeGlow: 'rgba(20, 184, 166, 0.3)',
+          treePulse: 2.0,
+          showParticles: true,
+          particleColor: '#14B8A6',
+          typography: 'font-sans',
+          titleFont: 'font-serif font-semibold tracking-tight',
+          organicBorder: 'rounded-[2.5rem] border border-stone-800/20',
+          interactiveTonePt: 'Modo Padrão: Sintonias cognitivas integradas às ressonâncias do dia.'
+        };
+    }
+  };
+
+  const themeConfig = getNeuroTheme(activeMode, isLightTheme);
+
   return (
-    <div className="w-full min-h-full pb-24 text-[#E0E7E5] font-sans transition-colors duration-500 relative flex flex-col justify-between">
+    <div className={`w-full min-h-full pb-20 ${themeConfig.typography} transition-all duration-700 relative flex flex-col justify-between ${themeConfig.bgClass}`}>
       
+      {/* 2. BACKGROUND MIST & SLOW PARTICLES EFFECT */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-teal-500/[0.03] to-transparent blur-3xl" />
+        <div className="absolute bottom-0 left-0 right-0 h-96 bg-gradient-to-t from-emerald-500/[0.03] to-transparent blur-3xl" />
+      </div>
+
       {/* 1. Header Greeting & Environmental Tuning Badge */}
-      <div className="max-w-4xl mx-auto px-6 pt-6 w-full space-y-4">
+      <div className="max-w-4xl mx-auto px-6 pt-10 w-full space-y-4 animate-fade-in relative z-10">
         
         {/* Poetic Greeting Title */}
-        <div className="text-left space-y-1">
-          <div className="flex items-center gap-1 text-xs text-teal-400 font-mono tracking-widest uppercase">
-            <Sprout className="w-3.5 h-3.5 animate-pulse" />
+        <div className="text-left space-y-2">
+          <div className="flex items-center gap-1.5 text-xs text-teal-500 dark:text-teal-400 font-mono tracking-widest uppercase font-bold">
+            <Sprout className="w-3.5 h-3.5 animate-pulse shrink-0" />
             <span>{lang === 'pt' ? 'Mundo Orgânico Interior' : 'Organic Inner Sanctuary'}</span>
           </div>
-          <h2 className={`text-2xl md:text-3xl font-serif font-black tracking-tight leading-tight ${textPrimary}`}>
-            {getGreeting()}
+          <h2 className={`text-3xl sm:text-4.5xl font-serif font-semibold tracking-tight leading-none ${themeConfig.primaryText} ${themeConfig.titleFont}`}>
+            {lang === 'pt' ? `Olá, ${user.name || 'Viajante'}` : `Welcome, ${user.name || 'Traveler'}`}
           </h2>
-          <p className={`text-xs md:text-sm font-light leading-relaxed tracking-wide ${textSecondary}`}>
+          <p className={`text-xs sm:text-sm font-light leading-relaxed tracking-wide ${themeConfig.secondaryText} max-w-lg opacity-85`}>
             {lang === 'pt' 
-              ? 'Contemple sua Árvore Interior. Ela é o espelho vivo das suas práticas e ressonâncias.' 
-              : 'Contemplate your Inner Tree. It stands as a living mirror for your mindfulness growth.'}
+              ? 'Seu santuário e jardim interior te acolhem. Respire fundo e contemple o crescimento do seu ser.' 
+              : 'Your inner sanctuary welcomes you home. Breathe deeply and witness your organic growth.'}
           </p>
         </div>
 
-        {/* Neuro Adaptive Info-Rail / Pill (Humor, Profile Type) */}
-        <div className={`p-3.5 rounded-3xl border flex flex-wrap justify-between items-center gap-3 backdrop-blur-md ${cardBgCl}`}>
-          <div className="flex items-center gap-2.5 px-2">
-            <span className="text-base select-none">🧘</span>
-            <div className="flex flex-col text-left">
-              <span className="text-[9px] font-mono uppercase text-teal-400 font-bold leading-none">
-                {lang === 'pt' ? 'Filtro Cognitivo Ativo' : 'Cognitive Filter Active'}
-              </span>
-              <span className={`text-[12px] font-serif font-black ${textPrimary}`}>
-                {lang === 'pt' ? spec.labelPt : spec.labelEn}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Quick adjust accessibility profile link */}
-            <span className="text-[10px] text-stone-500 font-mono select-none">
-              LVL {user.level || 1} • {user.points || 0} XP
-            </span>
-          </div>
+        {/* Delicate neuro-profile identification pill (subtle, no technical clutter) */}
+        <div className="flex flex-wrap items-center gap-2 pt-1.5">
+          <span className="text-[10px] font-mono uppercase bg-[#14B8A6]/10 text-teal-700 dark:text-teal-400 border border-teal-500/15 rounded-full px-3 py-1 font-bold">
+            {lang === 'pt' ? spec.labelPt : spec.labelEn}
+          </span>
+          <span className="text-[10px] font-mono uppercase bg-stone-500/10 text-stone-500 dark:text-stone-400 border border-stone-500/10 rounded-full px-3 py-1">
+            {lang === 'pt' ? 'Cultivo em Harmonia 🍃' : 'Harmonious Growth 🍃'}
+          </span>
         </div>
 
       </div>
 
       {/* 2. CENTER PIECE: THE LIVING INNER TREE ARCHITECTURE */}
-      <div className="w-full max-w-xl mx-auto px-6 py-6 flex flex-col items-center justify-center relative">
+      <div className="w-full max-w-xl mx-auto px-6 py-6 flex flex-col items-center justify-center relative select-none z-10">
         
         {/* Large Glowing Aura reflecting user state */}
-        <div className={`absolute w-[240px] h-[240px] rounded-full blur-[80px] pointer-events-none transition-all duration-1000 ${getTuningAuraClass()}`} />
+        <div className={`absolute w-[280px] h-[280px] rounded-full blur-[96px] pointer-events-none transition-all duration-1000 ${getTuningAuraClass()}`} />
 
-        {/* The Tree SVG box / canvas */}
-        <div className="w-60 h-60 relative flex items-center justify-center select-none">
+        {/* The Tree SVG Box / Canvas - Refactored to premium gigante sanctuary dimension */}
+        <div className={`w-full h-[430px] md:h-[480px] relative flex items-center justify-center p-6 transition-all duration-500 mt-2 bg-gradient-to-b from-white/5 to-white/[0.01] dark:from-stone-900/15 dark:to-transparent backdrop-blur-[6px] rounded-[32px] overflow-hidden ${themeConfig.organicBorder}`}>
           
           <AnimatePresence>
             {isWatering && (
@@ -592,16 +707,16 @@ export const SantuarioView: React.FC<SantuarioViewProps> = ({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-teal-400/5 rounded-full flex flex-col justify-start items-center pt-2 z-20 pointer-events-none"
+                className="absolute inset-0 bg-teal-400/5 rounded-[32px] flex flex-col justify-start items-center pt-2 z-20 pointer-events-none"
               >
                 {[1, 2, 3, 4, 5, 6].map((p) => (
                   <motion.div
-                    key={p}
-                    initial={{ y: -20, opacity: 0, scale: 0.8 }}
-                    animate={{ y: 220, opacity: [0, 0.8, 0] }}
-                    transition={{ duration: 1.2, repeat: Infinity, delay: p * 0.15, ease: 'linear' }}
-                    className="absolute w-1 h-3.5 bg-teal-400 rounded-full"
-                    style={{ left: `${20 + p * 11}%` }}
+                     key={p}
+                     initial={{ y: -20, opacity: 0, scale: 0.8 }}
+                     animate={{ y: 480, opacity: [0, 0.9, 0] }}
+                     transition={{ duration: 1.3, repeat: Infinity, delay: p * 0.15, ease: 'linear' }}
+                     className="absolute w-1 h-4 bg-teal-555 rounded-full"
+                     style={{ left: `${15 + p * 12}%`, background: 'linear-gradient(to bottom, #14b8a6, #2dd4bf)' }}
                   />
                 ))}
               </motion.div>
@@ -612,121 +727,279 @@ export const SantuarioView: React.FC<SantuarioViewProps> = ({
             {waterSplash && (
               <motion.div 
                 initial={{ scale: 0.4, opacity: 0 }}
-                animate={{ scale: 1.6, opacity: 1 }}
-                exit={{ scale: 1.8, opacity: 0 }}
+                animate={{ scale: 2.0, opacity: 1 }}
+                exit={{ scale: 2.2, opacity: 0 }}
                 transition={{ duration: 0.8 }}
-                className="absolute w-24 h-24 border border-teal-400/40 rounded-full bg-teal-400/5 z-15 pointer-events-none"
+                className="absolute w-32 h-32 border-2 border-teal-400/30 rounded-full bg-teal-400/5 z-15 pointer-events-none"
               />
             )}
           </AnimatePresence>
 
           {/* Render real-time customized interactive biological tree model */}
           <motion.div 
-            className="w-full h-full relative cursor-pointer" 
+            className="w-full h-full relative cursor-pointer flex items-center justify-center" 
             onClick={handleWaterGarden} 
-            title={lang === 'pt' ? 'Toque na árvore para regá-la' : 'Click tree to nourish it'}
-            animate={{ scale: [1, 1.025, 1], rotate: [-0.2, 0.2, -0.2] }}
-            transition={{ repeat: Infinity, duration: pulseDuration, ease: "easeInOut" }}
+            title={lang === 'pt' ? 'Dê um toque de intenção na árvore para nutri-la' : 'Click our Inner Tree to nourish it'}
+            animate={themeConfig.treePulse > 0 ? { scale: [1, 1.025, 1], rotate: [-0.1, 0.1, -0.1] } : {}}
+            transition={{ repeat: Infinity, duration: themeConfig.treePulse, ease: "easeInOut" }}
           >
             
+            {/* Poetic Dynamic Birds (Pássaros) representing clarity and expansion */}
+            {points > 100 && (
+              <div className="absolute inset-x-0 top-4 bottom-0 pointer-events-none z-10 overflow-hidden">
+                <motion.div
+                  className="absolute left-[16%] top-[12%]"
+                  animate={{ y: [0, -8, 0], x: [0, 6, 0] }}
+                  transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
+                >
+                  <svg width="24" height="12" viewBox="0 0 24 12" fill="none" className="text-emerald-500/50 dark:text-emerald-400/40">
+                    <path d="M 2 10 Q 7 3 12 10 Q 17 3 22 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                  </svg>
+                </motion.div>
+                <motion.div
+                  className="absolute right-[18%] top-[20%]"
+                  animate={{ y: [0, -10, 0], x: [0, -5, 0] }}
+                  transition={{ repeat: Infinity, duration: 10, ease: "easeInOut", delay: 1 }}
+                >
+                  <svg width="18" height="9" viewBox="0 0 24 12" fill="none" className="text-teal-500/40 dark:text-teal-400/35">
+                    <path d="M 2 10 Q 7 3 12 10 Q 17 3 22 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+                  </svg>
+                </motion.div>
+              </div>
+            )}
+
+            {/* Wholesome falling blossoms (Flores/Petals) when garden starts blooming */}
+            {points > 255 && (
+              <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+                {[1, 2, 3, 4].map((petal) => (
+                  <motion.div
+                    key={`petal-${petal}`}
+                    className="absolute w-2 h-2 rounded-full bg-rose-400/40 dark:bg-rose-350/50 shadow-[0_0_6px_rgba(244,63,94,0.15)]"
+                    style={{
+                      left: `${15 + petal * 22}%`,
+                      top: `-20px`,
+                    }}
+                    animate={{
+                      y: ['0px', '380px'],
+                      x: ['0px', `${Math.sin(petal) * 15}px`, '0px'],
+                      rotate: [0, 360],
+                    }}
+                    transition={{
+                      duration: 9 + petal * 2,
+                      repeat: Infinity,
+                      ease: "linear",
+                      delay: petal * 1.5,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
             {/* Lightweight ambient glowing particles representing growth & neural consistency */}
-            <div className="absolute inset-x-0 bottom-4 top-0 overflow-hidden pointer-events-none z-10">
-              {particles.map((p) => (
-                <motion.span
-                  key={`particle-${p.id}`}
-                  className="absolute rounded-full"
-                  style={{
-                    width: p.size,
-                    height: p.size,
-                    backgroundColor: p.color,
-                    left: `${p.left}%`,
-                    bottom: 0,
-                    boxShadow: `0 0 6px ${p.color}`,
-                    willChange: 'transform, opacity',
-                  }}
-                  animate={{
-                    y: ['100%', '-140%'],
-                    x: ['0%', `${Math.sin(p.id) * 30}px`, '0%'],
-                    opacity: [0, 0.9, 0.4, 0],
-                  }}
-                  transition={{
-                    duration: p.duration,
-                    repeat: Infinity,
-                    ease: 'linear',
-                    delay: p.delay,
-                  }}
-                />
-              ))}
+            {themeConfig.showParticles && (
+              <div className="absolute inset-x-0 bottom-6 top-0 overflow-hidden pointer-events-none z-10">
+                {particles.map((p) => (
+                  <motion.span
+                    key={`particle-${p.id}`}
+                    className="absolute rounded-full"
+                    style={{
+                      width: p.size,
+                      height: p.size,
+                      backgroundColor: p.color || themeConfig.particleColor,
+                      left: `${p.left}%`,
+                      bottom: 0,
+                      boxShadow: `0 0 8px ${p.color || themeConfig.particleColor}`,
+                      willChange: 'transform, opacity',
+                    }}
+                    animate={{
+                      y: ['110%', '-130%'],
+                      x: ['0%', `${Math.sin(p.id) * 35}px`, '0%'],
+                      opacity: [0, 0.95, 0.4, 0],
+                    }}
+                    transition={{
+                      duration: p.duration,
+                      repeat: Infinity,
+                      ease: 'linear',
+                      delay: p.delay,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* SINGULAR BIOPHILIC URBAN SANCTUARY TREE - UNIFIED PERSISTENT MODEL */}
+            <div className="w-full h-full flex items-center justify-center">
+              {(() => {
+                const pts = user?.points || 0;
+                // continuous proportions for high biological fidelity
+                const baseHeight = Math.min(48, 16 + (pts / 800) * 32); // grows from 16 to 48
+                const trunkWidth = Math.min(8, 2.5 + (pts / 800) * 5.5); // grows from 2.5 to 8
+                const trunkY = 82 - baseHeight;
+                const branchesProgress = Math.max(0, Math.min(1.0, (pts - 50) / 200)); // branches appear after 50 pts
+                const foliageProgress = Math.max(0, Math.min(1.0, (pts - 150) / 300)); // foliage appears after 150 pts
+                const fruitProgress = Math.max(0, Math.min(1.0, (pts - 400) / 400)); // fruits appear after 400 pts
+
+                return (
+                  <motion.svg 
+                    viewBox="0 0 100 100" 
+                    fill="none" 
+                    className="w-full h-full filter drop-shadow-[0_4px_16px_rgba(20,184,166,0.15)]"
+                    animate={{ 
+                      y: [0, -2, 0],
+                      rotate: [-0.6, 0.6, -0.6] 
+                    }} 
+                    transition={{ 
+                      repeat: Infinity, 
+                      duration: 6, 
+                      ease: "easeInOut" 
+                    }}
+                  >
+                    {/* Interactive Ground Soil aura */}
+                    <ellipse cx="50" cy="82" rx={Math.min(30, 10 + (pts / 800) * 20)} ry="4" fill={isLightTheme ? '#2DD4BF' : '#0D9488'} fillOpacity="0.15" />
+                    
+                    {/* 1. Trunk growing continuously with elastic animation */}
+                    <motion.path 
+                      d={`M50 82 L50 ${trunkY}`} 
+                      stroke={isLightTheme ? '#2b1d0c' : '#14b8a6'} 
+                      strokeWidth={trunkWidth} 
+                      strokeLinecap="round"
+                      initial={{ pathLength: 0, scaleY: 0.1 }}
+                      animate={{ pathLength: 1, scaleY: 1 }}
+                      transition={{ duration: 1.8, ease: "easeOut" }}
+                      style={{ originY: 1 }}
+                    />
+
+                    {/* 2. Left and Right branches spawning and stretching dynamically */}
+                    {branchesProgress > 0 && (
+                      <>
+                        {/* Left branch */}
+                        <motion.path 
+                          d={`M50 ${trunkY + baseHeight * 0.3} Q${50 - 20 * branchesProgress} ${trunkY - 5 * branchesProgress}, ${50 - 25 * branchesProgress} ${trunkY - 12 * branchesProgress}`} 
+                          stroke={isLightTheme ? '#2b1d0c' : '#0d9488'} 
+                          strokeWidth={Math.max(1.5, trunkWidth * 0.6)} 
+                          strokeLinecap="round"
+                          initial={{ pathLength: 0, opacity: 0 }}
+                          animate={{ pathLength: 1, opacity: 1 }}
+                          transition={{ duration: 1.5, delay: 0.3, ease: "easeOut" }}
+                        />
+                        {/* Right branch */}
+                        <motion.path 
+                          d={`M50 ${trunkY + baseHeight * 0.4} Q${50 + 18 * branchesProgress} ${trunkY - 3 * branchesProgress}, ${50 + 23 * branchesProgress} ${trunkY - 10 * branchesProgress}`} 
+                          stroke={isLightTheme ? '#2b1d0c' : '#0d9488'} 
+                          strokeWidth={Math.max(1.5, trunkWidth * 0.55)} 
+                          strokeLinecap="round"
+                          initial={{ pathLength: 0, opacity: 0 }}
+                          animate={{ pathLength: 1, opacity: 1 }}
+                          transition={{ duration: 1.5, delay: 0.5, ease: "easeOut" }}
+                        />
+                      </>
+                    )}
+
+                    {/* 3. Biological Foliage globes growing with elastic wind breathing */}
+                    {foliageProgress > 0 && (
+                      <>
+                        {/* Centered Canopy */}
+                        <motion.circle 
+                          cx="50" 
+                          cy={trunkY - 8} 
+                          r={Math.min(22, 6 + foliageProgress * 16)} 
+                          fill={isLightTheme ? '#059669' : '#14B8A6'} 
+                          fillOpacity={0.25 * foliageProgress} 
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ 
+                            scale: [0.95, 1.05, 0.95],
+                            opacity: 0.25 * foliageProgress
+                          }}
+                          transition={{ 
+                            scale: { duration: 6, repeat: Infinity, ease: "easeInOut" },
+                            opacity: { duration: 1.2 }
+                          }}
+                        />
+                        
+                        {/* Left branch foliage canopy */}
+                        {branchesProgress > 0.4 && (
+                          <motion.circle 
+                            cx={50 - 25 * branchesProgress} 
+                            cy={trunkY - 12 * branchesProgress} 
+                            r={Math.min(16, 4 + foliageProgress * 12)} 
+                            fill={isLightTheme ? '#10B981' : '#0D9488'} 
+                            fillOpacity={0.2 * foliageProgress}
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ 
+                              scale: [0.94, 1.03, 0.94],
+                              opacity: 0.2 * foliageProgress
+                            }}
+                            transition={{ 
+                              scale: { duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 0.4 },
+                              opacity: { duration: 1.2 }
+                            }}
+                          />
+                        )}
+
+                        {/* Right branch foliage canopy */}
+                        {branchesProgress > 0.4 && (
+                          <motion.circle 
+                            cx={50 + 23 * branchesProgress} 
+                            cy={trunkY - 10 * branchesProgress} 
+                            r={Math.min(15, 3 + foliageProgress * 12)} 
+                            fill={isLightTheme ? '#10B981' : '#0D9488'} 
+                            fillOpacity={0.2 * foliageProgress}
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ 
+                              scale: [0.95, 1.04, 0.95],
+                              opacity: 0.2 * foliageProgress
+                            }}
+                            transition={{ 
+                              scale: { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.8 },
+                              opacity: { duration: 1.2 }
+                            }}
+                          />
+                        )}
+                      </>
+                    )}
+
+                    {/* 4. Blooming Glowing Flowers or Golden Fruits */}
+                    {fruitProgress > 0 && (
+                      <>
+                        <motion.circle 
+                          cx="50" 
+                          cy={trunkY - 16} 
+                          r={Math.min(5.5, 1.5 + fruitProgress * 4)} 
+                          fill="#FBBF24" 
+                          className="filter drop-shadow-[0_0_8px_#F59E0B]"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: [1, 1.25, 1] }}
+                          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                        />
+                        <motion.circle 
+                          cx={50 - 15} 
+                          cy={trunkY - 6} 
+                          r={Math.min(4.5, 1 + fruitProgress * 3.5)} 
+                          fill="#F97316" 
+                          className="filter drop-shadow-[0_0_6px_#EA580C]"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ repeat: Infinity, duration: 3.5, delay: 0.5, ease: "easeInOut" }}
+                        />
+                        <motion.circle 
+                          cx={50 + 13} 
+                          cy={trunkY - 4} 
+                          r={Math.min(4.5, 1 + fruitProgress * 3.5)} 
+                          fill="#FBBF24" 
+                          className="filter drop-shadow-[0_0_6px_#F59E0B]"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: [1, 1.22, 1] }}
+                          transition={{ repeat: Infinity, duration: 3.2, delay: 0.8, ease: "easeInOut" }}
+                        />
+                      </>
+                    )}
+
+                    {/* Seed stage indicator always visible in trunk center */}
+                    <circle cx="50" cy="80" r="1.5" fill="#34D399" />
+                  </motion.svg>
+                );
+              })()}
             </div>
-            
-            {gardenInfo.stage === 1 && (
-              <motion.svg viewBox="0 0 100 100" fill="none" className="w-full h-full" animate={{ y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}>
-                <circle cx="50" cy="50" r="14" fill="url(#sSGrad1)" className="filter drop-shadow-[0_0_12px_rgba(251,191,36,0.35)]" />
-                <motion.circle cx="50" cy="50" r="22" stroke="#FBBF24" strokeWidth="1" strokeDasharray="4 4" strokeOpacity="0.4" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 15, ease: "linear" }} />
-                <path d="M50 50 Q48 42, 50 36 M50 50 Q52 44, 55 38" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" />
-                <defs>
-                  <radialGradient id="sSGrad1" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="#FBBF24" />
-                    <stop offset="100%" stopColor="#D97706" stopOpacity="0" />
-                  </radialGradient>
-                </defs>
-              </motion.svg>
-            )}
-
-            {gardenInfo.stage === 2 && (
-              <motion.svg viewBox="0 0 100 100" fill="none" className="w-full h-full" animate={{ rotate: [-1, 1, -1] }} transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}>
-                <path d="M20 78 C40 74, 60 74, 80 78" stroke="rgba(20, 184, 166, 0.3)" strokeWidth="1.5" strokeLinecap="round" />
-                <motion.path d="M50 76 Q45 52, 51 34" stroke="#34D399" strokeWidth="4.5" strokeLinecap="round" />
-                <path d="M50 52 Q37 44, 38 34 Q46 38, 49 48" fill="#14B8A6" />
-                <path d="M50 44 Q63 40, 64 28 Q57 32, 51 39" fill="#34D399" />
-                <circle cx="51" cy="24" r="4.5" fill="#FBBF24" className="animate-pulse" />
-              </motion.svg>
-            )}
-
-            {gardenInfo.stage === 3 && (
-              <motion.svg viewBox="0 0 100 100" fill="none" className="w-full h-full" animate={{ y: [0, -1.5, 0], rotate: [-0.5, 0.5, -0.5] }} transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}>
-                <path d="M50 82 L50 48" stroke="#1E293B" strokeWidth="7" strokeLinecap="round" />
-                <path d="M50 82 L50 48" stroke="#14B8A6" strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.4" />
-                <path d="M50 58 Q34 48, 30 40" stroke="#1E293B" strokeWidth="4" strokeLinecap="round" />
-                <path d="M50 52 Q66 45, 70 38" stroke="#1E293B" strokeWidth="4" strokeLinecap="round" strokeOpacity="0.8" />
-                
-                <circle cx="50" cy="35" r="16" fill="#34D399" fillOpacity="0.3" stroke="#34D399" strokeWidth="1" strokeOpacity="0.3" />
-                <circle cx="32" cy="35" r="11" fill="#14B8A6" fillOpacity="0.25" stroke="#14B8A6" strokeWidth="1" strokeOpacity="0.25" />
-                <circle cx="68" cy="32" r="13" fill="#14B8A6" fillOpacity="0.25" stroke="#14B8A6" strokeWidth="1" strokeOpacity="0.25" />
-                <circle cx="50" cy="22" r="4.5" fill="#34D399" className="animate-pulse" />
-              </motion.svg>
-            )}
-
-            {gardenInfo.stage === 4 && (
-              <motion.svg viewBox="0 0 100 100" fill="none" className="w-full h-full" animate={{ y: [0, -2, 0], rotate: [-1, 1, -1] }} transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}>
-                <path d="M50 82 L50 48" stroke="#1E293B" strokeWidth="6" strokeLinecap="round" />
-                <path d="M50 82 L50 48" stroke="#14B8A6" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.5" />
-                
-                <path d="M50 55 Q30 40, 24 35" stroke="#1E293B" strokeWidth="3" />
-                <path d="M50 50 Q70 36, 76 30" stroke="#1E293B" strokeWidth="3" />
-
-                <circle cx="50" cy="38" r="16" fill="#14B8A6" fillOpacity="0.2" />
-                <circle cx="28" cy="35" r="12" fill="#34D399" fillOpacity="0.2" />
-                <circle cx="72" cy="30" r="13" fill="#34D399" fillOpacity="0.2" />
-
-                <circle cx="28" cy="28" r="5" fill="#FBBF24" className="filter drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
-                <circle cx="74" cy="22" r="6" fill="#FBBF24" className="filter drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]" />
-                <circle cx="48" cy="22" r="7" fill="#14B8A6" className="filter drop-shadow-[0_0_8px_rgba(20,184,166,0.5)]" />
-              </motion.svg>
-            )}
-
-            {gardenInfo.stage === 5 && (
-              <motion.svg viewBox="0 0 100 100" fill="none" className="w-full h-full">
-                <line x1="50" y1="80" x2="28" y2="45" stroke="#14B8A6" strokeWidth="1.5" strokeOpacity="0.4" strokeDasharray="4 4" />
-                <line x1="50" y1="80" x2="72" y2="45" stroke="#14B8A6" strokeWidth="1.5" strokeOpacity="0.4" strokeDasharray="4 4" />
-                <circle cx="50" cy="80" r="5" fill="#34D399" />
-                <motion.g animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 25, ease: "linear" }} style={{ originX: '50px', originY: '45px' }}>
-                  <circle cx="28" cy="45" r="9" fill="#14B8A6" fillOpacity="0.5" />
-                  <circle cx="72" cy="45" r="10" fill="#8B5CF6" fillOpacity="0.5" />
-                </motion.g>
-                <circle cx="50" cy="18" r="13" fill="#FBBF24" className="filter drop-shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
-              </motion.svg>
-            )}
 
             {/* Garden Echoes (Ecos do Jardim) Overlay interactive fruits */}
             {journals.slice(0, 6).map((entry, index) => {
@@ -763,51 +1036,51 @@ export const SantuarioView: React.FC<SantuarioViewProps> = ({
         </div>
 
         {/* Display Garden Level Info Label */}
-        <div className="space-y-1 text-center mt-2">
-          <span className="text-[10px] font-mono tracking-widest text-[#10B981] font-extrabold uppercase bg-emerald-500/10 px-3.5 py-1 rounded-full border border-emerald-500/10">
+        <div className="space-y-1 text-center mt-3 animate-fade-in">
+          <span className="text-[10px] font-mono tracking-widest text-[#10B981] font-black uppercase bg-emerald-500/10 px-4.5 py-1.5 rounded-full border border-emerald-500/15">
             {lang === 'pt' ? gardenInfo.namePt : gardenInfo.nameEn}
           </span>
-          <p className={`text-xs ${textSecondary} px-8 leading-relaxed max-w-sm mx-auto italic mt-2`}>
+          <p className={`text-xs ${themeConfig.secondaryText} px-6 leading-relaxed max-w-sm mx-auto italic mt-2`}>
             "{lang === 'pt' ? gardenInfo.descPt : gardenInfo.descEn}"
           </p>
         </div>
 
         {/* Convite do Dia / Dynamic Micro-Practices based on current tone */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className={`w-full max-w-md p-4 mt-6 rounded-2.5xl border flex flex-col gap-3 backdrop-blur-md relative overflow-hidden ${cardBgCl}`}
+          transition={{ delay: 0.15 }}
+          className={`w-full max-w-md p-5.5 mt-6 rounded-[2.2rem] flex flex-col gap-3 backdrop-blur-md relative overflow-hidden transition-all duration-500 ${themeConfig.cardClass}`}
         >
           {/* Neon accent glow behind card */}
-          <div className="absolute top-0 right-0 w-16 h-16 bg-teal-500/10 rounded-full blur-xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-20 h-20 bg-teal-500/5 rounded-full blur-2xl pointer-events-none" />
           
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-amber-500 font-mono text-[9px] uppercase tracking-widest font-extrabold">
-              <span className="text-xs select-none">✨</span>
+            <div className="flex items-center gap-1.5 text-amber-500 font-mono text-[9px] uppercase tracking-widest font-black">
+              <span className="text-sm select-none">✨</span>
               <span>{lang === 'pt' ? 'Convite de Sintonia' : 'Daily Invitation'}</span>
             </div>
-            <span className="text-[9px] font-mono font-bold bg-[#14B8A6]/10 text-teal-400 border border-teal-500/10 rounded px-2.5 py-0.5 uppercase tracking-wide">
+            <span className="text-[9px] font-mono font-black bg-[#14B8A6]/10 text-teal-550 border border-teal-500/15 rounded-md px-3 py-1.5 uppercase tracking-wider">
               {currentInvite.duration}
             </span>
           </div>
 
           <div className="space-y-1 text-left">
-            <h4 className={`text-sm font-serif font-black ${textPrimary} flex items-center gap-1`}>
+            <h4 className={`text-sm sm:text-base font-serif font-black flex items-center gap-1.5 ${themeConfig.primaryText}`}>
               <span>{currentInvite.icon}</span>
               <span>{lang === 'pt' ? currentInvite.titlePt : currentInvite.titleEn}</span>
             </h4>
-            <p className={`text-[11px] leading-relaxed font-light ${textSecondary}`}>
+            <p className={`text-[11px] sm:text-xs leading-relaxed font-light ${themeConfig.secondaryText}`}>
               {lang === 'pt' ? currentInvite.descPt : currentInvite.descEn}
             </p>
-            <p className="text-[10px] text-teal-500 italic font-mono pt-1">
+            <p className="text-[10px] sm:text-[11px] text-teal-500 italic font-mono pt-1.5">
               {lang === 'pt' ? currentInvite.tipPt : currentInvite.tipEn}
             </p>
           </div>
 
           <button
             onClick={() => onNavigateToTab(currentInvite.targetTab)}
-            className="w-full py-2 bg-stone-850 hover:bg-stone-900 bg-stone-800 text-white rounded-xl text-xs uppercase tracking-wider font-mono font-bold transition-all hover:scale-[1.01] active:scale-95 cursor-pointer shadow-sm text-center"
+            className="w-full py-3 bg-stone-900 hover:bg-black text-white/95 rounded-xl text-xs uppercase tracking-wider font-mono font-black transition-all hover:scale-[1.01] active:scale-97 cursor-pointer shadow-sm text-center mt-1 border border-stone-800"
           >
             {lang === 'pt' ? 'Iniciar Prática Proposta' : 'Begin Suggested Practice'}
           </button>
@@ -816,45 +1089,254 @@ export const SantuarioView: React.FC<SantuarioViewProps> = ({
       </div>
 
       {/* 3. INTERACTIVE ACTIONS (Water, Sounds and Shortcuts) */}
-      <div className="max-w-xl mx-auto px-6 w-full space-y-6">
+      <div className="max-w-xl mx-auto px-6 w-full space-y-8 animate-fade-in relative z-10">
         
-        {/* ACTION: Regar com Presença Button */}
-        <div className="text-center w-full">
+        {/* HUMAN BENTO GRID: Sua Essência & Crescimento */}
+        <div className="space-y-4 text-left">
+          <div className="flex items-center gap-2 border-b border-stone-800/10 dark:border-white/5 pb-2">
+            <span className="text-sm select-none">🍃</span>
+            <h3 className={`text-base font-serif font-semibold tracking-wide ${themeConfig.primaryText}`}>
+              {lang === 'pt' ? 'Sua Essência de Hoje' : 'Your Essence Today'}
+            </h3>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            {/* 1. SEU CRESCIMENTO 🌿 */}
+            <div className={`p-5 rounded-3xl backdrop-blur-md transition-all duration-300 flex flex-col justify-between ${themeConfig.cardClass}`}>
+              <div className="space-y-1.5 text-left">
+                <span className="text-xs font-sans font-medium text-emerald-600 dark:text-teal-350 tracking-wide block mb-1">🌿 {lang === 'pt' ? 'Seu crescimento' : 'Your growth'}</span>
+                <h4 className="text-[17px] font-serif font-semibold tracking-tight text-stone-900 dark:text-stone-100">
+                  {lang === 'pt' ? gardenInfo.namePt : gardenInfo.nameEn}
+                </h4>
+                <p className="text-xs font-sans tracking-wide leading-relaxed font-normal text-stone-600 dark:text-stone-300 opacity-95">
+                  {lang === 'pt' 
+                    ? 'O cuidado sutil do seu caminhar estende ramas e novos florescimentos.' 
+                    : 'Your mindful care stretches custom branches and new organic horizons.'}
+                </p>
+              </div>
+              <div className="mt-3 pt-1.5 border-t border-stone-800/10 dark:border-white/5">
+                <div className="flex justify-between items-center text-[9px] font-mono text-stone-500/80 mb-1">
+                  <span>{lang === 'pt' ? 'Ramo de Sintonia' : 'Harmonic Sprout'}</span>
+                  <span>{lang === 'pt' ? 'Vitalidade Dinâmica' : 'Organic Vitality'}</span>
+                </div>
+                {/* Pure Biophilic Branch Growth Visualizing Progress */}
+                <div className="w-full h-11 flex items-center justify-center mt-1 relative overflow-hidden bg-stone-950/5 dark:bg-stone-950/25 rounded-2xl p-1 border border-stone-850/10 dark:border-white/5">
+                  <svg viewBox="0 0 100 40" fill="none" className="w-full h-full">
+                    <defs>
+                      <linearGradient id="branchGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#0d9488" />
+                        <stop offset="100%" stopColor="#10b981" />
+                      </linearGradient>
+                    </defs>
+                    
+                    {/* Winding main branch path */}
+                    <motion.path 
+                      d="M 10 32 Q 35 15 55 25 T 90 10" 
+                      stroke="url(#branchGradient)" 
+                      strokeWidth="2.2" 
+                      strokeLinecap="round"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: Math.min(1.0, 0.15 + (points / 800) * 0.85) }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
+                    />
+                    
+                    {/* Sprout nodes representing progress stages */}
+                    {/* Node 1 (Points > 50) */}
+                    <motion.g 
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={points >= 50 ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
+                      transition={{ duration: 0.8, type: "spring", stiffness: 80 }}
+                      transform="translate(26, 22)"
+                    >
+                      <path d="M 0 0 C -3 -5, -6 -1, 0 0 C 3 -5, 6 -1, 0 0" fill="#34d399" />
+                      <circle cx="0" cy="0" r="1.0" fill="#fff" />
+                    </motion.g>
+
+                    {/* Node 2 (Points > 150) */}
+                    <motion.g 
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={points >= 150 ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
+                      transition={{ duration: 0.8, delay: 0.15, type: "spring", stiffness: 80 }}
+                      transform="translate(42, 21)"
+                    >
+                      <path d="M 0 0 C -2 -4, -5 -3, 0 0 C 2 -4, 5 -3, 0 0" fill="#2dd4bf" />
+                    </motion.g>
+
+                    {/* Node 3 (Points > 300) */}
+                    <motion.g 
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={points >= 300 ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
+                      transition={{ duration: 0.8, delay: 0.3, type: "spring", stiffness: 80 }}
+                      transform="translate(58, 23)"
+                    >
+                      <path d="M 0 0 C -4 -4, -6 1, 0 0 C 4 -4, 6 1, 0 0" fill="#0d9488" />
+                    </motion.g>
+
+                    {/* Node 4 (Points > 500) */}
+                    <motion.g 
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={points >= 500 ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
+                      transition={{ duration: 0.8, delay: 0.45, type: "spring", stiffness: 80 }}
+                      transform="translate(74, 18)"
+                    >
+                      <path d="M 0 0 C -1 -5, -4 -3, 0 0 C 1 -5, 4 -3, 0 0" fill="#059669" />
+                      <circle cx="0" cy="-4" r="1.5" fill="#fbcfe8" className="animate-pulse" />
+                    </motion.g>
+
+                    {/* Flower Bloom Node 5 (Points >= 800) */}
+                    <motion.g 
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={points >= 800 ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
+                      transition={{ duration: 1.0, delay: 0.6, type: "spring", stiffness: 50 }}
+                      transform="translate(86, 12)"
+                    >
+                      <circle cx="0" cy="0" r="2.8" fill="#fbbd23" className="animate-pulse" />
+                      <circle cx="-2.5" cy="0" r="1.5" fill="#fb7185" />
+                      <circle cx="2.5" cy="0" r="1.5" fill="#fb7185" />
+                      <circle cx="0" cy="-2.5" r="1.5" fill="#fb7185" />
+                      <circle cx="0" cy="2.5" r="1.5" fill="#fb7185" />
+                    </motion.g>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. COMO VOCÊ ESTÁ HOJE 🌤 */}
+            <div className={`p-5 rounded-3xl backdrop-blur-md transition-all duration-300 flex flex-col justify-between ${themeConfig.cardClass}`}>
+              <div className="space-y-1.5 text-left">
+                <span className="text-xs font-sans font-medium text-teal-600 dark:text-teal-400 tracking-wide block mb-1">🌤 {lang === 'pt' ? 'Como você está hoje' : 'How you are today'}</span>
+                <h4 className="text-[17px] font-serif font-semibold tracking-tight text-stone-900 dark:text-stone-100">
+                  {lang === 'pt' ? 'Equilíbrio Fluido' : 'Tranquility Aligned'}
+                </h4>
+                <p className="text-xs font-sans tracking-wide leading-relaxed font-normal text-stone-600 dark:text-stone-300 opacity-95">
+                  {lang === 'pt' 
+                    ? `Sua co-regulação está sintonizada no ritmo de coesão do seu perfil adaptativo.` 
+                    : `Active core heart sync focused on your custom PCH medical archetype.`}
+                </p>
+              </div>
+              <div className="mt-4 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                <span className="text-[9px] font-sans tracking-wider text-teal-600 dark:text-teal-400 font-medium">
+                  {lang === 'pt' ? 'Conexão Ativa' : 'Stellar Connected'}
+                </span>
+              </div>
+            </div>
+
+            {/* 3. PEQUENAS CONQUISTAS ✨ */}
+            <div className={`p-5 rounded-3xl backdrop-blur-md transition-all duration-300 flex flex-col justify-between ${themeConfig.cardClass}`}>
+              <div className="space-y-1.5 text-left">
+                <span className="text-xs font-sans font-medium text-amber-600 dark:text-amber-400 tracking-wide block mb-1">✨ {lang === 'pt' ? 'Pequenas conquistas' : 'Small achievements'}</span>
+                <h4 className="text-[17px] font-serif font-semibold tracking-tight text-stone-900 dark:text-stone-100">
+                  {user.streak || 1} {lang === 'pt' ? 'Dias de Sintonia' : 'Consistency Days'}
+                </h4>
+                <p className="text-xs font-sans tracking-wide leading-relaxed font-normal text-stone-600 dark:text-stone-300 opacity-95">
+                  {lang === 'pt' 
+                    ? 'Cada gota de intenção vertida na árvore cultiva caminhos de bem-estar.' 
+                    : 'Watering your sanctuary, breathing in pace, and speaking clearly build quiet neural pathways.'}
+                </p>
+              </div>
+              <div className="mt-3.5 flex flex-wrap gap-1">
+                <span className="text-[9px] font-sans px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/10">Sopro Consciente ✔️</span>
+                <span className="text-[9px] font-sans px-2.5 py-0.5 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-full border border-teal-500/10">Primeiro Regar ✔️</span>
+              </div>
+            </div>
+
+            {/* 4. REFLEXÃO DO DIA 🪞 */}
+            <div className={`p-5 rounded-3xl backdrop-blur-md transition-all duration-300 flex flex-col justify-between ${themeConfig.cardClass}`}>
+              <div className="space-y-1.5 text-left">
+                <span className="text-xs font-sans font-medium text-indigo-600 dark:text-indigo-400 tracking-wide block mb-1">🪞 {lang === 'pt' ? 'Reflexão do dia' : 'Reflection of the day'}</span>
+                {journals.length > 0 ? (
+                  <>
+                    <p className="text-xs font-serif leading-relaxed line-clamp-2 italic text-stone-700 dark:text-stone-200 opacity-90 font-medium">
+                      "{journals[journals.length - 1].text}"
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h4 className="text-[17px] font-serif font-semibold tracking-tight text-stone-900 dark:text-stone-100">
+                      {lang === 'pt' ? 'Ecos do Silêncio' : 'Silent Echoes'}
+                    </h4>
+                    <p className="text-xs font-sans tracking-wide leading-relaxed font-normal text-stone-600 dark:text-stone-300 opacity-95">
+                      {lang === 'pt' 
+                        ? 'Escreva suas reflexões diárias para florescer frutos na Árvore.' 
+                        : 'Write down your thoughts to grow bright fruits in your branches.'}
+                    </p>
+                  </>
+                )}
+              </div>
+              <button 
+                onClick={() => onNavigateToTab('refletir')}
+                className="mt-3 text-xs font-sans font-semibold tracking-wide text-teal-600 dark:text-teal-400 hover:opacity-80 transition-all flex items-center gap-1 cursor-pointer self-start"
+              >
+                <span>{lang === 'pt' ? 'Refletir agora' : 'Reflect now'}</span>
+                <span>→</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+        
+        {/* ACTIONS GRID: Regar com Presença and Sopro 60s Button */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button
             onClick={handleWaterGarden}
             disabled={isWatering}
-            className={`w-full py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2.5 font-mono text-xs uppercase tracking-widest font-black transition-all duration-300 border ${
+            style={{ minHeight: '48px' }}
+            className={`w-full py-4 px-6 rounded-2xl flex items-center justify-center gap-2.5 font-sans text-xs font-semibold tracking-wide transition-all duration-350 border ${
               isWatering
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-[#10B981]/50 cursor-slow'
-                : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-stone-950 border-transparent shadow-[0_4px_16px_rgba(16,185,129,0.2)] active:scale-98 shadow-md cursor-pointer'
+                ? 'bg-emerald-500/10 border-emerald-555/20 text-[#10B981]/50 cursor-slow'
+                : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-450 hover:to-teal-450 text-stone-950 border-transparent shadow-[0_4px_24px_rgba(16,185,129,0.22)] active:scale-98 shadow-md cursor-pointer'
             }`}
           >
-            <Droplets className={`w-4 h-4 ${isWatering ? 'animate-bounce' : ''}`} />
+            <Droplets className={`w-4 h-4 shrink-0 ${isWatering ? 'animate-bounce' : ''}`} />
             <span>
               {isWatering 
                 ? (lang === 'pt' ? 'Nutrindo Árvore...' : 'Nourishing Tree...') 
-                : (lang === 'pt' ? 'Regar com Intenção (+15 XP)' : 'Water with Intention (+15 XP)')}
+                : (lang === 'pt' ? 'Regar com Intenção 💧' : 'Water with Intention 💧')}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setShowBreathingGuide(true)}
+            style={{ minHeight: '48px' }}
+            className="w-full py-4 px-6 rounded-2xl flex items-center justify-center gap-2.5 font-sans text-xs font-semibold tracking-wide transition-all duration-350 border bg-stone-900/40 hover:bg-stone-900/60 border-stone-850 hover:border-emerald-505/40 text-emerald-400 shadow-md cursor-pointer"
+            id="btn-trigger-60s-breath"
+          >
+            <Wind className="w-4 h-4 text-emerald-400 animate-pulse shrink-0" />
+            <span>
+              {lang === 'pt' ? 'Respiração 60s' : '60s Wave Breath'}
             </span>
           </button>
         </div>
 
+        {/* SPECIALIZED PROFILE INFO BOARD */}
+        <div className={`p-4 rounded-3xl border border-stone-800/10 text-left ${themeConfig.cardClass}`}>
+          <div className="flex gap-2.5 items-center">
+            <span className="text-base select-none">💡</span>
+            <p className="text-xs font-sans tracking-wide text-teal-650 dark:text-teal-400 leading-relaxed font-medium">
+              {themeConfig.interactiveTonePt}
+            </p>
+          </div>
+        </div>
+
         {/* SOUNDSCAPES: Sons do Santuário Synth Active Panel */}
-        <div className={`p-5 rounded-3xl border ${cardBgCl} space-y-3.5 text-left`}>
-          <div className="flex items-center space-x-2 border-b border-stone-800/10 pb-2">
-            <Volume2 className="w-4 h-4 text-teal-400" />
-            <h4 className={`text-[10px] font-mono tracking-widest uppercase font-bold ${textPrimary}`}>
+        <div className={`p-5 rounded-[2rem] border transition-all duration-500 ${themeConfig.cardClass} space-y-4 text-left`}>
+          <div className="flex items-center space-x-2 border-b border-stone-800/10 pb-2.5">
+            <Volume2 className="w-4 h-4 text-teal-450 shrink-0" />
+            <h4 className="text-[15px] font-serif tracking-wide text-teal-600 dark:text-teal-400 font-semibold">
               {lang === 'pt' ? 'Atmosfera Sonora do Santuário' : 'Ambient Sacred Sounds'}
             </h4>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {/* Silêncio */}
             <button
               onClick={() => handleToggleSoundscape('silent')}
-              className={`p-2 rounded-xl text-[10px] font-mono uppercase tracking-widest text-center border transition-all cursor-pointer ${
+              className={`p-2.5 rounded-xl text-[10px] font-mono uppercase tracking-widest text-center border transition-all cursor-pointer ${
                 currentSound === 'silent'
-                  ? 'bg-stone-50 text-stone-900 border-transparent'
-                  : 'bg-stone-950/20 border-stone-800 hover:bg-stone-900/40 text-stone-400'
+                  ? 'bg-stone-50 text-stone-900 border-transparent font-black shadow-sm'
+                  : 'bg-stone-950/20 border-stone-850 hover:bg-stone-900/40 text-stone-400'
               }`}
             >
               🔇 {lang === 'pt' ? 'Silêncio' : 'Silence'}
@@ -863,34 +1345,34 @@ export const SantuarioView: React.FC<SantuarioViewProps> = ({
             {/* Ondas da Calma */}
             <button
               onClick={() => handleToggleSoundscape('ocean')}
-              className={`p-2 rounded-xl text-[10px] font-mono uppercase tracking-widest text-center border transition-all cursor-pointer ${
+              className={`p-2.5 rounded-xl text-[10px] font-mono uppercase tracking-widest text-center border transition-all cursor-pointer ${
                 currentSound === 'ocean'
-                  ? 'bg-teal-500/10 border-teal-500/30 text-teal-400 font-bold'
-                  : 'bg-stone-950/20 border-stone-800 hover:bg-stone-900/40 text-stone-400'
+                  ? 'bg-teal-500/10 border-teal-500/30 text-teal-455 font-black shadow-inner shadow-teal-500/5'
+                  : 'bg-stone-950/20 border-stone-850 hover:bg-stone-900/40 text-stone-400'
               }`}
             >
               🌊 {lang === 'pt' ? 'Ondas' : 'Waves'}
             </button>
 
-            {/* Brisa do Jardim */}
+            {/* Jardim Breeze */}
             <button
               onClick={() => handleToggleSoundscape('breeze')}
-              className={`p-2 rounded-xl text-[10px] font-mono uppercase tracking-widest text-center border transition-all cursor-pointer ${
+              className={`p-2.5 rounded-xl text-[10px] font-mono uppercase tracking-widest text-center border transition-all cursor-pointer ${
                 currentSound === 'breeze'
-                  ? 'bg-teal-500/10 border-teal-500/30 text-teal-400 font-bold'
-                  : 'bg-stone-950/20 border-stone-800 hover:bg-stone-900/40 text-stone-400'
+                  ? 'bg-teal-500/10 border-teal-500/30 text-teal-455 font-black shadow-inner shadow-teal-500/5'
+                  : 'bg-stone-950/20 border-stone-850 hover:bg-stone-905/40 hover:bg-stone-900/40 text-stone-400'
               }`}
             >
               🍃 {lang === 'pt' ? 'Brisa' : 'Breeze'}
             </button>
 
-            {/* Sino Tibetan (Bell Bowl) */}
+            {/* Sino Tibet (Bell Bowl) */}
             <button
               onClick={() => handleToggleSoundscape('bowl')}
-              className={`p-2 rounded-xl text-[10px] font-mono uppercase tracking-widest text-center border transition-all cursor-pointer ${
+              className={`p-2.5 rounded-xl text-[10px] font-mono uppercase tracking-widest text-center border transition-all cursor-pointer ${
                 currentSound === 'bowl'
-                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 font-bold'
-                  : 'bg-stone-950/20 border-stone-800 hover:bg-stone-900/40 text-stone-400'
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-455 font-black shadow-inner shadow-amber-500/5'
+                  : 'bg-stone-950/20 border-stone-850 hover:bg-stone-900/40 text-stone-400'
               }`}
             >
               🔔 {lang === 'pt' ? 'Gong' : 'Singing Bowl'}
@@ -898,40 +1380,8 @@ export const SantuarioView: React.FC<SantuarioViewProps> = ({
           </div>
         </div>
 
-        {/* CO-REGULATION SHORTCUT TRILOGY */}
-        <div className="grid grid-cols-3 gap-3">
-          
-          <button
-            onClick={() => onNavigateToTab('conversar')}
-            className={`p-3.5 rounded-2xl border text-center transition-all hover:scale-[1.03] active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1.5 ${cardBgCl}`}
-          >
-            <span className="text-[14px]">🎙️</span>
-            <span className={`text-[9px] font-mono uppercase tracking-wider font-extrabold ${textPrimary}`}>
-              {lang === 'pt' ? 'Conversar' : 'Chat'}
-            </span>
-          </button>
-
-          <button
-            onClick={() => onNavigateToTab('refletir')}
-            className={`p-3.5 rounded-2xl border text-center transition-all hover:scale-[1.03] active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1.5 ${cardBgCl}`}
-          >
-            <span className="text-[14px]">📖</span>
-            <span className={`text-[9px] font-mono uppercase tracking-wider font-extrabold ${textPrimary}`}>
-              {lang === 'pt' ? 'Refletir' : 'Reflect'}
-            </span>
-          </button>
-
-          <button
-            onClick={() => onNavigateToTab('evoluir')}
-            className={`p-3.5 rounded-2xl border text-center transition-all hover:scale-[1.03] active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1.5 ${cardBgCl}`}
-          >
-            <span className="text-[14px]">⭐</span>
-            <span className={`text-[9px] font-mono uppercase tracking-wider font-extrabold ${textPrimary}`}>
-              {lang === 'pt' ? 'Evoluir' : 'Evolve'}
-            </span>
-          </button>
-
-        </div>
+        {/* DAILY GROUNDING AFFIRMATION */}
+        <DailyAffirmation lang={lang} onAddToast={onAddToast} />
 
       </div>
 
@@ -943,32 +1393,32 @@ export const SantuarioView: React.FC<SantuarioViewProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSelectedEcho(null)}
-            className="fixed inset-0 z-[160] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6"
+            className="fixed inset-0 z-[160] bg-black/60 backdrop-blur-md flex items-center justify-center p-6"
           >
             <motion.div
               initial={{ scale: 0.9, y: 15 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 15 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#FDFBF7] border border-stone-200 p-6 rounded-2xl shadow-xl max-w-sm w-full space-y-4 text-stone-800 animate-fade-in"
+              className="bg-stone-50 border border-stone-200 p-6 rounded-3xl shadow-2xl max-w-sm w-full space-y-4 text-stone-850"
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-amber-600">
-                  <BookOpen className="w-4 h-4" />
-                  <span className="font-mono text-[10px] uppercase tracking-wider font-semibold">
+                <div className="flex items-center gap-2 text-amber-650">
+                  <BookOpen className="w-4 h-4 shrink-0 shadow-inner" />
+                  <span className="font-mono text-[10px] uppercase tracking-wider font-bold">
                     {lang === 'pt' ? 'Eco do Jardim' : 'Garden Echo'}
                   </span>
                 </div>
                 <button 
                   onClick={() => setSelectedEcho(null)}
-                  className="text-stone-400 hover:text-stone-750 font-mono text-xs cursor-pointer p-1"
+                  className="text-stone-400 hover:text-stone-700 font-mono text-xs cursor-pointer p-1"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-[10px] text-stone-450 font-mono">
+              <div className="space-y-2 text-left">
+                <p className="text-[10px] text-stone-500 font-mono">
                   {new Date(selectedEcho.date).toLocaleDateString(lang === 'pt' ? 'pt-BR' : 'en-US', {
                     day: 'numeric',
                     month: 'long',
@@ -978,23 +1428,51 @@ export const SantuarioView: React.FC<SantuarioViewProps> = ({
                   })}
                 </p>
                 {selectedEcho.prompt && (
-                  <p className="text-xs italic text-stone-500 font-serif border-l-2 border-amber-300 pl-2.5">
+                  <p className="text-xs italic text-stone-500 font-serif border-l-2 border-teal-500 pl-2.5 leading-relaxed">
                     "{selectedEcho.prompt}"
                   </p>
                 )}
-                <div className="text-sm font-sans leading-relaxed text-stone-700 bg-stone-50/50 p-3 rounded-xl border border-stone-200/40 max-h-48 overflow-y-auto no-scrollbar font-light">
+                <div className="text-xs sm:text-sm font-sans leading-relaxed text-stone-750 bg-stone-100 p-4 rounded-2xl border border-stone-200/50 max-h-48 overflow-y-auto no-scrollbar font-normal">
                   {selectedEcho.text}
                 </div>
               </div>
 
-              <div className="text-center pt-2">
+              <div className="text-center pt-1.5">
                 <button
                   onClick={() => setSelectedEcho(null)}
-                  className="py-1.5 px-4 bg-stone-800 hover:bg-stone-900 text-white rounded-xl text-xs uppercase font-mono tracking-wider cursor-pointer transition-all"
+                  className="py-2.5 px-6 bg-stone-900 hover:bg-black text-white rounded-xl text-xs uppercase font-mono tracking-widest font-black cursor-pointer transition-all"
                 >
                   {lang === 'pt' ? 'Deixar Eco' : 'Dismiss Echo'}
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 60s Breathing Guide Overlay Modal */}
+      <AnimatePresence>
+        {showBreathingGuide && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[170] bg-black/60 backdrop-blur-md flex items-center justify-center p-6"
+            onClick={() => setShowBreathingGuide(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md"
+            >
+              <BreathingGuide 
+                lang={lang} 
+                onClose={() => setShowBreathingGuide(false)} 
+                onAddToast={onAddToast}
+                isLightTheme={isLightTheme}
+              />
             </motion.div>
           </motion.div>
         )}

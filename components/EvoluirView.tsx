@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User as UserIcon, Sparkles, MapPin, Award, ArrowLeft, Heart, Compass, Info, Sliders, Shield, BookOpen } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
+import { GoogleGenAI } from '@google/genai';
 import { User, Language } from '../types';
 import { UserProfileView } from './UserProfileView';
 import TelaJornada from './TelaJornada';
@@ -51,6 +52,69 @@ export const EvoluirView: React.FC<EvoluirViewProps> = ({
 
   const [journals, setJournals] = useState<any[]>([]);
   const [loadingJournals, setLoadingJournals] = useState(false);
+
+  // AI-generated resonance insights states
+  const [aiInsight, setAiInsight] = useState<string>('');
+  const [loadingInsight, setLoadingInsight] = useState<boolean>(false);
+  const [errorInsight, setErrorInsight] = useState<boolean>(false);
+
+  const fetchAIInsight = async (force = false) => {
+    const cached = localStorage.getItem('pch_ai_resonance_insight');
+    const cachedLang = localStorage.getItem('pch_ai_resonance_lang');
+    if (cached && cachedLang === lang && !force) {
+      setAiInsight(cached);
+      return;
+    }
+
+    setLoadingInsight(true);
+    setErrorInsight(false);
+
+    try {
+      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Missing Gemini API Key");
+      }
+      const ai = new GoogleGenAI({ apiKey });
+
+      const prompt = `
+        You are Dr. Evaldo, the poetic PCH (Plural Cognitive Harmony) active guide.
+        Analyze the user's emotional bio-resonance alignment history from their sessions over the last 7 days.
+        Write a brief, comforting, and therapeutic insight (2-3 sentences max) analyzing their progress/stability.
+        
+        Session scores: ${JSON.stringify(chartData)}
+        
+        Include a supportive observation on the 7-day trend (e.g., quiet stability, upward waves, active heart synchronization).
+        Write entirely in ${lang === 'pt' ? 'Portuguese' : 'English'}.
+        Keep the tone deeply warm, poetic, and focused on cognitive-guided growth.
+        Do not include any greeting or conversational fluff or JSON tags, return only the pure therapeutic insight.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt
+      });
+
+      const text = response.text?.trim() || '';
+      if (text) {
+        setAiInsight(text);
+        localStorage.setItem('pch_ai_resonance_insight', text);
+        localStorage.setItem('pch_ai_resonance_lang', lang);
+      } else {
+        throw new Error("Empty response");
+      }
+    } catch (e) {
+      console.error("Failed to generate resonance insights:", e);
+      setErrorInsight(true);
+    } finally {
+      setLoadingInsight(false);
+    }
+  };
+
+  useEffect(() => {
+    if (subSection === 'perfil') {
+      fetchAIInsight();
+    }
+  }, [subSection, lang, user?.resonanceScore]);
 
   useEffect(() => {
     const fetchJournals = async () => {
@@ -394,7 +458,7 @@ export const EvoluirView: React.FC<EvoluirViewProps> = ({
                               <span className={`text-[8px] font-mono font-bold px-2 py-0.5 rounded-full border ${
                                 isActivated ? 'bg-amber-500/10 border-amber-500/20 text-amber-550 text-amber-600' : 'bg-stone-500/10 border-stone-800 text-stone-500'
                               }`}>
-                                {isActivated ? (lang === 'pt' ? 'MARCO ATIVADO' : 'MILESTONE ACTIVE') : (lang === 'pt' ? `REQUER ${starDetail?.xp} XP` : `REQUIRES ${starDetail?.xp} XP`)}
+                                {isActivated ? (lang === 'pt' ? 'MARCO ATIVADO' : 'MILESTONE ACTIVE') : (lang === 'pt' ? 'REQUER MAIS CULTIVO' : 'REQUIRES MORE CULTIVATION')}
                               </span>
                             </div>
                             <p className={`text-[12px] font-light leading-relaxed font-serif italic ${textPrimary}`}>
@@ -513,6 +577,65 @@ export const EvoluirView: React.FC<EvoluirViewProps> = ({
                         />
                       </AreaChart>
                     </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* AI-Generated Therapeutic Insights */}
+                <div className={`p-6 rounded-[2rem] border relative overflow-hidden transition-all duration-300 mt-4 ${
+                  isLightTheme ? 'bg-gradient-to-br from-[#fdfbf7] to-white border-stone-200' : 'bg-[#101424]/40 border-stone-800'
+                }`}>
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-[#ecf2ed] text-[#3e5f35] rounded-xl flex items-center justify-center">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      </div>
+                      <span className={`text-[10px] font-mono uppercase tracking-widest font-bold ${isLightTheme ? 'text-[#3e5f35]' : 'text-emerald-400'}`}>
+                        {lang === 'pt' ? 'Análise Adaptativa do Dr. Evaldo (IA)' : 'Dr. Evaldo\'s Resonance Insights (AI)'}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => fetchAIInsight(true)}
+                      disabled={loadingInsight}
+                      className={`text-[9px] font-mono hover:text-emerald-400 transition-colors uppercase cursor-pointer disabled:opacity-40 px-2 py-1 rounded bg-stone-500/5 hover:bg-stone-500/10 ${
+                        isLightTheme ? 'text-stone-600' : 'text-stone-400'
+                      }`}
+                      id="btn-refine-insights"
+                    >
+                      {loadingInsight ? (lang === 'pt' ? 'Calculando...' : 'Calculating...') : (lang === 'pt' ? 'Recalcular 🔄' : 'Refine 🔄')}
+                    </button>
+                  </div>
+
+                  <div className="text-left py-1">
+                    {loadingInsight ? (
+                      <div className="space-y-2 py-2">
+                        <div className="h-3 bg-stone-500/15 rounded animate-pulse w-full" />
+                        <div className="h-3 bg-stone-500/15 rounded animate-pulse w-5/6" />
+                        <span className="text-[10px] font-mono text-stone-500 italic block mt-2">
+                          {lang === 'pt' ? 'Dr. Evaldo está sintonizando suas oscilações...' : 'Dr. Evaldo is auditing your mental bio-rhythms...'}
+                        </span>
+                      </div>
+                    ) : errorInsight ? (
+                      <p className="text-xs text-stone-500 italic">
+                        {lang === 'pt' 
+                          ? 'Não foi possível sintonizar o canal da IA no momento. Verifique sua conexão.' 
+                          : 'Could not sync with the AI channel right now. Check your setup.'}
+                      </p>
+                    ) : aiInsight ? (
+                      <motion.p 
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`text-[12.5px] leading-relaxed font-serif ${isLightTheme ? 'text-stone-700' : 'text-stone-200'} italic`}
+                      >
+                        "{aiInsight}"
+                      </motion.p>
+                    ) : (
+                      <p className="text-xs text-stone-500 italic">
+                        {lang === 'pt' 
+                          ? 'Inicie práticas ou clique em Recalcular para sintonizar a IA.' 
+                          : 'Begin practicing or click Refine to sync AI feedback.'}
+                      </p>
+                    )}
                   </div>
                 </div>
               </motion.div>

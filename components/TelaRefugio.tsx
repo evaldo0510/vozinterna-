@@ -893,7 +893,7 @@ export const TelaRefugio: React.FC<TelaRefugioProps> = ({ onClose, lang, user })
                       {lang === 'pt' ? sentimentResult.labelPt : sentimentResult.labelEn}
                     </h5>
                     <p className="text-[9px] font-mono text-emerald-600 uppercase tracking-wider">
-                      {lang === 'pt' ? `Estado Sincronizado • +15 XP` : `State Synced • +15 XP`}
+                      {lang === 'pt' ? `Estado Sincronizado • Cultivando seu bem-estar` : `State Synced • Nourishing your sanctuary`}
                     </p>
                   </div>
                 </div>
